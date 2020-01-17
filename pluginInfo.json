@@ -1,0 +1,23 @@
+{
+	"repoName": "remote-falcon",
+	"name": "Remote Falcon",
+	"author": "James Vance - Driftwood Light Show",
+	"description": "Allows remote control of FPP including viewer control from a custom website",
+	"homeURL": "https://github.com/whitesoup12/remote-falcon-plugin",
+	"srcURL": "https://github.com/whitesoup12/remote-falcon-plugin.git",
+	"bugURL": "https://github.com/whitesoup12/remote-falcon-plugin/issues",
+	"allowUpdates": 1,
+	"versions": [
+		{
+			"minFPPVersion": "3.5",
+			"maxFPPVersion": "0",
+			"branch": "master",
+			"sha": "",
+			"dependencies": {
+				"plugins": [],
+				"packages": [],
+				"scripts": []
+			}
+		}
+	]
+}
