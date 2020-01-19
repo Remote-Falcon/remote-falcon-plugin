@@ -1,8 +1,11 @@
 <h1 style="margin-left: 1em;">Remote Falcon Plugin</h1>
 <h3 style="margin-left: 1em;">
 	Any time changes are made, go to Content Setup and click "Remote Falcon" to see the changes. 
+	<br />
 	After completing the initial steps and/or modifying any of the toggles, you will need to restart FPP. After restarting, it may take up to a minute for the Remote URL 
 	to appear on the Remote Falcon Control Panel.
+	<br />
+	Refreshing the Remote Falcon logs below will show the process.
 </h3>
 
 <?php
@@ -132,7 +135,7 @@ if(file_exists("$pluginPath/remote_falcon.log")) {
 	echo "
 		<div style=\"margin-left: 1em;\">
 			<form method=\"post\">
-				<input id=\"viewLogsButton\" class=\"button\" name=\"viewLogs\" type=\"submit\" value=\"View Remote Falcon Logs\"/>
+				<input id=\"viewLogsButton\" class=\"button\" name=\"viewLogs\" type=\"submit\" value=\"View Remote Falcon Logs (Click to refresh)\"/>
 			</form>
 		</div>
 	";
