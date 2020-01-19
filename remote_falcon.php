@@ -117,6 +117,26 @@ if(strval($remoteJukeboxEnabled) == "true") {
 	";
 }
 
+if(file_exists("$pluginPath/remote_falcon.log")) {
+	echo "
+		<h5 style=\"margin-left: 1em;\">Click \"View Remote Falcon Logs\" to see the log file.</h5>
+		<div style=\"margin-left: 1em;\">
+			<form method=\"post\">
+				<input id=\"viewLogsButton\" class=\"button\" name=\"viewLogs\" type=\"submit\" value=\"View Remote Falcon Logs\"/>
+			</form>
+		</div>
+	";
+}
+
+if (isset($_POST['viewLogs'])) {
+	$logs = file_get_contents("$pluginPath/remote_falcon.log");
+	echo "
+		<textarea rows=\"10\" cols=\"100\">
+			$logs
+		</textarea>
+	";
+}
+
 if(file_exists("$pluginPath/remote_url.txt")) {
 	$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
 	$pieces = explode(' ', $remoteUrl);
