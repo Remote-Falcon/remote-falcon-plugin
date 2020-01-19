@@ -1,11 +1,17 @@
 <h1 style="margin-left: 1em;">Remote Falcon Plugin</h1>
 <h3 style="margin-left: 1em;">
-	Any time changes are made, go to Content Setup and click "Remote Falcon" to see the changes. 
+	<p>
+		Any time changes are made, go to Content Setup and click "Remote Falcon" to see the changes. 
+	</p>
 	<br />
-	After completing the initial steps and/or modifying any of the toggles, you will need to restart FPP. After restarting, it may take up to a minute for the Remote URL 
-	to appear on the Remote Falcon Control Panel.
+	<p>
+		After completing the initial steps and/or modifying any of the toggles, you will need to restart FPP. After restarting, it may take up to a minute for the Remote URL 
+		to appear on the Remote Falcon Control Panel.
+	</p>
 	<br />
-	Refreshing the Remote Falcon logs below will show the process.
+	<p>
+		Refreshing the Remote Falcon logs below will show the process.
+	</p>
 </h3>
 
 <?php
