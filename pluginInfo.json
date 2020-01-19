@@ -11,7 +11,7 @@
 		{
 			"minFPPVersion": "3.5",
 			"maxFPPVersion": "0",
-			"branch": "master",
+			"branch": "sh-to-php",
 			"sha": "",
 			"dependencies": {
 				"plugins": [],
