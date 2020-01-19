@@ -25,7 +25,6 @@ if (isset($_POST['saveRemoteToken'])) {
 			<h4 style=\"color: #39b54a;\">Remote Token $remoteToken successfully saved. Please refresh the page.</h4>
 		</div>
 	";
-	header("$pageLocation");
 }
 
 if (isset($_POST['updateToggles'])) {
@@ -47,7 +46,6 @@ if (isset($_POST['updateToggles'])) {
 			<h4 style=\"color: #39b54a;\">Toggles have been successfully updated. Please refresh the page.</h4>
 		</div>
 	";
-	header("$pageLocation");
 }
 
 /**PLUGIN UI */
@@ -117,9 +115,21 @@ if(strval($remoteJukeboxEnabled) == "true") {
 	";
 }
 
+if(file_exists("$pluginPath/remote_url.txt")) {
+	$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
+	$pieces = explode(' ', $remoteUrl);
+	$lastWord = array_pop($pieces);
+	echo "<br>";
+	echo "
+		<div style=\"margin-left: 1em;\">
+			Your current Remote URL is <strong style=\"color: #39b54a;\">$lastWord</strong>
+		</div>
+	";
+}
+
+echo "<br>";
 if(file_exists("$pluginPath/remote_falcon.log")) {
 	echo "
-		<h5 style=\"margin-left: 1em;\">Click \"View Remote Falcon Logs\" to see the log file.</h5>
 		<div style=\"margin-left: 1em;\">
 			<form method=\"post\">
 				<input id=\"viewLogsButton\" class=\"button\" name=\"viewLogs\" type=\"submit\" value=\"View Remote Falcon Logs\"/>
@@ -136,17 +146,4 @@ if (isset($_POST['viewLogs'])) {
 		</textarea>
 	";
 }
-
-if(file_exists("$pluginPath/remote_url.txt")) {
-	$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
-	$pieces = explode(' ', $remoteUrl);
-	$lastWord = array_pop($pieces);
-	echo "<br>";
-	echo "
-		<div style=\"margin-left: 1em;\">
-			Your current Remote URL is <strong style=\"color: #39b54a;\">$lastWord</strong>
-		</div>
-	";
-}
-
 ?>
