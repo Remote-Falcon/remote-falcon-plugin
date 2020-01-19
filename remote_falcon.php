@@ -148,7 +148,7 @@ if(file_exists("$pluginPath/remote_falcon.log")) {
 if (isset($_POST['viewLogs'])) {
 	$logs = file_get_contents("$pluginPath/remote_falcon.log");
 	echo "
-		<textarea rows=\"10\" cols=\"100\">
+		<textarea rows=\"10\" cols=\"100\" disabled>
 			$logs
 		</textarea>
 	";
