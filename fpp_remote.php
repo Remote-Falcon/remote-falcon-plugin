@@ -18,12 +18,13 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 	if(file_exists("$pluginPath/remote_url.txt")) {
 		$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
 		$pieces = explode(' ', $remoteUrl);
-		$lastWord = "temp";
-		foreach ($pieces as &$value) {
-				if (strpos($value, 'https://') !== false) {
-						$lastWord = trim($value);
-				}
-		}
+		$lastWord = array_pop($pieces);
+		// $lastWord = "temp";
+		// foreach ($pieces as &$value) {
+		// 		if (strpos($value, 'https://') !== false) {
+		// 				$lastWord = trim($value);
+		// 		}
+		// }
 		appendLog("Created Remote URL $lastWord");
 
 		appendLog("Sending Remote URL to Remote Falcon");
