@@ -14,7 +14,7 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 	shell_exec('chmod +x /home/fpp/media/plugins/remote-falcon/scripts/fpp_remote_v2.sh');
 	$pid = exec("sh /home/fpp/media/plugins/remote-falcon/scripts/fpp_remote_v2.sh> /dev/null 2>&1 & echo $!; ", $output);
 	appendLog("Waiting for script to execute");
-	sleep(10);
+	sleep(15);
 	if(file_exists("$pluginPath/remote_url.txt")) {
 		$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
 		$pieces = explode(' ', $remoteUrl);
