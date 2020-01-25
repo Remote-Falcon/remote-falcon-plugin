@@ -18,39 +18,42 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 	if(file_exists("$pluginPath/remote_url.txt")) {
 		$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
 		$pieces = explode(' ', $remoteUrl);
-		$lastWord = "temp";
-		foreach ($pieces as &$value) {
-				if (strpos($value, 'https://') !== false) {
-						$lastWord = trim($value);
-				}
+		$lastWord = "";
+		$lastWord = trim(array_pop($pieces));
+		if (strpos($lastWord, 'https://') === false) {
+				foreach ($pieces as &$value) {
+					if (strpos($value, 'https://') !== false) {
+							$lastWord = trim($value);
+					}
+			}
 		}
-		if($lastWord == "temp") {
-			$lastWord = array_pop($pieces);
-		}
-		appendLog("Created Remote URL $lastWord");
-
-		appendLog("Sending Remote URL to Remote Falcon");
-		$url = "https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/saveRemoteByKey.php";
-		$data = array(
-			'remoteKey' => $remoteToken,
-			'remoteURL' => $lastWord
-		);
-		$options = array(
-			'http' => array(
-				'method'  => 'POST',
-				'content' => json_encode( $data ),
-				'header'=>  "Content-Type: application/json\r\n" .
-										"Accept: application/json\r\n"
-				)
-		);
-		appendLog("POST: " . json_encode( $data ));
-		$context  = stream_context_create( $options );
-		$result = file_get_contents( $url, false, $context );
-		$response = json_decode( $result );
-		if($response === true) {
-			appendLog("Successfully saved Remote URL to Remote Falcon");
+		if($lastWord == "") {
+			appendLog("Error creating Remote URL");
 		}else {
-			appendLog("Error saving Remote URL to Remote Falcon: $response");
+			appendLog("Created Remote URL $lastWord");
+			appendLog("Sending Remote URL to Remote Falcon");
+			$url = "https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/saveRemoteByKey.php";
+			$data = array(
+				'remoteKey' => $remoteToken,
+				'remoteURL' => $lastWord
+			);
+			$options = array(
+				'http' => array(
+					'method'  => 'POST',
+					'content' => json_encode( $data ),
+					'header'=>  "Content-Type: application/json\r\n" .
+											"Accept: application/json\r\n"
+					)
+			);
+			appendLog("POST: " . json_encode( $data ));
+			$context  = stream_context_create( $options );
+			$result = file_get_contents( $url, false, $context );
+			$response = json_decode( $result );
+			if($response === true) {
+				appendLog("Successfully saved Remote URL to Remote Falcon");
+			}else {
+				appendLog("Error saving Remote URL to Remote Falcon: $response");
+			}
 		}
 	}else {
 		appendLog("Error occured when creating Remote URL");

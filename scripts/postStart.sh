@@ -4,8 +4,6 @@ REMOTE_FPP_ENABLED=$(tail /home/fpp/media/plugins/remote-falcon/remote_fpp_enabl
 REMOTE_JUKEBOX_ENABLED=$(tail /home/fpp/media/plugins/remote-falcon/remote_jukebox_enabled.txt)
 
 if [ "$REMOTE_FPP_ENABLED" = "true" ]; then
-	#/usr/bin/curl "http://fpp/runEventScript.php?scriptName=fpp_remote.sh" &
-	#sh /home/fpp/media/plugins/remote-falcon/scripts/fpp_remote.sh &
 	/usr/bin/php /home/fpp/media/plugins/remote-falcon/fpp_remote.php &
 fi
 if [ "$REMOTE_JUKEBOX_ENABLED" = "true" ]; then
