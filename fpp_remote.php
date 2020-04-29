@@ -22,7 +22,7 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 		$lastWord = trim(array_pop($pieces));
 		if (strpos($lastWord, 'https://') === false) {
 				foreach ($pieces as &$value) {
-					if (strpos($value, 'https://') !== false) {
+					if (strpos($value, 'https://') !== false && strpos($value, 'localhost.run') !== false) {
 							$lastWord = trim($value);
 					}
 			}
