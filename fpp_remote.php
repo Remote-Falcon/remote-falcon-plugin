@@ -30,7 +30,7 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 		if($lastWord == "") {
 			appendLog("Error creating Remote URL");
 		}else {
-			$lastWord = "https://" + $lastWord;
+			$lastWord = "https://" . $lastWord;
 			appendLog("Created Remote URL $lastWord");
 			appendLog("Sending Remote URL to Remote Falcon");
 			$url = "https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/saveRemoteByKey.php";
