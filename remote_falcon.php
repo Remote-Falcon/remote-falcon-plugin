@@ -125,7 +125,17 @@ if(strval($remoteJukeboxEnabled) == "true") {
 if(file_exists("$pluginPath/remote_url.txt")) {
 	$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
 	$pieces = explode(' ', $remoteUrl);
-	$lastWord = array_pop($pieces);
+	$lastWord = "";
+	$lastWord = trim(array_pop($pieces));
+	if (strpos($lastWord, '.localhost.run') === false) {
+			foreach ($pieces as &$value) {
+				if (strpos($value, '.localhost.run') !== false) {
+						$lastWord = trim($value);
+				}
+		}
+	}
+	$lastWord = substr($lastWord, 1); 
+	$lastWord = "https://" . $lastWord;
 	echo "<br>";
 	echo "
 		<div style=\"margin-left: 1em;\">
