@@ -23,22 +23,22 @@ if [ "${PLAYLISTNAME}" != "null" ]; then
 		2|*)
 			;;
 	esac
-elif [ "${PLAYLISTUPONSILENCE}" != "" ]; then
-	STATUS=$(fpp -s | cut -d',' -f2)
-	if [ -z "${STATUS}" ]; then
-		echo "Error with status value" >&2
-		exit 1
-	fi
-	case ${STATUS} in
-		0)
-			echo "Starting ${PLAYLISTUPONSILENCE}"
-			fpp -P "${PLAYLISTUPONSILENCE}" ${STARTITEM}
-			;;
-		1)
-			;;
-		2|*)
-			;;
-	esac
+# elif [ "${PLAYLISTUPONSILENCE}" != "" ]; then
+# 	STATUS=$(fpp -s | cut -d',' -f2)
+# 	if [ -z "${STATUS}" ]; then
+# 		echo "Error with status value" >&2
+# 		exit 1
+# 	fi
+# 	case ${STATUS} in
+# 		0)
+# 			echo "Starting ${PLAYLISTUPONSILENCE}"
+# 			fpp -P "${PLAYLISTUPONSILENCE}" ${STARTITEM}
+# 			;;
+# 		1)
+# 			;;
+# 		2|*)
+# 			;;
+# 	esac
 fi
 sleep 5
 done

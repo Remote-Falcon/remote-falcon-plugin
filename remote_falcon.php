@@ -7,9 +7,6 @@
 		After completing the initial steps and/or modifying any of the toggles, you will need to restart FPP. After restarting, it may take up to a minute for the Remote URL 
 		to appear on the Remote Falcon Control Panel.
 	</p>
-	<p>
-		Refreshing the Remote Falcon logs below will show the process.
-	</p>
 </h3>
 
 <?php
@@ -121,6 +118,12 @@ if(strval($remoteJukeboxEnabled) == "true") {
 		</div>
 	";
 }
+
+echo "<br>";
+echo "
+	<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 3:</h3>
+	<h5 style=\"margin-left: 1em;\">Click the Restart FPPD button below. Click \"View Remote Falcon Logs\" to refresh the logs after startup.</h5>
+";
 
 if(file_exists("$pluginPath/remote_url.txt")) {
 	$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
