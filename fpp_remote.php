@@ -32,7 +32,7 @@ do {
 				appendLog("Error creating Remote URL");
 			}else {
 				$lastWord = substr($lastWord, 1); 
-				$lastWord = "h" . $lastWord;
+				$lastWord = "https://" . $lastWord;
 				appendLog("Created Remote URL $lastWord");
 				appendLog("Sending Remote URL to Remote Falcon");
 				$url = "https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/saveRemoteByKey.php";
