@@ -1,11 +1,55 @@
 #!/bin/bash
 
-REMOTE_TOKEN=$(tail /home/fpp/media/plugins/remote-falcon/remote_token.txt)
+echo "Starting Remote Jukebox"
+
+#REMOTE_TOKEN=$(tail /home/fpp/media/plugins/remote-falcon/remote_token.txt)
+REMOTE_TOKEN="ShY556HTWLkaBJQ306tyQYyr1"
+IS_REQUEST_PLAYING="false"
 
 while [ true ]
 do
 PLAYLISTNAME=$(/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/fetchCurrentPlaylistFromQueue.php)
 if [ "${PLAYLISTNAME}" != "null" ]; then
+	#As long as a viewer request is not currently playing, interrup any playing playlist
+	echo "Received Request for ${PLAYLISTNAME}"
+	STATUS=$(fpp -s | cut -d',' -f2)
+	if [ -z "${STATUS}" ]; then
+		echo "Error with status value" >&2
+		exit 1
+	fi
+	case ${STATUS} in
+		#Idle
+		0)
+			IS_REQUEST_PLAYING="true"
+			echo "Starting Request for ${PLAYLISTNAME}"
+			fpp -P "${PLAYLISTNAME}" ${STARTITEM}
+			fpp -c graceful
+			/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/updatePlaylistQueue.php
+			;;
+		#Playing
+		1)
+			if [ "${IS_REQUEST_PLAYING}" = "false" ]; then
+				IS_REQUEST_PLAYING="true"
+				echo "Starting Request for ${PLAYLISTNAME}"
+				fpp -P "${PLAYLISTNAME}" ${STARTITEM}
+				fpp -c graceful
+				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/updatePlaylistQueue.php
+			fi
+			;;
+		#Stopping
+		2|*)
+			if [ "${IS_REQUEST_PLAYING}" = "false" ]; then
+				IS_REQUEST_PLAYING="true"
+				echo "Starting Request for ${PLAYLISTNAME}"
+				fpp -P "${PLAYLISTNAME}" ${STARTITEM}
+				fpp -c graceful
+				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/updatePlaylistQueue.php
+			fi
+			;;
+	esac
+else
+	#Reload schedule and only set viewer request playing boolean to false once idle
+	fpp -R
 	STATUS=$(fpp -s | cut -d',' -f2)
 	if [ -z "${STATUS}" ]; then
 		echo "Error with status value" >&2
@@ -13,17 +57,14 @@ if [ "${PLAYLISTNAME}" != "null" ]; then
 	fi
 	case ${STATUS} in
 		0)
-			echo "Starting ${PLAYLISTNAME}"
-			fpp -P "${PLAYLISTNAME}" ${STARTITEM}
-			/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/updatePlaylistQueue.php
+			echo "Resuming Schedule"
+			IS_REQUEST_PLAYING="false"
 			;;
 		1)
 			;;
 		2|*)
 			;;
 	esac
-else
-	fpp -R
 fi
 sleep 3
 done
