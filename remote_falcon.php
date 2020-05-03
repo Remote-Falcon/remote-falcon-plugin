@@ -158,6 +158,7 @@ echo "
 ";
 
 if (isset($_POST['sendUrl'])) {
+	$remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
 	$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
 	$pieces = explode(' ', $remoteUrl);
 	$lastWord = "";
@@ -171,9 +172,6 @@ if (isset($_POST['sendUrl'])) {
 	}
 	$lastWord = substr($lastWord, 1); 
 	$lastWord = "https://" . $lastWord;
-	echo "
-			<h3 style=\"margin-left: 1em; color: #39b54a;\">$lastWord</h3>
-		";
 	$url = "https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/saveRemoteByKey.php";
 	$data = array(
 		'remoteKey' => $remoteToken,
