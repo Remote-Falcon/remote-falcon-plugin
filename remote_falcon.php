@@ -157,58 +157,58 @@ echo "
 		</div>
 ";
 
-if (isset($_POST['sendUrl'])) {
-	$remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
-	$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
-	$pieces = explode(' ', $remoteUrl);
-	$lastWord = "";
-	$lastWord = trim(array_pop($pieces));
-	if (strpos($lastWord, '.localhost.run') === false) {
-			foreach ($pieces as &$value) {
-				if (strpos($value, '.localhost.run') !== false) {
-						$lastWord = trim($value);
-				}
-		}
-	}
-	$lastWord = substr($lastWord, 1); 
-	$lastWord = "https://" . $lastWord;
-	$url = "https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/saveRemoteByKey.php";
-	$data = array(
-		'remoteKey' => $remoteToken,
-		'remoteURL' => $lastWord
-	);
-	$options = array(
-		'http' => array(
-			'method'  => 'POST',
-			'content' => json_encode( $data ),
-			'header'=>  "Content-Type: application/json\r\n" .
-									"Accept: application/json\r\n"
-			)
-	);
-	$context  = stream_context_create( $options );
-	$result = file_get_contents( $url, false, $context );
-	$response = json_decode( $result );
-	if($response === true) {
-		echo "
-			<h3 style=\"margin-left: 1em; color: #39b54a;\">Success!</h3>
-		";
-	}else {
-		echo "
-			<h3 style=\"margin-left: 1em; color: #39b54a;\">Error!</h3>
-		";
-	}
-}
+// if (isset($_POST['sendUrl'])) {
+// 	$remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
+// 	$remoteUrl = file_get_contents("$pluginPath/remote_url.txt");
+// 	$pieces = explode(' ', $remoteUrl);
+// 	$lastWord = "";
+// 	$lastWord = trim(array_pop($pieces));
+// 	if (strpos($lastWord, '.localhost.run') === false) {
+// 			foreach ($pieces as &$value) {
+// 				if (strpos($value, '.localhost.run') !== false) {
+// 						$lastWord = trim($value);
+// 				}
+// 		}
+// 	}
+// 	$lastWord = substr($lastWord, 1); 
+// 	$lastWord = "https://" . $lastWord;
+// 	$url = "https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/saveRemoteByKey.php";
+// 	$data = array(
+// 		'remoteKey' => $remoteToken,
+// 		'remoteURL' => $lastWord
+// 	);
+// 	$options = array(
+// 		'http' => array(
+// 			'method'  => 'POST',
+// 			'content' => json_encode( $data ),
+// 			'header'=>  "Content-Type: application/json\r\n" .
+// 									"Accept: application/json\r\n"
+// 			)
+// 	);
+// 	$context  = stream_context_create( $options );
+// 	$result = file_get_contents( $url, false, $context );
+// 	$response = json_decode( $result );
+// 	if($response === true) {
+// 		echo "
+// 			<h3 style=\"margin-left: 1em; color: #39b54a;\">Success!</h3>
+// 		";
+// 	}else {
+// 		echo "
+// 			<h3 style=\"margin-left: 1em; color: #39b54a;\">Error!</h3>
+// 		";
+// 	}
+// }
 
-echo "<br>";
-if(file_exists("$pluginPath/remote_falcon.log")) {
-	echo "
-		<div style=\"margin-left: 1em;\">
-			<form method=\"post\">
-				<input id=\"viewLogsButton\" class=\"button\" name=\"viewLogs\" type=\"submit\" value=\"View Remote Falcon Logs (Click to refresh)\"/>
-			</form>
-		</div>
-	";
-}
+// echo "<br>";
+// if(file_exists("$pluginPath/remote_falcon.log")) {
+// 	echo "
+// 		<div style=\"margin-left: 1em;\">
+// 			<form method=\"post\">
+// 				<input id=\"viewLogsButton\" class=\"button\" name=\"viewLogs\" type=\"submit\" value=\"View Remote Falcon Logs (Click to refresh)\"/>
+// 			</form>
+// 		</div>
+// 	";
+// }
 
 if (isset($_POST['viewLogs'])) {
 	$logs = file_get_contents("$pluginPath/remote_falcon.log");
