@@ -171,6 +171,9 @@ if (isset($_POST['sendUrl'])) {
 	}
 	$lastWord = substr($lastWord, 1); 
 	$lastWord = "https://" . $lastWord;
+	echo "
+			<h3 style=\"margin-left: 1em; color: #39b54a;\">$lastWord</h3>
+		";
 	$url = "https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/saveRemoteByKey.php";
 	$data = array(
 		'remoteKey' => $remoteToken,
