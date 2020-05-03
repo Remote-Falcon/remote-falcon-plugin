@@ -31,6 +31,18 @@ if (isset($_POST['saveRemoteToken'])) {
 	";
 }
 
+if (isset($_POST['saveShellPassword'])) {
+	$shellPassword = trim($_POST['shellPassword']);
+  global $pluginPath;
+	shell_exec("rm -f $pluginPath/shell_password.txt");
+	shell_exec("echo $shellPassword > $pluginPath/shell_password.txt");
+	echo "
+		<div style=\"margin-left: 1em;\">
+			<h4 style=\"color: #39b54a;\">Shell Password has been updated!</h4>
+		</div>
+	";
+}
+
 if (isset($_POST['updateToggles'])) {
   global $pluginPath;
 	$remoteFppChecked = "false";
@@ -119,6 +131,19 @@ if(strval($remoteJukeboxEnabled) == "true") {
 	";
 }
 
+$shellPassword = file_get_contents("$pluginPath/shell_password.txt");
+echo "
+	<h3 style=\"margin-left: 1em; color: #39b54a;\">Shell Password</h3>
+	<h5 style=\"margin-left: 1em;\">If your default SSH Shell password is NOT falcon, then you can put your password in the box below so the scripts can run.</h5>
+	<div style=\"margin-left: 1em;\">
+		<form method=\"post\">
+			Shell Password: <input type=\"password\" name=\"shellPassword\" id=\"shellPassword\" size=100 value=\"${shellPassword}\">
+			<br>
+			<input id=\"saveShellPasswordButton\" class=\"button\" name=\"saveShellPassword\" type=\"submit\" value=\"Update Token\"/>
+		</form>
+	</div>
+";
+
 echo "<br>";
 echo "
 	<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 3:</h3>
@@ -147,15 +172,15 @@ if(file_exists("$pluginPath/remote_url.txt")) {
 	";
 }
 
-echo "<br>";
-echo "
-	<h5 style=\"margin-left: 1em;\">If the URL above is correct, but the one in the logs below is not, click \"Send URL\" button to update the URL in the Remote Falcon app.</h5>
-	<div style=\"margin-left: 1em;\">
-			<form method=\"post\">
-				<input id=\"sendUrlButton\" class=\"button\" name=\"sendUrl\" type=\"submit\" value=\"Send URL\"/>
-			</form>
-		</div>
-";
+// echo "<br>";
+// echo "
+// 	<h5 style=\"margin-left: 1em;\">If the URL above is correct, but the one in the logs below is not, click \"Send URL\" button to update the URL in the Remote Falcon app.</h5>
+// 	<div style=\"margin-left: 1em;\">
+// 			<form method=\"post\">
+// 				<input id=\"sendUrlButton\" class=\"button\" name=\"sendUrl\" type=\"submit\" value=\"Send URL\"/>
+// 			</form>
+// 		</div>
+// ";
 
 // if (isset($_POST['sendUrl'])) {
 // 	$remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
@@ -199,16 +224,16 @@ echo "
 // 	}
 // }
 
-// echo "<br>";
-// if(file_exists("$pluginPath/remote_falcon.log")) {
-// 	echo "
-// 		<div style=\"margin-left: 1em;\">
-// 			<form method=\"post\">
-// 				<input id=\"viewLogsButton\" class=\"button\" name=\"viewLogs\" type=\"submit\" value=\"View Remote Falcon Logs (Click to refresh)\"/>
-// 			</form>
-// 		</div>
-// 	";
-// }
+echo "<br>";
+if(file_exists("$pluginPath/remote_falcon.log")) {
+	echo "
+		<div style=\"margin-left: 1em;\">
+			<form method=\"post\">
+				<input id=\"viewLogsButton\" class=\"button\" name=\"viewLogs\" type=\"submit\" value=\"View Remote Falcon Logs (Click to refresh)\"/>
+			</form>
+		</div>
+	";
+}
 
 if (isset($_POST['viewLogs'])) {
 	$logs = file_get_contents("$pluginPath/remote_falcon.log");

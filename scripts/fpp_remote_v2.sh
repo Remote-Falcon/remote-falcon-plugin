@@ -7,3 +7,5 @@ echo falcon | sudo apt-get install sshpass
 echo falcon | sudo rm -f /home/fpp/media/plugins/remote-falcon/remote_url.txt
 sleep 5
 SSHPASS='falcon' sshpass -e ssh -tt -o StrictHostKeyChecking=no fpp@$(cat /proc/sys/kernel/hostname) ssh -R 80:localhost:80 ${REMOTE_TOKEN}@ssh.localhost.run -o ServerAliveInterval=60 > /home/fpp/media/plugins/remote-falcon/remote_url.txt 2>&1 & disown
+sleep 5
+SSHPASS='falcon' sshpass -e ssh -tt -o StrictHostKeyChecking=no fpp@$(cat /proc/sys/kernel/hostname) ssh -R 80:localhost:80 ${REMOTE_TOKEN}@ssh.localhost.run -o ServerAliveInterval=60 > /home/fpp/media/plugins/remote-falcon/remote_url.txt 2>&1 & disown
