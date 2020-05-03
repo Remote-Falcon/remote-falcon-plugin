@@ -13,7 +13,6 @@ do {
 		appendLog("Found remote token $remoteToken");
 		appendLog("Creating Remote URL");
 		shell_exec('chmod +x /home/fpp/media/plugins/remote-falcon/scripts/fpp_remote_v2.sh');
-		$pid = exec("sh /home/fpp/media/plugins/remote-falcon/scripts/fpp_remote_v2.sh> /dev/null 2>&1 & echo $!; ", $output);
 		appendLog("Waiting for script to execute");
 		sleep(15);
 		if(file_exists("$pluginPath/remote_url.txt")) {
@@ -21,11 +20,9 @@ do {
 			$pieces = explode(' ', $remoteUrl);
 			$lastWord = "";
 			$lastWord = trim(array_pop($pieces));
-			if (strpos($lastWord, '.localhost.run') === false) {
-					foreach ($pieces as &$value) {
-						if (strpos($value, '.localhost.run') !== false) {
-								$lastWord = trim($value);
-						}
+			foreach ($pieces as &$value) {
+				if (strpos($value, '.localhost.run') !== false) {
+					$lastWord = trim($value);
 				}
 			}
 			if($lastWord == "") {
