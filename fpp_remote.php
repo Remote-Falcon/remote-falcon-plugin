@@ -20,9 +20,11 @@ do {
 			$pieces = explode(' ', $remoteUrl);
 			$lastWord = "";
 			$lastWord = trim(array_pop($pieces));
+			if (strpos($lastWord, '.localhost.run') === false) {
 			foreach ($pieces as &$value) {
-				if (strpos($value, '.localhost.run') !== false) {
-					$lastWord = trim($value);
+						if (strpos($value, '.localhost.run') !== false) {
+								$lastWord = trim($value);
+						}
 				}
 			}
 			if($lastWord == "") {

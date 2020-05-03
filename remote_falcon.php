@@ -162,9 +162,11 @@ if (isset($_POST['sendUrl'])) {
 	$pieces = explode(' ', $remoteUrl);
 	$lastWord = "";
 	$lastWord = trim(array_pop($pieces));
-	foreach ($pieces as &$value) {
-		if (strpos($value, '.localhost.run') !== false) {
-			$lastWord = trim($value);
+	if (strpos($lastWord, '.localhost.run') === false) {
+			foreach ($pieces as &$value) {
+				if (strpos($value, '.localhost.run') !== false) {
+						$lastWord = trim($value);
+				}
 		}
 	}
 	$lastWord = substr($lastWord, 1); 
