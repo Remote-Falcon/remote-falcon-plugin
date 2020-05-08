@@ -30,7 +30,7 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 		}
 		closedir($handle);
 		
-		$url = "https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/syncPlaylists.php";
+		$url = "https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/remotePlaylistSyncDebug.php";
 		$data = array(
 			'remoteToken' => $remoteToken,
 			'playlists' => $playlists
@@ -47,9 +47,9 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 		$result = file_get_contents( $url, false, $context );
 		$response = json_decode( $result );
 		if($response === true) {
-			appendLog("Successfully sent playlists to Remote Falcon");
+			appendLog("Successfully sent debug report");
 		}else {
-			appendLog("Error sending playlists to Remote Falcon");
+			appendLog("Error sending debug report");
 		}
 	}
 }

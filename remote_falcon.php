@@ -124,4 +124,19 @@ echo "
 if (isset($_POST['sendPlaylists'])) {
 	shell_exec('/usr/bin/php /home/fpp/media/plugins/remote-falcon/remote_playlist_manual_sync.php');
 }
+
+echo "<br>";
+echo "
+	<h5 style=\"margin-left: 1em;\">If you're having issues getting playlists to sync, click \"Send Debug Report\". 
+	This will send a report that will allow us to figure out why the playlists are not synching.</h5>
+	<div style=\"margin-left: 1em;\">
+		<form method=\"post\">
+			<input id=\"sendDebugReportButton\" class=\"button\" name=\"sendDebugReport\" type=\"submit\" value=\"Send Debug Report\"/>
+		</form>
+	</div>
+";
+
+if (isset($_POST['sendDebugReport'])) {
+	shell_exec('/usr/bin/php /home/fpp/media/plugins/remote-falcon/remote_playlist_manual_sync.php');
+}
 ?>

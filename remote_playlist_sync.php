@@ -47,6 +47,11 @@ do {
 			$context = stream_context_create( $options );
 			$result = file_get_contents( $url, false, $context );
 			$response = json_decode( $result );
+			if($response === true) {
+				appendLog("Successfully sent playlists to Remote Falcon");
+			}else {
+				appendLog("Error sending playlists to Remote Falcon");
+			}
 		}
 	}
 	//Sit tight for 4 hours
