@@ -137,6 +137,6 @@ echo "
 ";
 
 if (isset($_POST['sendDebugReport'])) {
-	shell_exec('/usr/bin/php /home/fpp/media/plugins/remote-falcon/remote_playlist_manual_sync.php');
+	shell_exec('/usr/bin/php /home/fpp/media/plugins/remote-falcon/remote_playlist_debug.php');
 }
 ?>
