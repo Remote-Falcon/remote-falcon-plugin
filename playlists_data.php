@@ -27,6 +27,6 @@ if ($handle = opendir($playlistsPath)) {
 		}
 	}
 	closedir($handle);
-	echo $playlists;
+	echo json_encode($playlists);
 }
 ?>
