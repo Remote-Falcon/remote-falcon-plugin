@@ -1,12 +1,9 @@
 #!/bin/bash
-
 REMOTE_FPP_ENABLED=$(tail /home/fpp/media/plugins/remote-falcon/remote_fpp_enabled.txt)
-REMOTE_JUKEBOX_ENABLED=$(tail /home/fpp/media/plugins/remote-falcon/remote_jukebox_enabled.txt)
+
+/usr/bin/php /home/fpp/media/plugins/remote-falcon/remote_playlist_sync.php &
 
 if [ "$REMOTE_FPP_ENABLED" = "true" ]; then
-	/usr/bin/php /home/fpp/media/plugins/remote-falcon/fpp_remoteDNU.php &
+	sh /home/fpp/media/plugins/remote-falcon/scripts/remote_fpp.sh &
 fi
-if [ "$REMOTE_JUKEBOX_ENABLED" = "true" ]; then
-	sh /home/fpp/media/plugins/remote-falcon/scripts/remote_jukebox.sh &
-fi
-
+#postStart

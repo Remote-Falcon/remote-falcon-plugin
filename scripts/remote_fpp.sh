@@ -2,13 +2,12 @@
 
 echo "Starting Remote Jukebox"
 
-#REMOTE_TOKEN=$(tail /home/fpp/media/plugins/remote-falcon/remote_token.txt)
-REMOTE_TOKEN="ShY556HTWLkaBJQ306tyQYyr1"
+REMOTE_TOKEN=$(tail /home/fpp/media/plugins/remote-falcon/remote_token.txt)
 IS_REQUEST_PLAYING="false"
 
 while [ true ]
 do
-PLAYLISTNAME=$(/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/fetchCurrentPlaylistFromQueue.php)
+PLAYLISTNAME=$(/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/fetchCurrentPlaylistFromQueue.php)
 if [ "${PLAYLISTNAME}" != "null" ]; then
 	#As long as a viewer request is not currently playing, interrup any playing playlist
 	echo "Received Request for ${PLAYLISTNAME}"
@@ -24,7 +23,7 @@ if [ "${PLAYLISTNAME}" != "null" ]; then
 			echo "Starting Request for ${PLAYLISTNAME}"
 			fpp -P "${PLAYLISTNAME}" ${STARTITEM}
 			fpp -c graceful
-			/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/updatePlaylistQueue.php
+			/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updatePlaylistQueue.php
 			;;
 		#Playing
 		1)
@@ -33,7 +32,7 @@ if [ "${PLAYLISTNAME}" != "null" ]; then
 				echo "Starting Request for ${PLAYLISTNAME}"
 				fpp -P "${PLAYLISTNAME}" ${STARTITEM}
 				fpp -c graceful
-				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/updatePlaylistQueue.php
+				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updatePlaylistQueue.php
 			fi
 			;;
 		#Stopping
@@ -43,7 +42,7 @@ if [ "${PLAYLISTNAME}" != "null" ]; then
 				echo "Starting Request for ${PLAYLISTNAME}"
 				fpp -P "${PLAYLISTNAME}" ${STARTITEM}
 				fpp -c graceful
-				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/cgi-bin/rmrghbsEvMhSH8LKuJydVn23pvsFKX/updatePlaylistQueue.php
+				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updatePlaylistQueue.php
 			fi
 			;;
 	esac
