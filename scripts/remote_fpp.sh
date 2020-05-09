@@ -48,7 +48,6 @@ if [ "${PLAYLISTNAME}" != "null" ]; then
 	esac
 else
 	#Reload schedule and only set viewer request playing boolean to false once idle
-	fpp -R
 	STATUS=$(fpp -s | cut -d',' -f2)
 	if [ -z "${STATUS}" ]; then
 		echo "Error with status value" >&2
@@ -58,6 +57,7 @@ else
 		0)
 			echo "Resuming Schedule"
 			IS_REQUEST_PLAYING="false"
+			fpp -R
 			;;
 		1)
 			;;
