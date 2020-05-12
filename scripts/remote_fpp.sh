@@ -7,7 +7,7 @@ IS_REQUEST_PLAYING="false"
 
 while [ true ]
 do
-playlist=$(fpp -s | cut -d',' -f4 | cut -d'.' -f1)
+playlist=$(fpp -s | cut -d',' -f4)
 echo "${playlist}"
 /usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\",\"playlist\":\"${playlist}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updateWhatsPlaying.php
 PLAYLISTNAME=$(/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/fetchNextPlaylistFromQueue.php)
