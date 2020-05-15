@@ -8,8 +8,6 @@ IS_REQUEST_PLAYING="false"
 while [ true ]
 do
 playlist=$(fpp -s | cut -d',' -f4)
-echo "${playlist}"
-/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\",\"playlist\":\"${playlist}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updateWhatsPlaying.php
 PLAYLISTNAME=$(/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/fetchNextPlaylistFromQueue.php)
 if [ "${PLAYLISTNAME}" != "null" ]; then
 	#As long as a viewer request is not currently playing, interrup any playing playlist
@@ -26,6 +24,7 @@ if [ "${PLAYLISTNAME}" != "null" ]; then
 			echo "Starting Request for ${PLAYLISTNAME}"
 			fpp -P "${PLAYLISTNAME}" ${STARTITEM}
 			fpp -c graceful
+			/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\",\"playlist\":\"${playlist}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updateWhatsPlaying.php
 			/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updatePlaylistQueue.php
 			;;
 		#Playing
@@ -35,6 +34,7 @@ if [ "${PLAYLISTNAME}" != "null" ]; then
 				echo "Starting Request for ${PLAYLISTNAME}"
 				fpp -P "${PLAYLISTNAME}" ${STARTITEM}
 				fpp -c graceful
+				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\",\"playlist\":\"${playlist}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updateWhatsPlaying.php
 				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updatePlaylistQueue.php
 			fi
 			;;
@@ -45,6 +45,7 @@ if [ "${PLAYLISTNAME}" != "null" ]; then
 				echo "Starting Request for ${PLAYLISTNAME}"
 				fpp -P "${PLAYLISTNAME}" ${STARTITEM}
 				fpp -c graceful
+				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\",\"playlist\":\"${playlist}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updateWhatsPlaying.php
 				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updatePlaylistQueue.php
 			fi
 			;;

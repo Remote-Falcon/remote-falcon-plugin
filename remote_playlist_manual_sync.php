@@ -47,9 +47,9 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 		$result = file_get_contents( $url, false, $context );
 		$response = json_decode( $result );
 		if($response === true) {
-			appendLog("Successfully sent playlists to Remote Falcon");
-		}else {
-			appendLog("Error sending playlists to Remote Falcon");
+				echo "Successfully sent playlists to Remote Falcon";
+			}else {
+				echo "Error sending playlists to Remote Falcon";
 		}
 	}
 }
