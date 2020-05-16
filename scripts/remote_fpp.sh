@@ -1,73 +1,42 @@
 #!/bin/bash
 
-echo "Starting Remote Jukebox"
+echo "Starting Remote FPP"
 
-REMOTE_TOKEN=$(tail /home/fpp/media/plugins/remote-falcon/remote_token.txt)
-IS_REQUEST_PLAYING="false"
+remoteToken=$(tail /home/fpp/media/plugins/remote-falcon/remote_token.txt)
 
+echo "Starting On Demand/Jukebox Mode"
+currentlyPlayingInRF=""
 while [ true ]
 do
-playlist=$(fpp -s | cut -d',' -f4)
-PLAYLISTNAME=$(/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/fetchNextPlaylistFromQueue.php)
-if [ "${PLAYLISTNAME}" != "null" ]; then
-	#As long as a viewer request is not currently playing, interrup any playing playlist
-	echo "Received Request for ${PLAYLISTNAME}"
-	STATUS=$(fpp -s | cut -d',' -f2)
-	if [ -z "${STATUS}" ]; then
-		echo "Error with status value" >&2
-		exit 1
+	currentlyPlaying=$(fpp -s | cut -d',' -f4)
+	if [ "$currentlyPlaying" != "$currentlyPlayingInRF" ]; then
+		echo "Updating current playing playlist to ${currentlyPlaying}"
+		/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${remoteToken}\",\"playlist\":\"${currentlyPlaying}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/api/updateWhatsPlaying.php
+		currentlyPlayingInRF=$currentlyPlaying
 	fi
-	case ${STATUS} in
-		#Idle
+	fppSchedulePlaying=$(fpp -s | cut -d',' -f14)
+	case ${fppSchedulePlaying} in
+		#Schedule not playing (viewer request)
 		0)
-			IS_REQUEST_PLAYING="true"
-			echo "Starting Request for ${PLAYLISTNAME}"
-			fpp -P "${PLAYLISTNAME}" ${STARTITEM}
-			fpp -c graceful
-			/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\",\"playlist\":\"${playlist}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updateWhatsPlaying.php
-			/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updatePlaylistQueue.php
-			;;
-		#Playing
-		1)
-			if [ "${IS_REQUEST_PLAYING}" = "false" ]; then
-				IS_REQUEST_PLAYING="true"
-				echo "Starting Request for ${PLAYLISTNAME}"
-				fpp -P "${PLAYLISTNAME}" ${STARTITEM}
-				fpp -c graceful
-				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\",\"playlist\":\"${playlist}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updateWhatsPlaying.php
-				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updatePlaylistQueue.php
-			fi
-			;;
-		#Stopping
-		2|*)
-			if [ "${IS_REQUEST_PLAYING}" = "false" ]; then
-				IS_REQUEST_PLAYING="true"
-				echo "Starting Request for ${PLAYLISTNAME}"
-				fpp -P "${PLAYLISTNAME}" ${STARTITEM}
-				fpp -c graceful
-				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\",\"playlist\":\"${playlist}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updateWhatsPlaying.php
-				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${REMOTE_TOKEN}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/updatePlaylistQueue.php
-			fi
-			;;
-	esac
-else
-	#Reload schedule and only set viewer request playing boolean to false once idle
-	STATUS=$(fpp -s | cut -d',' -f2)
-	if [ -z "${STATUS}" ]; then
-		echo "Error with status value" >&2
-		exit 1
-	fi
-	case ${STATUS} in
-		0)
-			echo "Resuming Schedule"
-			IS_REQUEST_PLAYING="false"
+			#Go ahead and reload that schedule
 			fpp -R
 			;;
+		#Schedule playing, fetch next playlist
 		1)
+			playlist=$(/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${remoteToken}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/api/fetchNextPlaylistFromQueue.php | python -c "import sys, json; print json.load(sys.stdin)['data']['nextPlaylist']")
+			if [ "${playlist}" != "None" ]; then
+				echo "Starting Request for ${playlist}"
+				fpp -P "${playlist}"
+				fpp -c graceful
+				/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${remoteToken}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/api/updatePlaylistQueue.php
+			else
+				echo "No playlist found"
+			fi
 			;;
-		2|*)
+		*)
+			#Go ahead and reload that schedule
+			fpp -R
 			;;
 	esac
-fi
-sleep 3
+	sleep 4
 done
