@@ -12,26 +12,15 @@ do {
 				if ($entry != "." && $entry != "..") {
 					$playlistDetails = file_get_contents("$playlistsPath/$entry");
 					$playlistDetails = json_decode($playlistDetails);
-					$playlistItems = array();
-					foreach ($playlistDetails->mainPlaylist as &$mainPlaylist) {
-						$playlistItem = null;
-						$playlistItem->playlistItemType = $mainPlaylist->type == null || $mainPlaylist->type == "null" ? null : $mainPlaylist->type;
-						$playlistItem->playlistItemEnabled = $mainPlaylist->enabled == null || $mainPlaylist->enabled == "null" ? null : $mainPlaylist->enabled;
-						$playlistItem->playlistItemSequenceName = $mainPlaylist->sequenceName == null || $mainPlaylist->sequenceName == "null" ? null : $mainPlaylist->sequenceName;
-						$playlistItem->playlistItemMediaName = $mainPlaylist->mediaName == null || $mainPlaylist->mediaName == "null" ? null : $mainPlaylist->mediaName;
-						$playlistItem->playlistItemDuration = $mainPlaylist->duration == null || $mainPlaylist->duration == "null" ? null : $mainPlaylist->duration;
-						array_push($playlistItems, $playlistItem);
-					}
 					$playlist = null;
 					$playlist->playlistName = $playlistDetails->name;
 					$playlist->playlistDuration = $playlistDetails->playlistInfo->total_duration;
-					$playlist->playlistItems = $playlistItems;
 					array_push($playlists, $playlist);
 				}
 			}
 			closedir($handle);
 			
-			$url = "https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/remoteFalcon/syncPlaylists.php";
+			$url = "https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/api/syncPlaylists.php";
 			$data = array(
 				'remoteToken' => $remoteToken,
 				'playlists' => $playlists
@@ -47,11 +36,6 @@ do {
 			$context = stream_context_create( $options );
 			$result = file_get_contents( $url, false, $context );
 			$response = json_decode( $result );
-			if($response === true) {
-				echo "Successfully sent playlists to Remote Falcon";
-			}else {
-				echo "Error sending playlists to Remote Falcon";
-			}
 		}
 	}
 	//Sit tight for 4 hours
