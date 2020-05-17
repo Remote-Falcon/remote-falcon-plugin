@@ -1,5 +1,5 @@
 <h1 style="margin-left: 1em;">Remote Falcon Plugin</h1>
-<h3 style="margin-left: 1em;"></h3>
+<h4 style="margin-left: 1em;"></h4>
 
 <?php
 /**GLOBALS */
@@ -46,7 +46,7 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 			<h5 style=\"margin-left: 1em;\">If you need to update your remote token, place it in the input box below and click \"Update Token\".</h5>
 			<div style=\"margin-left: 1em;\">
 				<form method=\"post\">
-					Your Remote Token: <input type=\"text\" name=\"remoteToken\" id=\"remoteToken\" size=100 value=\"${remoteToken}\">
+					Your Remote Token: <input type=\"password\" name=\"remoteToken\" id=\"remoteToken\" size=100 value=\"${remoteToken}\">
 					<br>
 					<input id=\"saveRemoteTokenButton\" class=\"button\" name=\"saveRemoteToken\" type=\"submit\" value=\"Update Token\"/>
 				</form>
@@ -59,7 +59,7 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 		<h5 style=\"margin-left: 1em;\">Place your unique remote token, found on your Remote Falcon Control Panel, in the input box below and click \"Save Token\".</h5>
 		<div style=\"margin-left: 1em;\">
 			<form method=\"post\">
-				<input type=\"text\" name=\"remoteToken\" id=\"remoteToken\" size=100>
+				<input type=\"password\" name=\"remoteToken\" id=\"remoteToken\" size=100>
 				<br>
 				<input id=\"saveRemoteTokenButton\" class=\"button\" name=\"saveRemoteToken\" type=\"submit\" value=\"Save Token\"/>
 			</form>
@@ -67,13 +67,14 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 	";
 }
 
-echo "<br>";
 if(strval($remoteFppEnabled) == "true") {
 	echo "
 		<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 2:</h3>
-		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to turn Remote FPP on or off. Remote FPP is turned off by default. 
-		This setting is what retrieves the viewer requested playlists. 
-		When done, click \"Save Toggle\" and Restart FPP.</h5>
+		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to turn Remote FPP on or off.
+		<br />
+		This setting is what allows FPP to go out and retrieve viewer requested playlists.
+		<br />
+		Any time this toggle is modified you must click \"Save Toggle\" and Restart FPP.</h5>
 		<div style=\"margin-left: 1em;\">
 			<form method=\"post\">
 				<input type=\"checkbox\" name=\"remoteFppEnabled\" id=\"remoteFppEnabled\" checked/> Remote FPP Enabled
@@ -85,9 +86,11 @@ if(strval($remoteFppEnabled) == "true") {
 }else {
 	echo "
 		<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 2:</h3>
-		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to turn Remote FPP on or off. Remote FPP is turned off by default. 
-		This setting is what retrieves the viewer requested playlists. 
-		When done, click \"Save Toggle\" and Restart FPP.</h5>
+		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to turn Remote FPP on or off.
+		<br />
+		This setting is what allows FPP to go out and retrieve viewer requested playlists.
+		<br />
+		Any time this toggle is modified you must click \"Save Toggle\" and Restart FPP.</h5>
 		<div style=\"margin-left: 1em;\">
 			<form method=\"post\">
 				<input type=\"checkbox\" name=\"remoteFppEnabled\" id=\"remoteFppEnabled\"/> Remote FPP Enabled
@@ -98,19 +101,16 @@ if(strval($remoteFppEnabled) == "true") {
 	";
 }
 
-echo "<br>";
 echo "
 		<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 3:</h3>
 		<h5 style=\"margin-left: 1em;\">Restart FPP</h5>
 	";
 
-echo "<br>";
 echo "
 		<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 4:</h3>
 		<h5 style=\"margin-left: 1em;\">Profit!</h5>
 	";
 
-echo "<br>";
 echo "
 	<h5 style=\"margin-left: 1em;\">To manually update the playlists on Remote Falcon, click \"Update Playlists\" below. 
 	Playlists will update automatically every 4 hours.</h5>
@@ -125,7 +125,6 @@ if (isset($_POST['sendPlaylists'])) {
 	shell_exec('/usr/bin/php /home/fpp/media/plugins/remote-falcon/remote_playlist_manual_sync.php');
 }
 
-echo "<br>";
 echo "
 	<h5 style=\"margin-left: 1em;\">If you're having issues getting playlists to sync, click \"Send Debug Report\". 
 	This will send a report that will allow us to figure out why the playlists are not synching.</h5>
