@@ -112,6 +112,10 @@ echo "
 	";
 
 echo "
+		<h3 style=\"margin-left: 1em; color: #39b54a;\">Playlist Sync</h3>
+	";
+
+echo "
 	<h5 style=\"margin-left: 1em;\">To manually update the playlists on Remote Falcon, click \"Update Playlists\" below. 
 	Playlists will update automatically every 4 hours.</h5>
 	<div style=\"margin-left: 1em;\">
