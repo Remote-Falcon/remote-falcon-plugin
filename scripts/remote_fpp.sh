@@ -24,7 +24,7 @@ do
 		#Schedule playing, fetch next playlist
 		1)
 			playlist=$(/usr/bin/curl -H "Content-Type: application/json" -X POST -d "{\"remoteToken\":\"${remoteToken}\"}" https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/api/fetchNextPlaylistFromQueue.php | python -c "import sys, json; print json.load(sys.stdin)['data']['nextPlaylist']")
-			if [ "${playlist}" != "None" ]; then
+			if [ "${playlist}" != "" ]; then
 				echo "Starting Request for ${playlist}"
 				fpp -P "${playlist}"
 				fpp -c graceful
