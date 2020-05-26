@@ -35,7 +35,6 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 		$context = stream_context_create( $options );
 		$result = file_get_contents( $url, false, $context );
 		$response = json_decode( $result );
-		echo $response;
 		if($response === true) {
 			echo "Successfully sent debug report";
 		}else {
