@@ -18,23 +18,28 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 			}
 		}
 		closedir($handle);
-		
-		$url = "https://remotefalcon.com/services/rmrghbsEvMhSH8LKuJydVn23pvsFKX/api/syncPlaylists.php";
+
+		$url = "https://remotefalcon.com/remotefalcon/api/syncPlaylists";
 		$data = array(
-			'remoteToken' => $remoteToken,
 			'playlists' => $playlists
 		);
 		$options = array(
 			'http' => array(
 				'method'  => 'POST',
 				'content' => json_encode( $data ),
-				'header'=>  "Content-Type: application/json\r\n" .
-										"Accept: application/json\r\n"
+				'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+										"Accept: application/json\r\n" .
+										"remotetoken: $remoteToken\r\n"
 				)
 		);
 		$context = stream_context_create( $options );
 		$result = file_get_contents( $url, false, $context );
 		$response = json_decode( $result );
+		if($response === true) {
+			echo "Successfully sent debug report";
+		}else {
+			echo "Error sending debug report";
+		}
 	}
 }
 ?>
