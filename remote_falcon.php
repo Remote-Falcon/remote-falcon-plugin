@@ -56,15 +56,9 @@ if($response['updatesAvailable'] == 0) {
 }else if($response['updatesAvailable'] == 1) {
 	echo "
 		<h3 style=\"margin-left: 1em; color: #a72525;\">A new update is available for the Remote Falcon Plugin!</h3>
-		<div style=\"margin-left: 1em;\">
-			<form method=\"post\">
-				<input id=\"updatePluginButton\" class=\"button\" name=\"updatePlugin\" type=\"submit\" value=\"Update\"/>
-			</form>
-		</div>
+		<h3 style=\"margin-left: 1em; color: #a72525;\">Go to the Plugin Manager to update</h3>
 	";
 }
-
-echo "Test for update"
 
 if(file_exists("$pluginPath/remote_token.txt")) {
 	$remoteToken = file_get_contents("$pluginPath/remote_token.txt");
@@ -169,18 +163,5 @@ echo "
 
 if (isset($_POST['sendDebugReport'])) {
 	shell_exec('/usr/bin/php /home/fpp/media/plugins/remote-falcon/remote_playlist_debug.php');
-}
-
-if(isset($_POST['updatePlugin'])) {
-	$url = "http://localhost/api/plugin/remote-falcon/upgrade";
-	$options = array(
-		'http' => array(
-			'method'  => 'POST',
-			'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
-									"Accept: application/json\r\n"
-			)
-	);
-	$context = stream_context_create( $options );
-	$result = file_get_contents( $url, false, $context );
 }
 ?>

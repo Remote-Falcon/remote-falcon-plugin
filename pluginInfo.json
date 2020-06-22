@@ -11,7 +11,7 @@
 		{
 			"minFPPVersion": "4",
 			"maxFPPVersion": "0",
-			"branch": "RF-70-update-fpp-plugin-to-use-api",
+			"branch": "master",
 			"sha": "",
 			"dependencies": {
 				"plugins": [],
