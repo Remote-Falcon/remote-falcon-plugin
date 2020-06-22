@@ -9,7 +9,7 @@
 	"allowUpdates": 1,
 	"versions": [
 		{
-			"minFPPVersion": "4",
+			"minFPPVersion": "4.0",
 			"maxFPPVersion": "0",
 			"branch": "master",
 			"sha": "",
