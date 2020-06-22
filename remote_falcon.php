@@ -16,7 +16,7 @@ if (isset($_POST['saveRemoteToken'])) {
 	shell_exec("echo $remoteToken > $pluginPath/remote_token.txt");
 	echo "
 		<div style=\"margin-left: 1em;\">
-			<h4 style=\"color: #39b54a;\">Remote Token $remoteToken successfully saved.</h4>
+			<h4 style=\"color: #D65A31;\">Remote Token $remoteToken successfully saved.</h4>
 		</div>
 	";
 }
@@ -31,18 +31,45 @@ if (isset($_POST['updateToggles'])) {
 	shell_exec("echo $remoteFppChecked > $pluginPath/remote_fpp_enabled.txt");
 	echo "
 		<div style=\"margin-left: 1em;\">
-			<h4 style=\"color: #39b54a;\">Toggle has been successfully updated.</h4>
+			<h4 style=\"color: #D65A31;\">Toggle has been successfully updated.</h4>
 		</div>
 	";
 	$remoteFppEnabled = trim(file_get_contents("$pluginPath/remote_fpp_enabled.txt"));
 }
 
 /**PLUGIN UI */
+$url = "http://localhost/api/plugin/remote-falcon/updates";
+$options = array(
+	'http' => array(
+		'method'  => 'POST',
+		'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+								"Accept: application/json\r\n"
+		)
+);
+$context = stream_context_create( $options );
+$result = file_get_contents( $url, false, $context );
+$response = json_decode( $result, true );
+if($response['updatesAvailable'] == 0) {
+	echo "
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Remote Falcon Plugin is up to date!</h3>
+	";
+}else if($response['updatesAvailable'] == 1) {
+	echo "
+		<h3 style=\"margin-left: 1em; color: #a72525;\">A new update is available for the Remote Falcon Plugin!</h3>
+		<div style=\"margin-left: 1em;\">
+			<form method=\"post\">
+				<input id=\"updatePluginButton\" class=\"button\" name=\"updatePlugin\" type=\"submit\" value=\"Update\"/>
+			</form>
+		</div>
+	";
+}
+
+
 if(file_exists("$pluginPath/remote_token.txt")) {
 	$remoteToken = file_get_contents("$pluginPath/remote_token.txt");
 	if($remoteToken) {
 		echo "
-			<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 1:</h3>
+			<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 1:</h3>
 			<h5 style=\"margin-left: 1em;\">If you need to update your remote token, place it in the input box below and click \"Update Token\".</h5>
 			<div style=\"margin-left: 1em;\">
 				<form method=\"post\">
@@ -55,7 +82,7 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 	}
 } else {
 	echo "
-		<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 1:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 1:</h3>
 		<h5 style=\"margin-left: 1em;\">Place your unique remote token, found on your Remote Falcon Control Panel, in the input box below and click \"Save Token\".</h5>
 		<div style=\"margin-left: 1em;\">
 			<form method=\"post\">
@@ -69,7 +96,7 @@ if(file_exists("$pluginPath/remote_token.txt")) {
 
 if(strval($remoteFppEnabled) == "true") {
 	echo "
-		<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 2:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 2:</h3>
 		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to turn Remote FPP on or off.
 		<br />
 		This setting is what allows FPP to go out and retrieve viewer requested playlists.
@@ -85,7 +112,7 @@ if(strval($remoteFppEnabled) == "true") {
 	";
 }else {
 	echo "
-		<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 2:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 2:</h3>
 		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to turn Remote FPP on or off.
 		<br />
 		This setting is what allows FPP to go out and retrieve viewer requested playlists.
@@ -102,17 +129,17 @@ if(strval($remoteFppEnabled) == "true") {
 }
 
 echo "
-		<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 3:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 3:</h3>
 		<h5 style=\"margin-left: 1em;\">Restart FPP</h5>
 	";
 
 echo "
-		<h3 style=\"margin-left: 1em; color: #39b54a;\">Step 4:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 4:</h3>
 		<h5 style=\"margin-left: 1em;\">Profit!</h5>
 	";
 
 echo "
-		<h3 style=\"margin-left: 1em; color: #39b54a;\">Playlist Sync</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Playlist Sync</h3>
 	";
 
 echo "
@@ -141,5 +168,18 @@ echo "
 
 if (isset($_POST['sendDebugReport'])) {
 	shell_exec('/usr/bin/php /home/fpp/media/plugins/remote-falcon/remote_playlist_debug.php');
+}
+
+if(isset($_POST['updatePlugin'])) {
+	$url = "http://localhost/api/plugin/remote-falcon/upgrade";
+	$options = array(
+		'http' => array(
+			'method'  => 'POST',
+			'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+									"Accept: application/json\r\n"
+			)
+	);
+	$context = stream_context_create( $options );
+	$result = file_get_contents( $url, false, $context );
 }
 ?>
