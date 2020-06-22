@@ -64,6 +64,8 @@ if($response['updatesAvailable'] == 0) {
 	";
 }
 
+echo "Test for update"
+
 if(file_exists("$pluginPath/remote_token.txt")) {
 	$remoteToken = file_get_contents("$pluginPath/remote_token.txt");
 	if($remoteToken) {
