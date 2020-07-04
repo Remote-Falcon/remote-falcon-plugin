@@ -1,4 +1,4 @@
-<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.1.0</h1>
+<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.1.1</h1>
 <h4 style="margin-left: 1em;"></h4>
 
 <?php
