@@ -109,7 +109,8 @@ if (isset($_POST['saveRemotePlaylist'])) {
 		shell_exec("echo $remotePlaylist > $pluginPath/remote_playlist.txt");
 		$playlists = array();
 		$remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
-		$url = "http://localhost/api/playlist/${remotePlaylist}";
+		$remotePlaylistEncoded = urlencode($remotePlaylist);
+		$url = "http://localhost/api/playlist/${remotePlaylistEncoded}";
 		$options = array(
 			'http' => array(
 				'method'  => 'GET'
