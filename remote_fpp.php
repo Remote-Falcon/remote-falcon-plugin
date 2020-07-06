@@ -6,7 +6,8 @@ echo "Starting Remote Falcon\n";
 
 $remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
 $remotePlaylist = trim(file_get_contents("$pluginPath/remote_playlist.txt"));
-$url = "http://localhost/api/playlist/" . $remotePlaylist;
+$remotePlaylistEncoded = str_replace(' ', '%20', $remotePlaylist);
+$url = "http://localhost/api/playlist/" . $remotePlaylistEncoded;
 $options = array(
   'http' => array(
     'method'  => 'GET'
@@ -105,7 +106,7 @@ while(true) {
         }
         if($validSequence) {
           echo "Starting winning sequence " . $winningSequence . " at index " . $index . "\n";
-          $url = "http://localhost/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylist . "/" . $index . "/" . $index;
+          $url = "http://localhost/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
           $options = array(
             'http' => array(
               'method'  => 'GET'
@@ -151,7 +152,7 @@ while(true) {
         }
         if($validSequence) {
           echo "Starting requested sequence " . $requestedSequence . " at index " . $index . "\n";
-          $url = "http://localhost/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylist . "/" . $index . "/" . $index;
+          $url = "http://localhost/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
           $options = array(
             'http' => array(
               'method'  => 'GET'
