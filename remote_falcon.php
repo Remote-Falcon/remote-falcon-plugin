@@ -9,7 +9,7 @@ $scriptPath = "/home/fpp/media/plugins/remote-falcon/scripts";
 $remoteFppEnabled = trim(file_get_contents("$pluginPath/remote_fpp_enabled.txt"));
 $playlists = "";
 
-$url = "http://localhost/api/playlists";
+$url = "http://127.0.0.1/api/playlists";
 $options = array(
 	'http' => array(
 		'method'  => 'GET'
@@ -22,7 +22,7 @@ foreach($response as $item) {
 	$playlists .= "<option value=\"{$item}\">{$item}</option>";
 }
 
-$url = "http://localhost/api/plugin/remote-falcon/updates";
+$url = "http://127.0.0.1/api/plugin/remote-falcon/updates";
 $options = array(
 	'http' => array(
 		'method'  => 'POST',
@@ -110,7 +110,7 @@ if (isset($_POST['saveRemotePlaylist'])) {
 		$playlists = array();
 		$remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
 		$remotePlaylistEncoded = str_replace(' ', '%20', $remotePlaylist);
-		$url = "http://localhost/api/playlist/${remotePlaylistEncoded}";
+		$url = "http://127.0.0.1/api/playlist/${remotePlaylistEncoded}";
 		$options = array(
 			'http' => array(
 				'method'  => 'GET'

@@ -7,7 +7,7 @@ echo "Starting Remote Falcon\n";
 $remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
 $remotePlaylist = trim(file_get_contents("$pluginPath/remote_playlist.txt"));
 $remotePlaylistEncoded = str_replace(' ', '%20', $remotePlaylist);
-$url = "http://localhost/api/playlist/" . $remotePlaylistEncoded;
+$url = "http://127.0.0.1/api/playlist/" . $remotePlaylistEncoded;
 $options = array(
   'http' => array(
     'method'  => 'GET'
@@ -34,7 +34,7 @@ $viewerControlMode = $response->viewerControlMode;
 
 while(true) {
   $currentlyPlaying = "";
-  $url = "http://localhost/api/fppd/status";
+  $url = "http://127.0.0.1/api/fppd/status";
   $options = array(
     'http' => array(
       'method'  => 'GET'
@@ -47,7 +47,6 @@ while(true) {
   $currentlyPlaying = pathinfo($currentlyPlaying, PATHINFO_FILENAME);
 
   if($currentlyPlaying != $currentlyPlayingInRF) {
-    echo "Updating current playing sequence to " . $currentlyPlaying . "\n";
     $url = "https://remotefalcon.com/remotefalcon/api/updateWhatsPlaying";
     $data = array(
 			'playlist' => trim($currentlyPlaying)
@@ -63,10 +62,11 @@ while(true) {
     );
     $context = stream_context_create( $options );
     $result = file_get_contents( $url, false, $context );
+    echo "Updated current playing sequence to " . $currentlyPlaying . ": " . $http_response_header[0] . "\n";
     $currentlyPlayingInRF = $currentlyPlaying;
   }
 
-  $url = "http://localhost/api/fppd/status";
+  $url = "http://127.0.0.1/api/fppd/status";
   $options = array(
     'http' => array(
       'method'  => 'GET'
@@ -78,6 +78,7 @@ while(true) {
   $fppSchedulePlaying = $response->status;
   $fppSchedulePlaying = $fppSchedulePlaying == 1 ? true : false;
   if($fppSchedulePlaying) {
+    echo "Retrieving next request\n";
     if($viewerControlMode == "voting") {
       $url = "https://remotefalcon.com/remotefalcon/api/highestVotedPlaylist";
       $options = array(
@@ -105,8 +106,7 @@ while(true) {
           $index++;
         }
         if($validSequence) {
-          echo "Starting winning sequence " . $winningSequence . " at index " . $index . "\n";
-          $url = "http://localhost/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
+          $url = "http://127.0.0.1/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
           $options = array(
             'http' => array(
               'method'  => 'GET'
@@ -114,7 +114,8 @@ while(true) {
           );
           $context = stream_context_create( $options );
           $result = file_get_contents( $url, false, $context );
-          $url = "http://localhost/api/playlists/stopgracefully";
+          echo "Starting winning sequence " . $winningSequence . " at index " . $index . ": " . $http_response_header[0] . "\n";
+          $url = "http://127.0.0.1/api/playlists/stopgracefully";
           $options = array(
             'http' => array(
               'method'  => 'GET'
@@ -151,8 +152,7 @@ while(true) {
           $index++;
         }
         if($validSequence) {
-          echo "Starting requested sequence " . $requestedSequence . " at index " . $index . "\n";
-          $url = "http://localhost/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
+          $url = "http://127.0.0.1/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
           $options = array(
             'http' => array(
               'method'  => 'GET'
@@ -160,7 +160,7 @@ while(true) {
           );
           $context = stream_context_create( $options );
           $result = file_get_contents( $url, false, $context );
-          $url = "http://localhost/api/playlists/stopgracefully";
+          $url = "http://127.0.0.1/api/playlists/stopgracefully";
           $options = array(
             'http' => array(
               'method'  => 'GET'
@@ -179,6 +179,7 @@ while(true) {
           );
           $context = stream_context_create( $options );
           $result = file_get_contents( $url, false, $context );
+          echo "Starting requested sequence " . $requestedSequence . " at index " . $index . ": " . $http_response_header[0] . "\n";
         }
       }
     }
