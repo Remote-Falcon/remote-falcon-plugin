@@ -3,7 +3,7 @@ $pluginPath = "/home/fpp/media/plugins/remote-falcon";
 
 if(file_exists("$pluginPath/remote_token.txt")) {
 	$remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
-	$pluginVersion = "4.1.2";
+	$pluginVersion = "4.2.0";
 
 	$url = "http://127.0.0.1/api/fppd/version";
 	$options = array(
