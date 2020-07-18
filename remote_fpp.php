@@ -75,8 +75,8 @@ while(true) {
   $context = stream_context_create( $options );
   $result = file_get_contents( $url, false, $context );
   $response = json_decode( $result );
-  $fppSchedulePlaying = $response->status;
-  $fppSchedulePlaying = $fppSchedulePlaying == 1 ? true : false;
+  $fppSchedulePlaying = $response->cuurent_playlist->playlist;
+  $fppSchedulePlaying = $fppSchedulePlaying == $remotePlaylist ? false : true;
   if($fppSchedulePlaying) {
     echo "Retrieving next request\n";
     if($viewerControlMode == "voting") {
