@@ -188,6 +188,7 @@ while(true) {
         }
       }
     }
+  }
   if($fppSchedulePlaying) {
     echo "Waiting for next request\n";
     sleep (5);
