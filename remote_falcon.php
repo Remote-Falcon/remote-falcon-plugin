@@ -20,7 +20,16 @@ $context = stream_context_create( $options );
 $result = file_get_contents( $url, false, $context );
 $response = json_decode( $result, true );
 foreach($response as $item) {
-	$playlists .= "<option value=\"{$item}\">{$item}</option>";
+	if(file_exists("$pluginPath/remote_playlist.txt")) {
+		$remotePlaylist = file_get_contents("$pluginPath/remote_playlist.txt");
+		if($item == $remotePlaylist) {
+			$playlists .= "<option selected=\"selected\" value=\"{$item}\">{$item}</option>";
+		}else {
+			$playlists .= "<option value=\"{$item}\">{$item}</option>";
+		}
+	}else {
+		$playlists .= "<option value=\"{$item}\">{$item}</option>";
+	}
 }
 
 $url = "http://127.0.0.1/api/plugin/remote-falcon/updates";
