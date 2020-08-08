@@ -33,7 +33,7 @@ while(true) {
   $scheduledStartTime = $response->scheduler->currentPlaylist->scheduledStartTimeStr;
   $scheduledEndTime = $response->scheduler->currentPlaylist->scheduledEndTimeStr;
 
-  $url = "https://remotefalcon.me/remotefalcon/api/fppStats";
+  $url = "https://remotefalcon.com/remotefalcon/api/fppStats";
   $data = array(
     'fppdStatus' => trim($fppdStatus),
     'fppStatus' => trim($fppStatus),
