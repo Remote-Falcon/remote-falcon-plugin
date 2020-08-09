@@ -34,6 +34,8 @@ $viewerControlMode = $response->viewerControlMode;
 $interruptSchedule = $response->interruptSchedule;
 
 while(true) {
+  preSchedulePurge($remoteToken);
+
   $currentlyPlaying = "";
   $url = "http://127.0.0.1/api/fppd/status";
   $options = array(
@@ -69,7 +71,7 @@ while(true) {
 
   $fppStatus = getFppStatus();
   $fppSchedulePlaying = $fppStatus->current_playlist->playlist;
-  $fppSchedulePlaying = $fppSchedulePlaying == $remotePlaylist ? false : true;
+  $fppSchedulePlaying = $fppSchedulePlaying == $remotePlaylist || $fppSchedulePlaying == "" ? false : true;
   if($fppSchedulePlaying) {
     echo "Retrieving next request\n";
     if($viewerControlMode == "voting") {
@@ -197,6 +199,57 @@ while(true) {
 
 function getFppStatus() {
   $url = "http://127.0.0.1/api/fppd/status";
+  $options = array(
+    'http' => array(
+      'method'  => 'GET'
+      )
+  );
+  $context = stream_context_create( $options );
+  $result = file_get_contents( $url, false, $context );
+  return json_decode( $result );
+}
+
+function preSchedulePurge($remoteToken) {
+  $currentTime = date("H:i");
+  $fppSchedule = getFppSchedule();
+  $fppScheduleStartTimes = array();
+  foreach ($fppSchedule as $schedule) {
+    $fppScheduleStartTime = strtotime($schedule->startTime);
+    $fppScheduleStartTime = $fppScheduleStartTime - 60;
+    $fppScheduleStartTime = date("H:i", $fppScheduleStartTime);
+    array_push($fppScheduleStartTimes, $fppScheduleStartTime);
+  }
+  if($currentTime == min($fppScheduleStartTimes)) {
+    echo "Purging queue and votes\n";
+    $url = "https://remotefalcon.com/remotefalcon/api/purgeQueue";
+    $options = array(
+      'http' => array(
+        'method'  => 'DELETE',
+        'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+                    "Accept: application/json\r\n" .
+                    "remotetoken: $remoteToken\r\n"
+        )
+    );
+    $context = stream_context_create( $options );
+    $result = file_get_contents( $url, false, $context );
+    $url = "https://remotefalcon.com/remotefalcon/api/resetAllVotes";
+    $options = array(
+      'http' => array(
+        'method'  => 'DELETE',
+        'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+                    "Accept: application/json\r\n" .
+                    "remotetoken: $remoteToken\r\n"
+        )
+    );
+    $context = stream_context_create( $options );
+    $result = file_get_contents( $url, false, $context );
+    echo "Purged\n";
+    sleep(60);
+  }
+}
+
+function getFppSchedule() {
+  $url = "http://127.0.0.1/api/schedule";
   $options = array(
     'http' => array(
       'method'  => 'GET'
