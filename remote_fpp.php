@@ -31,7 +31,8 @@ $context = stream_context_create( $options );
 $result = file_get_contents( $url, false, $context );
 $response = json_decode( $result );
 $viewerControlMode = $response->viewerControlMode;
-$interruptSchedule = $response->interruptSchedule;
+//$interruptSchedule = $response->interruptSchedule;
+$interruptSchedule = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
 
 while(true) {
   preSchedulePurge($remoteToken);
