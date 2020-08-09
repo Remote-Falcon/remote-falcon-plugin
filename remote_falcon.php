@@ -8,6 +8,7 @@ $pluginPath = "/home/fpp/media/plugins/remote-falcon";
 $scriptPath = "/home/fpp/media/plugins/remote-falcon/scripts";
 $remoteFppEnabled = trim(file_get_contents("$pluginPath/remote_fpp_enabled.txt"));
 $fppStatsEnabled = trim(file_get_contents("$pluginPath/fpp_stats_enabled.txt"));
+$interruptScheduleEnabled = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
 $playlists = "";
 
 $url = "http://127.0.0.1/api/playlists";
