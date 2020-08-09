@@ -228,9 +228,58 @@ if (isset($_POST['updateToggles'])) {
 	$remoteFppEnabled = trim(file_get_contents("$pluginPath/remote_fpp_enabled.txt"));
 }
 
+if(strval($interruptScheduleEnabled) == "true") {
+	echo "
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 4:</h3>
+		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to choose if you want the scheduled playlist to be interrupted when a request is received.
+		<br />
+		Default is on, meaning the scheduled playlist will be interrupted with a new request
+		<br />
+		Any time this toggle is modified you must click \"Save Toggle\" and Restart FPP.</h5>
+		<div style=\"margin-left: 1em;\">
+			<form method=\"post\">
+				<input type=\"checkbox\" name=\"interruptScheduleEnabled\" id=\"interruptScheduleEnabled\" checked/> Interrupt Scheduled Playlist
+				<br>
+				<input id=\"interruptSchedulesButton\" class=\"button\" name=\"interruptScheduleToggle\" type=\"submit\" value=\"Save Toggle\"/>
+			</form>
+		</div>
+	";
+}else {
+	echo "
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 4:</h3>
+		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to choose if you want the scheduled playlist to be interrupted when a request is received.
+		<br />
+		Default is on, meaning the scheduled playlist will be interrupted with a new request
+		<br />
+		Any time this toggle is modified you must click \"Save Toggle\" and Restart FPP.</h5>
+		<div style=\"margin-left: 1em;\">
+			<form method=\"post\">
+				<input type=\"checkbox\" name=\"interruptScheduleEnabled\" id=\"interruptScheduleEnabled\"/> Interrupt Scheduled Playlist
+				<br>
+				<input id=\"interruptSchedulesButton\" class=\"button\" name=\"interruptScheduleToggle\" type=\"submit\" value=\"Save Toggle\"/>
+			</form>
+		</div>
+	";
+}
+if (isset($_POST['interruptScheduleToggle'])) {
+  global $pluginPath;
+	$interruptScheduleChecked = "false";
+	if (isset($_POST['interruptScheduleEnabled'])) {
+		$interruptScheduleChecked = "true";
+	}
+	shell_exec("rm -f $pluginPath/interrupt_schedule_enabled.txt");
+	shell_exec("echo $interruptScheduleChecked > $pluginPath/interrupt_schedule_enabled.txt");
+	echo "
+		<div style=\"margin-left: 1em;\">
+			<h4 style=\"color: #D65A31;\">Toggle has been successfully updated.</h4>
+		</div>
+	";
+	$interruptScheduleEnabled = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
+}
+
 if(strval($fppStatsEnabled) == "true") {
 	echo "
-		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 3:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 5:</h3>
 		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to turn FPP Stats on or off.
 		<br />
 		This setting sends your FPP stats, such as FPPD Status, CPU temp, and schedule info to Remote Falcon.
@@ -246,7 +295,7 @@ if(strval($fppStatsEnabled) == "true") {
 	";
 }else {
 	echo "
-		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 3:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 5:</h3>
 		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to turn FPP Stats on or off.
 		<br />
 		This setting sends your FPP stats, such as FPPD Status, CPU temp, and schedule info to Remote Falcon.
@@ -278,12 +327,12 @@ if (isset($_POST['updateFppStatsToggles'])) {
 }
 
 echo "
-		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 4:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 6:</h3>
 		<h5 style=\"margin-left: 1em;\">Restart FPP</h5>
 	";
 
 echo "
-		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 5:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 7:</h3>
 		<h5 style=\"margin-left: 1em;\">Profit!</h5>
 	";
 ?>
