@@ -33,6 +33,7 @@ $response = json_decode( $result );
 $viewerControlMode = $response->viewerControlMode;
 //$interruptSchedule = $response->interruptSchedule;
 $interruptSchedule = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
+$interruptSchedule = $interruptSchedule == "true" ? true : false;
 
 while(true) {
   preSchedulePurge($remoteToken);
