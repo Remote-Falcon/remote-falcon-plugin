@@ -1,4 +1,4 @@
-<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.4.0</h1>
+<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.4.1</h1>
 <h4 style="margin-left: 1em;"></h4>
 
 <?php
@@ -136,6 +136,12 @@ if (isset($_POST['saveRemotePlaylist'])) {
 			if($item['type'] == 'both') {
 				$playlist = null;
 				$playlist->playlistName = pathinfo($item['sequenceName'], PATHINFO_FILENAME);
+				$playlist->playlistDuration = $item['duration'];
+				$playlist->playlistIndex = $index;
+				array_push($playlists, $playlist);
+			}else if($item['type'] == 'media') {
+				$playlist = null;
+				$playlist->playlistName = pathinfo($item['mediaName'], PATHINFO_FILENAME);
 				$playlist->playlistDuration = $item['duration'];
 				$playlist->playlistIndex = $index;
 				array_push($playlists, $playlist);
