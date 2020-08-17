@@ -315,6 +315,12 @@ function getSequenceIndex($remotePlaylistSequences, $sequenceToPlay) {
         $validSequence = true;
         break;
       }
+    }else if(property_exists($sequence, 'mediaName')) {
+      $sequenceName = $sequence->mediaName;
+      $sequenceName = pathinfo($sequenceName, PATHINFO_FILENAME);
+      if($sequenceName == $sequenceToPlay) {
+        $validSequence = true;
+        break;
     }
     $index++;
   }
