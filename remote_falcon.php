@@ -347,6 +347,6 @@ echo "
 		<h5 style=\"margin-left: 1em;\">While Remote Falcon is 100% free for users, there are still associated costs with owning and maintaining a server and 
 		database. If you would like to help support Remote Falcon you can donate using the button below.</h5>
 		<h5 style=\"margin-left: 1em;\">Donations will <strong>never</strong> be required but will <strong>always</strong> be appreciated.</h5>
-		<a href=\"https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url\" target=\"_blank\"> <img alt=\"RF_Donate\" src=\"https://remotefalcon.com/support-button.png\"></a>
+		<a href=\"https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url\" target=\"_blank\"> <img style=\"margin-left: 1em;\" alt=\"RF_Donate\" src=\"https://remotefalcon.com/support-button.png\"></a>
 	";
 ?>
