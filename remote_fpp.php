@@ -60,6 +60,7 @@ while(true) {
               insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
               updatePlaylistQueue($remoteToken);
               echo "Queuing requested sequence " . $nextSequence . "\n";
+              sleep(5);
             }
           }
         }
@@ -96,6 +97,7 @@ while(true) {
             updateWhatsPlaying($nextSequence, $remoteToken);
             echo "Updated current playing sequence to " . $nextSequence . "\n";
             $currentlyPlayingInRF = $nextSequence;
+            sleep(5);
             holdForImmediatePlay();
           }
         }else {
