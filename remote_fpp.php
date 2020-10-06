@@ -18,8 +18,10 @@ $viewerControlMode = $remotePreferences->viewerControlMode;
 $interruptSchedule = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
 $interruptSchedule = $interruptSchedule == "true" ? true : false;
 
+$fppSchedule = getFppSchedule();
+
 while(true) {
-  preSchedulePurge($remoteToken);
+  preSchedulePurge($fppSchedule, $remoteToken);
 
   $currentlyPlaying = "";
   $fppStatus = getFppStatus();
@@ -27,13 +29,15 @@ while(true) {
   $currentlyPlaying = pathinfo($currentlyPlaying, PATHINFO_FILENAME);
   $statusName = $fppStatus->status_name;
 
-  if($statusName != "idle") {
-    if($currentlyPlaying != $currentlyPlayingInRF) {
-      updateWhatsPlaying($currentlyPlaying, $remoteToken);
-      echo "Updated current playing sequence to " . $currentlyPlaying . "\n";
-      $currentlyPlayingInRF = $currentlyPlaying;
-    }
-  
+  if($currentlyPlaying != $currentlyPlayingInRF) {
+    updateWhatsPlaying($currentlyPlaying, $remoteToken);
+    echo "Updated current playing sequence to " . $currentlyPlaying . "\n";
+    $currentlyPlayingInRF = $currentlyPlaying;
+  }
+
+  backupScheduleShutdown($fppSchedule, $statusName);
+
+  if($statusName != "idle" && !isScheduleDone($fppSchedule)) {
     //Do not interrupt schedule
     if($interruptSchedule != 1) {
       $fppStatus = getFppStatus();
@@ -83,7 +87,7 @@ while(true) {
           }
         }else {
           echo "Waiting 5 seconds for next request\n";
-          sleep (5);
+          sleep(5);
         }
       }else {
         $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
@@ -102,11 +106,12 @@ while(true) {
           }
         }else {
           echo "Waiting 5 seconds for next request\n";
-          sleep (5);
+          sleep(5);
         }
       }
     }
   }
+  usleep(250000);
 }
 
 function holdForImmediatePlay() {
@@ -115,16 +120,8 @@ function holdForImmediatePlay() {
   while($secondsRemaining > 1) {
     $fppStatus = getFppStatus();
     $secondsRemaining = intVal($fppStatus->seconds_remaining);
+    usleep(250000);
   }
-}
-
-function sleepAfterImmediateRequest() {
-  sleep(3);
-  $fppStatus = getFppStatus();
-  $secondsRemaining = intVal($fppStatus->seconds_remaining);
-  $secondsRemaining = $secondsRemaining == 0 ? 0 : $secondsRemaining - 1;
-  echo "Sleeping " . $secondsRemaining . " seconds before fetching next sequence \n";
-  sleep($secondsRemaining);
 }
 
 function remotePreferences($remoteToken) {
@@ -170,9 +167,8 @@ function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
   $result = file_get_contents( $url, false, $context );
 }
 
-function preSchedulePurge($remoteToken) {
+function preSchedulePurge($fppSchedule, $remoteToken) {
   $currentTime = date("H:i");
-  $fppSchedule = getFppSchedule();
   $fppScheduleStartTimes = array();
   foreach ($fppSchedule as $schedule) {
     $fppScheduleStartTime = strtotime($schedule->startTime);
@@ -205,6 +201,28 @@ function preSchedulePurge($remoteToken) {
     $context = stream_context_create( $options );
     $result = file_get_contents( $url, false, $context );
     echo "Purged\n";
+    sleep(60);
+  }
+}
+
+function isScheduleDone($fppSchedule) {
+  $currentTime = date("H:i");
+  $fppScheduleEndTimes = array();
+  foreach ($fppSchedule as $schedule) {
+    $fppScheduleEndTime = strtotime($schedule->endTime);
+    $fppScheduleEndTime = date("H:i", $fppScheduleEndTime);
+    array_push($fppScheduleEndTimes, $fppScheduleEndTime);
+  }
+  if(count($fppScheduleEndTimes) > 0 && $currentTime >= max($fppScheduleEndTimes)) {
+    return true;
+  }
+  return false;
+}
+
+function backupScheduleShutdown($fppSchedule, $statusName) {
+  if(isScheduleDone($fppSchedule) && $statusName != "stopping gracefully" && $statusName != "idle") {
+    echo "Executing backup schedule shutdown\n";
+    stopGracefully();
     sleep(60);
   }
 }

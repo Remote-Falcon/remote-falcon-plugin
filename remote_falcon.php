@@ -1,4 +1,4 @@
-<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.4.2</h1>
+<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.5.0</h1>
 <h4 style="margin-left: 1em;"></h4>
 
 <?php
@@ -98,7 +98,8 @@ if (isset($_POST['saveRemoteToken'])) {
 echo "
 	<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 2:</h3>
 	<h5 style=\"margin-left: 1em;\">
-		Pick which playlist you want to sync with Remote Falcon and click \"Sync Playlist\".
+		Pick which playlist you want to sync with Remote Falcon and click \"Sync Playlist\". The playlist you sync with RF should be 
+		its own playlist that is not used in any schedules.
 		<br />
 		Any changes made to the selected playlist will require it to be resynched. 
 		If at any time you want to change the synched playlist, simply select the one you want and click \"Sync Playlist\".
