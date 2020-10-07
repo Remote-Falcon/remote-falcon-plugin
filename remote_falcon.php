@@ -1,4 +1,4 @@
-<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.5.1</h1>
+<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.5.2</h1>
 <h4 style="margin-left: 1em;"></h4>
 
 <?php
@@ -7,7 +7,6 @@ $pageLocation = "Location: ?plugin=fremote-falcon&page=remote_falcon.php";
 $pluginPath = "/home/fpp/media/plugins/remote-falcon";
 $scriptPath = "/home/fpp/media/plugins/remote-falcon/scripts";
 $remoteFppEnabled = trim(file_get_contents("$pluginPath/remote_fpp_enabled.txt"));
-$fppStatsEnabled = trim(file_get_contents("$pluginPath/fpp_stats_enabled.txt"));
 $interruptScheduleEnabled = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
 $playlists = "";
 
@@ -291,62 +290,13 @@ if (isset($_POST['interruptScheduleToggle'])) {
 	$interruptScheduleEnabled = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
 }
 
-if(strval($fppStatsEnabled) == "true") {
-	echo "
-		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 5:</h3>
-		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to turn FPP Stats on or off.
-		<br />
-		This setting sends your FPP stats, such as FPPD Status, CPU temp, and schedule info to Remote Falcon.
-		<br />
-		Any time this toggle is modified you must click \"Save Toggle\" and Restart FPP.</h5>
-		<div style=\"margin-left: 1em;\">
-			<form method=\"post\">
-				<input type=\"checkbox\" name=\"fppStatsEnabled\" id=\"fppStatsEnabled\" checked/> FPP Stats Enabled
-				<br>
-				<input id=\"updateTogglesButton\" class=\"button\" name=\"updateFppStatsToggles\" type=\"submit\" value=\"Save Toggle\"/>
-			</form>
-		</div>
-	";
-}else {
-	echo "
-		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 5:</h3>
-		<h5 style=\"margin-left: 1em;\">Adjust the toggle below to turn FPP Stats on or off.
-		<br />
-		This setting sends your FPP stats, such as FPPD Status, CPU temp, and schedule info to Remote Falcon.
-		<br />
-		Any time this toggle is modified you must click \"Save Toggle\" and Restart FPP.</h5>
-		<div style=\"margin-left: 1em;\">
-			<form method=\"post\">
-				<input type=\"checkbox\" name=\"fppStatsEnabled\" id=\"fppStatsEnabled\"/> FPP Stats Enabled
-				<br>
-				<input id=\"updateTogglesButton\" class=\"button\" name=\"updateFppStatsToggles\" type=\"submit\" value=\"Save Toggle\"/>
-			</form>
-		</div>
-	";
-}
-if (isset($_POST['updateFppStatsToggles'])) {
-  global $pluginPath;
-	$fppStatsChecked = "false";
-	if (isset($_POST['fppStatsEnabled'])) {
-		$fppStatsChecked = "true";
-	}
-	shell_exec("rm -f $pluginPath/fpp_stats_enabled.txt");
-	shell_exec("echo $fppStatsChecked > $pluginPath/fpp_stats_enabled.txt");
-	echo "
-		<div style=\"margin-left: 1em;\">
-			<h4 style=\"color: #D65A31;\">Toggle has been successfully updated.</h4>
-		</div>
-	";
-	$fppStatsEnabled = trim(file_get_contents("$pluginPath/fpp_stats_enabled.txt"));
-}
-
 echo "
-		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 6:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 5:</h3>
 		<h5 style=\"margin-left: 1em;\">Restart FPP</h5>
 	";
 
 echo "
-		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 7:</h3>
+		<h3 style=\"margin-left: 1em; color: #D65A31;\">Step 6:</h3>
 		<h5 style=\"margin-left: 1em;\">Profit!</h5>
 	";
 
@@ -360,6 +310,14 @@ echo "
 echo "
 	<h5 style=\"margin-left: 1em;\">Changelog:</h5>
 	<ul>
+		<li>
+			<strong>4.5.2</strong>
+			<ul>
+				<li>
+					Removed FPP Stats feature
+				</li>
+			</ul>
+		</li>
 		<li>
 			<strong>4.5.1</strong>
 			<ul>
