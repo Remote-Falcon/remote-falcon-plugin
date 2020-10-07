@@ -1,4 +1,4 @@
-<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.5.0</h1>
+<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.5.1</h1>
 <h4 style="margin-left: 1em;"></h4>
 
 <?php
@@ -143,6 +143,12 @@ if (isset($_POST['saveRemotePlaylist'])) {
 			}else if($item['type'] == 'media') {
 				$playlist = null;
 				$playlist->playlistName = pathinfo($item['mediaName'], PATHINFO_FILENAME);
+				$playlist->playlistDuration = $item['duration'];
+				$playlist->playlistIndex = $index;
+				array_push($playlists, $playlist);
+			}else if($item['type'] == 'sequence') {
+				$playlist = null;
+				$playlist->playlistName = pathinfo($item['sequenceName'], PATHINFO_FILENAME);
 				$playlist->playlistDuration = $item['duration'];
 				$playlist->playlistIndex = $index;
 				array_push($playlists, $playlist);
@@ -350,4 +356,32 @@ echo "
 		<h5 style=\"margin-left: 1em;\">Donations will <strong>never</strong> be required but will <strong>always</strong> be appreciated.</h5>
 		<a href=\"https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url\" target=\"_blank\"> <img style=\"margin-left: 1em;\" alt=\"RF_Donate\" src=\"https://remotefalcon.com/support-button.png\"></a>
 	";
+
+echo "
+	<h5 style=\"margin-left: 1em;\">Changelog:</h5>
+	<ul>
+		<li>
+			<strong>4.5.1</strong>
+			<ul>
+				<li>
+					Added support to sync sequence only items to Remote Falcon
+				</li>
+			</ul>
+		</li>
+		<li>
+			<strong>4.5.0</strong>
+			<ul>
+				<li>
+					Performance fixes to decrease CPU usage
+				</li>
+				<li>
+					Make sure requests don't keep coming in when schedule is done
+				</li>
+				<li>
+					Clear Now Playing when show stops
+				</li>
+			</ul>
+		</li>
+	</ul>
+";
 ?>
