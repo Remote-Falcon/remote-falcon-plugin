@@ -1,4 +1,4 @@
-<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.5.2</h1>
+<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.5.3</h1>
 <h4 style="margin-left: 1em;"></h4>
 
 <?php
@@ -307,9 +307,30 @@ echo "
 		<a href=\"https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url\" target=\"_blank\"> <img style=\"margin-left: 1em;\" alt=\"RF_Donate\" src=\"https://remotefalcon.com/support-button.png\"></a>
 	";
 
+$date = date("Y-m-d");
+echo "
+		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date\">Download FPP Log From $date</h5>
+	";
+$date = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
+echo "
+		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date\">Download FPP Log From $date</h5>
+	";
+$date = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
+echo "
+		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date\">Download FPP Log From $date</h5>
+	";
+
 echo "
 	<h5 style=\"margin-left: 1em;\">Changelog:</h5>
 	<ul>
+	<li>
+			<strong>4.5.3</strong>
+			<ul>
+				<li>
+					Ability to download FPP logs
+				</li>
+			</ul>
+		</li>
 		<li>
 			<strong>4.5.2</strong>
 			<ul>

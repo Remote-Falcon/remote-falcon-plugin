@@ -1,8 +1,18 @@
 <?php
+if (!file_exists("/home/fpp/media/plugins/remote-falcon/logs")) {
+    mkdir("/home/fpp/media/plugins/remote-falcon/logs", 0777, true);
+}
+
 $pluginPath = "/home/fpp/media/plugins/remote-falcon";
 $scriptPath = "/home/fpp/media/plugins/remote-falcon/scripts";
 
+$date = date("Y-m-d");
+$logFile = fopen("/home/fpp/media/plugins/remote-falcon/logs/". $date . ".txt", "a");
+$date = date("Y-m-d", strtotime("-3 days", strtotime(date("Y-m-d"))));
+unlink("/home/fpp/media/plugins/remote-falcon/logs/". $date . ".txt");
+
 echo "Starting Remote Falcon\n";
+fwrite($logFile, "Starting Remote Falcon\n");
 
 $remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
 $remotePlaylist = trim(file_get_contents("$pluginPath/remote_playlist.txt"));
@@ -32,6 +42,7 @@ while(true) {
   if($currentlyPlaying != $currentlyPlayingInRF) {
     updateWhatsPlaying($currentlyPlaying, $remoteToken);
     echo "Updated current playing sequence to " . $currentlyPlaying . "\n";
+    fwrite($logFile, "Updated current playing sequence to " . $currentlyPlaying . "\n");
     $currentlyPlayingInRF = $currentlyPlaying;
   }
 
@@ -44,6 +55,7 @@ while(true) {
       $secondsRemaining = intVal($fppStatus->seconds_remaining);
       if($secondsRemaining < 1) {
         echo "Only 1 second remaining, fetch the next sequence\n";
+        fwrite($logFile, "Only 1 second remaining, fetch the next sequence\n");
         if($viewerControlMode == "voting") {
           $highestVotedSequence = highestVotedSequence($remoteToken);
           $winningSequence = $highestVotedSequence->winningPlaylist;
@@ -52,6 +64,7 @@ while(true) {
             if($index != 0) {
               insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
               echo "Queuing winning sequence " . $winningSequence . "\n";
+              fwrite($logFile, "Queuing winning sequence " . $winningSequence . "\n");
               sleep(5);
             }
           }
@@ -64,6 +77,7 @@ while(true) {
               insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
               updatePlaylistQueue($remoteToken);
               echo "Queuing requested sequence " . $nextSequence . "\n";
+              fwrite($logFile, "Queuing requested sequence " . $nextSequence . "\n");
               sleep(5);
             }
           }
@@ -79,14 +93,17 @@ while(true) {
           if($index != 0) {
             insertPlaylistImmediate($remotePlaylistEncoded, $index);
             echo "Playing winning sequence " . $winningSequence . "\n";
+            fwrite($logFile, "Playing winning sequence " . $winningSequence . "\n");
             updateWhatsPlaying($winningSequence, $remoteToken);
             echo "Updated current playing sequence to " . $winningSequence . "\n";
+            fwrite($logFile, "Updated current playing sequence to " . $winningSequence . "\n");
             $currentlyPlayingInRF = $winningSequence;
             sleep(5);
             holdForImmediatePlay();
           }
         }else {
           echo "Waiting 5 seconds for next request\n";
+          fwrite($logFile, "Waiting 5 seconds for next request\n");
           sleep(5);
         }
       }else {
@@ -98,14 +115,17 @@ while(true) {
             insertPlaylistImmediate($remotePlaylistEncoded, $index);
             updatePlaylistQueue($remoteToken);
             echo "Playing requested sequence " . $nextSequence . "\n";
+            fwrite($logFile, "Playing requested sequence " . $nextSequence . "\n");
             updateWhatsPlaying($nextSequence, $remoteToken);
             echo "Updated current playing sequence to " . $nextSequence . "\n";
+            fwrite($logFile, "Updated current playing sequence to " . $nextSequence . "\n");
             $currentlyPlayingInRF = $nextSequence;
             sleep(5);
             holdForImmediatePlay();
           }
         }else {
           echo "Waiting 5 seconds for next request\n";
+          fwrite($logFile, "Waiting 5 seconds for next request\n");
           sleep(5);
         }
       }
@@ -178,6 +198,7 @@ function preSchedulePurge($fppSchedule, $remoteToken) {
   }
   if(count($fppScheduleStartTimes) > 0 && $currentTime == min($fppScheduleStartTimes)) {
     echo "Purging queue and votes\n";
+    fwrite($logFile, "Purging queue and votes\n");
     $url = "https://remotefalcon.com/remotefalcon/api/purgeQueue";
     $options = array(
       'http' => array(
@@ -201,6 +222,7 @@ function preSchedulePurge($fppSchedule, $remoteToken) {
     $context = stream_context_create( $options );
     $result = file_get_contents( $url, false, $context );
     echo "Purged\n";
+    fwrite($logFile, "Purged\n");
     sleep(60);
   }
 }
@@ -222,6 +244,7 @@ function isScheduleDone($fppSchedule) {
 function backupScheduleShutdown($fppSchedule, $statusName) {
   if(isScheduleDone($fppSchedule) && $statusName != "stopping gracefully" && $statusName != "idle") {
     echo "Executing backup schedule shutdown\n";
+    fwrite($logFile, "Executing backup schedule shutdown\n");
     stopGracefully();
     sleep(60);
   }
