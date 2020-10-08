@@ -310,19 +310,19 @@ echo "
 $date = date("Y-m-d");
 $date2 = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
 $date3 = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
-echo "
-		<div style=\"margin-left: 1em;\">
-			<form method=\"post\">
-				<input id=\"downloadLog1\" class=\"button\" name=\"downloadLog1\" type=\"submit\" value=\"Download Log From $date\"/>
-			</form>
-			<form method=\"post\">
-				<input id=\"downloadLog2\" class=\"button\" name=\"downloadLog2\" type=\"submit\" value=\"Download Log From $date2\"/>
-			</form>
-			<form method=\"post\">
-				<input id=\"downloadLog3\" class=\"button\" name=\"downloadLog3\" type=\"submit\" value=\"Download Log From $date3\"/>
-			</form>
-		</div>
-	";
+// echo "
+// 		<div style=\"margin-left: 1em;\">
+// 			<form method=\"post\">
+// 				<input id=\"downloadLog1\" class=\"button\" name=\"downloadLog1\" type=\"submit\" value=\"Download Log From $date\"/>
+// 			</form>
+// 			<form method=\"post\">
+// 				<input id=\"downloadLog2\" class=\"button\" name=\"downloadLog2\" type=\"submit\" value=\"Download Log From $date2\"/>
+// 			</form>
+// 			<form method=\"post\">
+// 				<input id=\"downloadLog3\" class=\"button\" name=\"downloadLog3\" type=\"submit\" value=\"Download Log From $date3\"/>
+// 			</form>
+// 		</div>
+// 	";
 
 if (isset($_POST['downloadLog1'])) {
 	$date = date("Y-m-d");
@@ -335,7 +335,6 @@ if (isset($_POST['downloadLog1'])) {
 	header('Pragma: public');
 	header('Content-Length: ' . filesize($file));
 	readfile($file);
-  exit;
 }
 
 if (isset($_POST['downloadLog2'])) {
@@ -367,14 +366,6 @@ if (isset($_POST['downloadLog3'])) {
 echo "
 	<h5 style=\"margin-left: 1em;\">Changelog:</h5>
 	<ul>
-	<li>
-			<strong>4.5.3</strong>
-			<ul>
-				<li>
-					Ability to download FPP logs
-				</li>
-			</ul>
-		</li>
 		<li>
 			<strong>4.5.2</strong>
 			<ul>
