@@ -327,25 +327,22 @@ echo "
 if (isset($_POST['downloadLog1'])) {
 	$date = date("Y-m-d");
 	$file = '/home/fpp/media/plugins/remote-falcon/logs/' . $date . '.txt';
-	echo $file;
-	if(!file_exists($file)){
-    echo 'file not found';
-} else {
-    header('Content-Type: application/octet-stream');
-    header('Content-Disposition: attachment; filename=' . $file);
-    header('Expires: 0');
-    header('Cache-Control: must-revalidate');
-    header('Pragma: public');
-    header('Content-Length: ' . filesize($file));
-    readfile($file);
-}
+	header('Content-Description: File Transfer');
+	header('Content-Type: application/octet-stream');
+	header('Content-Disposition: attachment; filename="'.basename($file).'"');
+	header('Expires: 0');
+	header('Cache-Control: must-revalidate');
+	header('Pragma: public');
+	header('Content-Length: ' . filesize($file));
+	readfile($file);
 }
 
 if (isset($_POST['downloadLog2'])) {
 	$date = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
 	$file = '/home/fpp/media/plugins/remote-falcon/logs/' . $date . '.txt';
+	header('Content-Description: File Transfer');
 	header('Content-Type: application/octet-stream');
-	header('Content-Disposition: attachment; filename=' . $file);
+	header('Content-Disposition: attachment; filename="'.basename($file).'"');
 	header('Expires: 0');
 	header('Cache-Control: must-revalidate');
 	header('Pragma: public');
@@ -356,8 +353,9 @@ if (isset($_POST['downloadLog2'])) {
 if (isset($_POST['downloadLog3'])) {
 	$date = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
 	$file = '/home/fpp/media/plugins/remote-falcon/logs/' . $date . '.txt';
+	header('Content-Description: File Transfer');
 	header('Content-Type: application/octet-stream');
-	header('Content-Disposition: attachment; filename=' . $file);
+	header('Content-Disposition: attachment; filename="'.basename($file).'"');
 	header('Expires: 0');
 	header('Cache-Control: must-revalidate');
 	header('Pragma: public');
