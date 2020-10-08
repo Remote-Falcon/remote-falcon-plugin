@@ -308,16 +308,14 @@ echo "
 	";
 
 $date = date("Y-m-d");
+$date2 = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
+$date3 = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
+$date4 = date("Y-m-d", strtotime("-3 days", strtotime(date("Y-m-d"))));
 echo "
-		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date\">Download FPP Log From $date</h5>
-	";
-$date = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
-echo "
-		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date\">Download FPP Log From $date</h5>
-	";
-$date = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
-echo "
-		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date\">Download FPP Log From $date</h5>
+		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date.txt\">Download FPP Log From $date</h5>
+		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date2.txt\">Download FPP Log From $date2</h5>
+		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date3.txt\">Download FPP Log From $date3</h5>
+		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date4.txt\">Download FPP Log From $date4</h5>
 	";
 
 echo "
