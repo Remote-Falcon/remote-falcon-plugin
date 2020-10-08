@@ -310,27 +310,20 @@ echo "
 $date = date("Y-m-d");
 $date2 = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
 $date3 = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
-echo "
-		<p style=\"margin-left: 1em;\">
-			<a href=\"$pluginPath/download_log.php?file=$date.txt\">Download FPP Log From $date</a>
-			<br />
-			<a href=\"$pluginPath/download_log.php?file=$date2.txt\">Download FPP Log From $date2</a>
-			<br />
-			<a href=\"$pluginPath/download_log.php?file=$date3.txt\">Download FPP Log From $date3</a>
-		</p>
-	";
+// echo "
+// 		<p style=\"margin-left: 1em;\">
+// 			<a href=\"$pluginPath/download_log.php $date\">Download FPP Log From $date</a>
+// 			<br />
+// 			<a href=\"$pluginPath/download_log.php $date2\">Download FPP Log From $date2</a>
+// 			<br />
+// 			<a href=\"$pluginPath/download_log.php $date3\">Download FPP Log From $date3</a>
+// 		</p>
+// 	";
 
 echo "
 	<h5 style=\"margin-left: 1em;\">Changelog:</h5>
 	<ul>
-	<li>
-			<strong>4.5.3</strong>
-			<ul>
-				<li>
-					Ability to download FPP logs
-				</li>
-			</ul>
-		</li>
+		
 		<li>
 			<strong>4.5.2</strong>
 			<ul>
