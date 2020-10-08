@@ -6,10 +6,8 @@ if (!file_exists("/home/fpp/media/plugins/remote-falcon/logs")) {
 $pluginPath = "/home/fpp/media/plugins/remote-falcon";
 $scriptPath = "/home/fpp/media/plugins/remote-falcon/scripts";
 
-$date = date("Y-m-d");
-$logFile = fopen("/home/fpp/media/plugins/remote-falcon/logs/". $date . ".txt", "a");
-$date = date("Y-m-d", strtotime("-3 days", strtotime(date("Y-m-d"))));
-unlink("/home/fpp/media/plugins/remote-falcon/logs/". $date . ".txt");
+$logFile = fopen("/home/fpp/media/plugins/remote-falcon/logs/". date("Y-m-d") . ".txt", "a");
+unlink("/home/fpp/media/plugins/remote-falcon/logs/". date("Y-m-d", strtotime("-3 days", strtotime(date("Y-m-d")))) . ".txt");
 
 echo "Starting Remote Falcon\n";
 fwrite($logFile, "Starting Remote Falcon\n");
