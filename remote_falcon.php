@@ -335,6 +335,7 @@ if (isset($_POST['downloadLog1'])) {
 	header('Pragma: public');
 	header('Content-Length: ' . filesize($file));
 	readfile($file);
+  exit;
 }
 
 if (isset($_POST['downloadLog2'])) {
