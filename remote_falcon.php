@@ -311,14 +311,54 @@ $date = date("Y-m-d");
 $date2 = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
 $date3 = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
 echo "
-		<p style=\"margin-left: 1em;\">
-			<a href=\"?plugin=remote-falcon&page=download_log.php?file=$date\">Download FPP Log From $date</a>
-			<br />
-			<a href=\"?plugin=remote-falcon&page=download_log.php?file=$date2\">Download FPP Log From $date2</a>
-			<br />
-			<a href=\"?plugin=remote-falcon&page=download_log.php?file=$date3\">Download FPP Log From $date3</a>
-		</p>
+		<div style=\"margin-left: 1em;\">
+			<form method=\"post\">
+				<input id=\"downloadLog1\" class=\"button\" name=\"downloadLog1\" type=\"submit\" value=\"Download Log From $date\"/>
+			</form>
+			<form method=\"post\">
+				<input id=\"downloadLog2\" class=\"button\" name=\"downloadLog2\" type=\"submit\" value=\"Download Log From $date2\"/>
+			</form>
+			<form method=\"post\">
+				<input id=\"downloadLog3\" class=\"button\" name=\"downloadLog3\" type=\"submit\" value=\"Download Log From $date3\"/>
+			</form>
+		</div>
 	";
+
+if (isset($_POST['downloadLog1'])) {
+	$date = date("Y-m-d");
+	$file = '/home/fpp/media/plugins/remote-falcon/logs/' . $date . '.txt';
+	header('Content-Type: application/octet-stream');
+	header('Content-Disposition: attachment; filename=' . $file);
+	header('Expires: 0');
+	header('Cache-Control: must-revalidate');
+	header('Pragma: public');
+	header('Content-Length: ' . filesize($file));
+	readfile($file);
+}
+
+if (isset($_POST['downloadLog2'])) {
+	$date = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
+	$file = '/home/fpp/media/plugins/remote-falcon/logs/' . $date . '.txt';
+	header('Content-Type: application/octet-stream');
+	header('Content-Disposition: attachment; filename=' . $file);
+	header('Expires: 0');
+	header('Cache-Control: must-revalidate');
+	header('Pragma: public');
+	header('Content-Length: ' . filesize($file));
+	readfile($file);
+}
+
+if (isset($_POST['downloadLog3'])) {
+	$date = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
+	$file = '/home/fpp/media/plugins/remote-falcon/logs/' . $date . '.txt';
+	header('Content-Type: application/octet-stream');
+	header('Content-Disposition: attachment; filename=' . $file);
+	header('Expires: 0');
+	header('Cache-Control: must-revalidate');
+	header('Pragma: public');
+	header('Content-Length: ' . filesize($file));
+	readfile($file);
+}
 
 echo "
 	<h5 style=\"margin-left: 1em;\">Changelog:</h5>
