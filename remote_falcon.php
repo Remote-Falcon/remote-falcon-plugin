@@ -311,9 +311,9 @@ $date = date("Y-m-d");
 $date2 = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
 $date3 = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
 echo "
-		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date.txt\">Download FPP Log From $date</h5>
-		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date2.txt\">Download FPP Log From $date2</h5>
-		<h5 style=\"margin-left: 1em;\"><a href=\"download.php?file=/home/fpp/media/plugins/remote-falcon/logs/$date3.txt\">Download FPP Log From $date3</h5>
+		<p style=\"margin-left: 1em;\"><a href=\"/home/fpp/media/plugins/remote-falcon/logs/$date.txt\">View FPP Log From $date</p>
+		<p style=\"margin-left: 1em;\"><a href=\"/home/fpp/media/plugins/remote-falcon/logs/$date2.txt\">View FPP Log From $date2</p>
+		<p style=\"margin-left: 1em;\"><a href=\"/home/fpp/media/plugins/remote-falcon/logs/$date3.txt\">View FPP Log From $date3</p>
 	";
 
 echo "
