@@ -6,7 +6,7 @@ if(isset($_REQUEST["file"])){
     /* Test whether the file name contains illegal characters
     such as "../" using the regular expression */
     if(preg_match('/^[^.][-a-z0-9_.]+[a-z]$/i', $file)){
-        $filepath = "/home/fpp/media/plugins/remote-falcon/logs/" . $file;
+        $filepath = "home/fpp/media/plugins/remote-falcon/logs/" . $file;
 
         // Process download
         if(file_exists($filepath)) {
