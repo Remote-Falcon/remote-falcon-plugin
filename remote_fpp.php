@@ -22,11 +22,10 @@ $remotePlaylistSequences = $playlistDetails->mainPlaylist;
 $viewerControlMode = "";
 $remotePreferences = remotePreferences($remoteToken);
 $viewerControlMode = $remotePreferences->viewerControlMode;
-$interruptSchedule = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
-$interruptSchedule = $interruptSchedule == "true" ? true : false;
-
 writeLog($logFile, "Viewer Control Mode: " . $viewerControlMode);
+$interruptSchedule = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
 writeLog($logFile, "Interrupt Schedule: " . $interruptSchedule);
+$interruptSchedule = $interruptSchedule == "true" ? true : false;
 
 $fppSchedule = getFppSchedule();
 $fppSchedule = getScheduleForCurrentDay($fppSchedule);
