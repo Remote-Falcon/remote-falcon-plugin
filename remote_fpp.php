@@ -8,7 +8,7 @@ if (file_exists($oldLogFile)) {
   unlink($oldLogFile);
 }
 
-echo "Starting Remote Falcon Plugin\n";
+echo "Starting Remote Falcon Plugin version 4.6.0\n";
 writeLog($logFile, "Starting Remote Falcon Plugin");
 
 $remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
@@ -225,7 +225,7 @@ function isScheduleDone($fppScheduleEndTime) {
   $currentTime = date("H:i");
   $fppScheduleEndTime = strtotime($fppScheduleEndTime);
   $fppScheduleEndTime = date("H:i", $fppScheduleEndTime);
-  if($fppScheduleEndTime != "24:00:00" && $currentTime >= $fppScheduleEndTime) {
+  if($fppScheduleEndTime != "00:00" && $currentTime >= $fppScheduleEndTime) {
     return true;
   }
   return false;
