@@ -27,15 +27,20 @@ $interruptSchedule = trim(file_get_contents("$pluginPath/interrupt_schedule_enab
 writeLog($logFile, "Interrupt Schedule: " . $interruptSchedule);
 $interruptSchedule = $interruptSchedule == "true" ? true : false;
 
-$fppSchedule = getFppSchedule();
-$fppSchedule = getScheduleForCurrentDay($fppSchedule);
-$fppScheduleStartTime = $fppSchedule->startTime;
-$fppScheduleEndTime = $fppSchedule->endTime;
-writeLog($logFile, "Today is " . date("l"));
-writeLog($logFile, "Schedule Start Time: " . $fppScheduleStartTime);
-writeLog($logFile, "Schedule End Time: " . $fppScheduleEndTime);
+$currentSchedule = null;
+$fppScheduleStartTime = null;
+$fppScheduleEndTime = null;
 
 while(true) {
+  $fppSchedule = getFppSchedule();
+  $fppSchedule = getScheduleToUse($fppSchedule);
+  if($fppSchedule != null && $currentSchedule != $fppSchedule) {
+    $fppScheduleStartTime = $fppSchedule->startTime;
+    $fppScheduleEndTime = $fppSchedule->endTime;
+    writeLog($logFile, "Starting Schedule for " . $fppSchedule->startDate . " from " . $fppSchedule->startTime . " to " . $fppSchedule->endTime);
+    $currentSchedule = $fppSchedule;
+  }
+  
   preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile);
 
   $currentlyPlaying = "";
@@ -67,8 +72,9 @@ while(true) {
             if($index != 0) {
               insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
               writeLog($logFile, "Queuing winning sequence " . $winningSequence);
-              sleep(5);
             }
+          }else {
+            writeLog($logFile, "No votes");
           }
         }else {
           $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
@@ -79,10 +85,12 @@ while(true) {
               insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
               updatePlaylistQueue($remoteToken);
               writeLog($logFile, "Queuing requested sequence " . $nextSequence);
-              sleep(5);
             }
+          }else {
+            writeLog($logFile, "No requests");
           }
         }
+        sleep(5);
       }
     //Do interrupt schedule
     }else {
@@ -181,10 +189,9 @@ function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
 }
 
 function preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile) {
-  $currentTime = date("H:i");
+  $currentTime = date("H:i:s");
   $fppScheduleStartTime = strtotime($fppScheduleStartTime);
-  $fppScheduleStartTime = $fppScheduleStartTime - 60;
-  $fppScheduleStartTime = date("H:i", $fppScheduleStartTime);
+  $fppScheduleStartTime = date("H:i:s", $fppScheduleStartTime);
   if($currentTime == $fppScheduleStartTime) {
     writeLog($logFile, "Purging queue and votes");
     $url = "https://remotefalcon.com/remotefalcon/api/purgeQueue";
@@ -210,7 +217,7 @@ function preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile) {
     $context = stream_context_create( $options );
     $result = file_get_contents( $url, false, $context );
     writeLog($logFile, "Purged");
-    sleep(60);
+    usleep(250000);
   }
 }
 
@@ -226,7 +233,7 @@ function isScheduleDone($fppScheduleEndTime) {
 
 function backupScheduleShutdown($fppScheduleEndTime, $statusName, $logFile) {
   if(isScheduleDone($fppScheduleEndTime) && $statusName != "stopping gracefully" && $statusName != "idle") {
-    writeLog($logFile, "Executing backup schedule shutdown");
+    writeLog($logFile, "Schedule is done, so stopping gracefully");
     stopGracefully();
     sleep(60);
   }
@@ -244,26 +251,20 @@ function getFppSchedule() {
   return json_decode( $result );
 }
 
-// <option value='7'>Everyday</option>
-// <option value='0'>Sunday</option>
-// <option value='1'>Monday</option>
-// <option value='2'>Tuesday</option>
-// <option value='3'>Wednesday</option>
-// <option value='4'>Thursday</option>
-// <option value='5'>Friday</option>
-// <option value='6'>Saturday</option>
-// <option value='8'>Mon-Fri</option>
-// <option value='9'>Sat/Sun</option>
-// <option value='10'>Mon/Wed/Fri</option>
-// <option value='11'>Tues/Thurs</option>
-// <option value='12'>Sun-Thurs</option>
-// <option value='13'>Fri/Sat</option>
-// <option value='14'>Odd</option>
-// <option value='15'>Even</option>
-function getScheduleForCurrentDay($fppSchedule) {
+function getScheduleToUse($fppSchedule) {
   $dayOfWeek = date("l");
+  $currentDate = date("Y-m-d");
+  $currentTime = date("H:i:s");
   foreach ($fppSchedule as $schedule) {
-    if($schedule->enabled == 1) {
+    $isCorrectDate = false;
+    if($currentDate >= $schedule->startDate && $currentDate <= $schedule->endDate) {
+      $isCorrectDate = true;
+    }
+    $isCorrectTime = false;
+    if($currentTime >= $schedule->startTime && $currentTime <= $schedule->endTime) {
+      $isCorrectTime = true;
+    }
+    if($schedule->enabled == 1 && $isCorrectDate && $isCorrectTime) {
       $fppScheduleDay = $schedule->day;
       if($fppScheduleDay == 7) {
         return $schedule;
