@@ -1,4 +1,4 @@
-<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.5.3</h1>
+<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.5.4</h1>
 <h4 style="margin-left: 1em;"></h4>
 
 <?php
@@ -133,7 +133,7 @@ if (isset($_POST['saveRemotePlaylist'])) {
 		$mainPlaylist = $response['mainPlaylist'];
 		$index = 1;
 		foreach($mainPlaylist as $item) {
-			if($item['type'] == 'both') {
+			if($item['type'] == 'both' || $item['type'] == 'sequence') {
 				$playlist = null;
 				$playlist->playlistName = pathinfo($item['sequenceName'], PATHINFO_FILENAME);
 				$playlist->playlistDuration = $item['duration'];
@@ -142,12 +142,6 @@ if (isset($_POST['saveRemotePlaylist'])) {
 			}else if($item['type'] == 'media') {
 				$playlist = null;
 				$playlist->playlistName = pathinfo($item['mediaName'], PATHINFO_FILENAME);
-				$playlist->playlistDuration = $item['duration'];
-				$playlist->playlistIndex = $index;
-				array_push($playlists, $playlist);
-			}else if($item['type'] == 'sequence') {
-				$playlist = null;
-				$playlist->playlistName = pathinfo($item['sequenceName'], PATHINFO_FILENAME);
 				$playlist->playlistDuration = $item['duration'];
 				$playlist->playlistIndex = $index;
 				array_push($playlists, $playlist);
@@ -307,65 +301,29 @@ echo "
 		<a href=\"https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url\" target=\"_blank\"> <img style=\"margin-left: 1em;\" alt=\"RF_Donate\" src=\"https://remotefalcon.com/support-button.png\"></a>
 	";
 
-$date = date("Y-m-d");
-$date2 = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
-$date3 = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
-// echo "
-// 		<div style=\"margin-left: 1em;\">
-// 			<form method=\"post\">
-// 				<input id=\"downloadLog1\" class=\"button\" name=\"downloadLog1\" type=\"submit\" value=\"Download Log From $date\"/>
-// 			</form>
-// 			<form method=\"post\">
-// 				<input id=\"downloadLog2\" class=\"button\" name=\"downloadLog2\" type=\"submit\" value=\"Download Log From $date2\"/>
-// 			</form>
-// 			<form method=\"post\">
-// 				<input id=\"downloadLog3\" class=\"button\" name=\"downloadLog3\" type=\"submit\" value=\"Download Log From $date3\"/>
-// 			</form>
-// 		</div>
-// 	";
-
-if (isset($_POST['downloadLog1'])) {
-	$date = date("Y-m-d");
-	$file = '/home/fpp/media/plugins/remote-falcon/logs/' . $date . '.txt';
-	header('Content-Description: File Transfer');
-	header('Content-Type: application/octet-stream');
-	header('Content-Disposition: attachment; filename="'.basename($file).'"');
-	header('Expires: 0');
-	header('Cache-Control: must-revalidate');
-	header('Pragma: public');
-	header('Content-Length: ' . filesize($file));
-	readfile($file);
-}
-
-if (isset($_POST['downloadLog2'])) {
-	$date = date("Y-m-d", strtotime("-1 days", strtotime(date("Y-m-d"))));
-	$file = '/home/fpp/media/plugins/remote-falcon/logs/' . $date . '.txt';
-	header('Content-Description: File Transfer');
-	header('Content-Type: application/octet-stream');
-	header('Content-Disposition: attachment; filename="'.basename($file).'"');
-	header('Expires: 0');
-	header('Cache-Control: must-revalidate');
-	header('Pragma: public');
-	header('Content-Length: ' . filesize($file));
-	readfile($file);
-}
-
-if (isset($_POST['downloadLog3'])) {
-	$date = date("Y-m-d", strtotime("-2 days", strtotime(date("Y-m-d"))));
-	$file = '/home/fpp/media/plugins/remote-falcon/logs/' . $date . '.txt';
-	header('Content-Description: File Transfer');
-	header('Content-Type: application/octet-stream');
-	header('Content-Disposition: attachment; filename="'.basename($file).'"');
-	header('Expires: 0');
-	header('Cache-Control: must-revalidate');
-	header('Pragma: public');
-	header('Content-Length: ' . filesize($file));
-	readfile($file);
-}
-
 echo "
 	<h5 style=\"margin-left: 1em;\">Changelog:</h5>
 	<ul>
+		<li>
+			<strong>4.5.4</strong>
+			<ul>
+				<li>
+					Checking all active schedules to ensure the proper schedule is used when starting Remote Falcon
+				</li>
+			</ul>
+		</li>
+		<li>
+			<strong>4.5.3</strong>
+			<ul>
+				<li>
+					Added logging from the plugin
+					<br />
+					Logs can be found in the File Manager under the Logs tab. Logs will appear as \"RF-\" followed by the date of the log
+					<br />
+					Logs will be automatically deleted after 3 days
+				</li>
+			</ul>
+		</li>
 		<li>
 			<strong>4.5.2</strong>
 			<ul>
