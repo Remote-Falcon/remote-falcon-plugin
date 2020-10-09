@@ -54,7 +54,6 @@ while(true) {
   backupScheduleShutdown($fppScheduleEndTime, $statusName, $logFile);
 
   if($statusName != "idle" && !isScheduleDone($fppScheduleEndTime)) {
-    writeLog($logFile, "Show started");
     //Do not interrupt schedule
     if($interruptSchedule != 1) {
       $fppStatus = getFppStatus();
