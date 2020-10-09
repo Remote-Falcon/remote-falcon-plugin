@@ -309,8 +309,6 @@ echo "
 			<ul>
 				<li>
 					Checking all active schedules to ensure the proper schedule is used when starting Remote Falcon
-					<br />
-					Logs can be found in the File Manage under the Logs tab. Logs will appear as \"RF-\" followe by the date of the log
 				</li>
 			</ul>
 		</li>
@@ -319,6 +317,10 @@ echo "
 			<ul>
 				<li>
 					Added logging from the plugin
+					<br />
+					Logs can be found in the File Manager under the Logs tab. Logs will appear as \"RF-\" followed by the date of the log
+					<br />
+					Logs will be automatically deleted after 3 days
 				</li>
 			</ul>
 		</li>
