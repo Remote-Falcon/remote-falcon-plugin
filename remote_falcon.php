@@ -305,6 +305,20 @@ echo "
 	<h5 style=\"margin-left: 1em;\">Changelog:</h5>
 	<ul>
 		<li>
+			<strong>4.6.0</strong>
+			<ul>
+				<li>
+					Checking schedule times in addition to the day
+				</li>
+				<li>
+					More logging so you know things about things
+				</li>
+				<li>
+					Fix repeating sequence for schedules that end at 24:00:00.
+				</li>
+			</ul>
+		</li>
+		<li>
 			<strong>4.5.4</strong>
 			<ul>
 				<li>
@@ -329,28 +343,6 @@ echo "
 			<ul>
 				<li>
 					Removed FPP Stats feature
-				</li>
-			</ul>
-		</li>
-		<li>
-			<strong>4.5.1</strong>
-			<ul>
-				<li>
-					Added support to sync sequence only items to Remote Falcon
-				</li>
-			</ul>
-		</li>
-		<li>
-			<strong>4.5.0</strong>
-			<ul>
-				<li>
-					Performance fixes to decrease CPU usage
-				</li>
-				<li>
-					Make sure requests don't keep coming in when schedule is done
-				</li>
-				<li>
-					Clear Now Playing when show stops
 				</li>
 			</ul>
 		</li>
