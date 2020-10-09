@@ -1,16 +1,15 @@
 <?php
-if (!file_exists("/home/fpp/media/plugins/remote-falcon/logs")) {
-    mkdir("/home/fpp/media/plugins/remote-falcon/logs", 0777, true);
-}
-
 $pluginPath = "/home/fpp/media/plugins/remote-falcon";
 $scriptPath = "/home/fpp/media/plugins/remote-falcon/scripts";
 
-$logFile = fopen("/home/fpp/media/plugins/remote-falcon/logs/". date("Y-m-d") . ".txt", "a");
-unlink("/home/fpp/media/plugins/remote-falcon/logs/". date("Y-m-d", strtotime("-3 days", strtotime(date("Y-m-d")))) . ".txt");
+$logFile = fopen("/home/fpp/media/logs/RF-". date("Y-m-d") . ".log", "a");
+$oldLogFile = "/home/fpp/media/logs/RF-". date("Y-m-d", strtotime("-3 days", strtotime(date("Y-m-d")))) . ".log";
+if (file_exists($oldLogFile)) {
+  unlink($oldLogFile);
+}
 
-echo "Starting Remote Falcon\n";
-fwrite($logFile, "Starting Remote Falcon\n");
+echo "Starting Remote Falcon Plugin\n";
+writeLog($logFile, "Starting Remote Falcon Plugin");
 
 $remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
 $remotePlaylist = trim(file_get_contents("$pluginPath/remote_playlist.txt"));
@@ -26,10 +25,19 @@ $viewerControlMode = $remotePreferences->viewerControlMode;
 $interruptSchedule = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
 $interruptSchedule = $interruptSchedule == "true" ? true : false;
 
+writeLog($logFile, "Viewer Control Mode: " . $viewerControlMode);
+writeLog($logFile, "Interrupt Schedule: " . $interruptSchedule);
+
 $fppSchedule = getFppSchedule();
+$fppSchedule = getScheduleForCurrentDay($fppSchedule);
+$fppScheduleStartTime = $fppSchedule->startTime;
+$fppScheduleEndTime = $fppSchedule->endTime;
+writeLog($logFile, "Today is " . date("l"));
+writeLog($logFile, "Schedule Start Time: " . $fppScheduleStartTime);
+writeLog($logFile, "Schedule End Time: " . $fppScheduleEndTime);
 
 while(true) {
-  preSchedulePurge($fppSchedule, $remoteToken);
+  preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile);
 
   $currentlyPlaying = "";
   $fppStatus = getFppStatus();
@@ -39,21 +47,20 @@ while(true) {
 
   if($currentlyPlaying != $currentlyPlayingInRF) {
     updateWhatsPlaying($currentlyPlaying, $remoteToken);
-    echo "Updated current playing sequence to " . $currentlyPlaying . "\n";
-    fwrite($logFile, "Updated current playing sequence to " . $currentlyPlaying . "\n");
+    writeLog($logFile, "Updated current playing sequence to " . $currentlyPlaying);
     $currentlyPlayingInRF = $currentlyPlaying;
   }
 
-  backupScheduleShutdown($fppSchedule, $statusName);
+  backupScheduleShutdown($fppScheduleEndTime, $statusName, $logFile);
 
-  if($statusName != "idle" && !isScheduleDone($fppSchedule)) {
+  if($statusName != "idle" && !isScheduleDone($fppScheduleEndTime)) {
+    writeLog($logFile, "Show started");
     //Do not interrupt schedule
     if($interruptSchedule != 1) {
       $fppStatus = getFppStatus();
       $secondsRemaining = intVal($fppStatus->seconds_remaining);
       if($secondsRemaining < 1) {
-        echo "Only 1 second remaining, fetch the next sequence\n";
-        fwrite($logFile, "Only 1 second remaining, fetch the next sequence\n");
+        writeLog($logFile, "Fetching next sequence");
         if($viewerControlMode == "voting") {
           $highestVotedSequence = highestVotedSequence($remoteToken);
           $winningSequence = $highestVotedSequence->winningPlaylist;
@@ -61,8 +68,7 @@ while(true) {
             $index = getSequenceIndex($remotePlaylistSequences, $winningSequence);
             if($index != 0) {
               insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
-              echo "Queuing winning sequence " . $winningSequence . "\n";
-              fwrite($logFile, "Queuing winning sequence " . $winningSequence . "\n");
+              writeLog($logFile, "Queuing winning sequence " . $winningSequence);
               sleep(5);
             }
           }
@@ -74,8 +80,7 @@ while(true) {
             if($index != 0) {
               insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
               updatePlaylistQueue($remoteToken);
-              echo "Queuing requested sequence " . $nextSequence . "\n";
-              fwrite($logFile, "Queuing requested sequence " . $nextSequence . "\n");
+              writeLog($logFile, "Queuing requested sequence " . $nextSequence);
               sleep(5);
             }
           }
@@ -90,18 +95,14 @@ while(true) {
           $index = getSequenceIndex($remotePlaylistSequences, $winningSequence);
           if($index != 0) {
             insertPlaylistImmediate($remotePlaylistEncoded, $index);
-            echo "Playing winning sequence " . $winningSequence . "\n";
-            fwrite($logFile, "Playing winning sequence " . $winningSequence . "\n");
+            writeLog($logFile, "Playing winning sequence " . $winningSequence);
             updateWhatsPlaying($winningSequence, $remoteToken);
-            echo "Updated current playing sequence to " . $winningSequence . "\n";
-            fwrite($logFile, "Updated current playing sequence to " . $winningSequence . "\n");
+            writeLog($logFile, "Updated current playing sequence to " . $winningSequence);
             $currentlyPlayingInRF = $winningSequence;
             sleep(5);
             holdForImmediatePlay();
           }
         }else {
-          echo "Waiting 5 seconds for next request\n";
-          fwrite($logFile, "Waiting 5 seconds for next request\n");
           sleep(5);
         }
       }else {
@@ -112,18 +113,14 @@ while(true) {
           if($index != 0) {
             insertPlaylistImmediate($remotePlaylistEncoded, $index);
             updatePlaylistQueue($remoteToken);
-            echo "Playing requested sequence " . $nextSequence . "\n";
-            fwrite($logFile, "Playing requested sequence " . $nextSequence . "\n");
+            writeLog($logFile, "Playing requested sequence " . $nextSequence);
             updateWhatsPlaying($nextSequence, $remoteToken);
-            echo "Updated current playing sequence to " . $nextSequence . "\n";
-            fwrite($logFile, "Updated current playing sequence to " . $nextSequence . "\n");
+            writeLog($logFile, "Updated current playing sequence to " . $nextSequence);
             $currentlyPlayingInRF = $nextSequence;
             sleep(5);
             holdForImmediatePlay();
           }
         }else {
-          echo "Waiting 5 seconds for next request\n";
-          fwrite($logFile, "Waiting 5 seconds for next request\n");
           sleep(5);
         }
       }
@@ -185,18 +182,13 @@ function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
   $result = file_get_contents( $url, false, $context );
 }
 
-function preSchedulePurge($fppSchedule, $remoteToken) {
+function preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile) {
   $currentTime = date("H:i");
-  $fppScheduleStartTimes = array();
-  foreach ($fppSchedule as $schedule) {
-    $fppScheduleStartTime = strtotime($schedule->startTime);
-    $fppScheduleStartTime = $fppScheduleStartTime - 60;
-    $fppScheduleStartTime = date("H:i", $fppScheduleStartTime);
-    array_push($fppScheduleStartTimes, $fppScheduleStartTime);
-  }
-  if(count($fppScheduleStartTimes) > 0 && $currentTime == min($fppScheduleStartTimes)) {
-    echo "Purging queue and votes\n";
-    fwrite($logFile, "Purging queue and votes\n");
+  $fppScheduleStartTime = strtotime($fppScheduleStartTime);
+  $fppScheduleStartTime = $fppScheduleStartTime - 60;
+  $fppScheduleStartTime = date("H:i", $fppScheduleStartTime);
+  if($currentTime == $fppScheduleStartTime) {
+    writeLog($logFile, "Purging queue and votes");
     $url = "https://remotefalcon.com/remotefalcon/api/purgeQueue";
     $options = array(
       'http' => array(
@@ -219,30 +211,24 @@ function preSchedulePurge($fppSchedule, $remoteToken) {
     );
     $context = stream_context_create( $options );
     $result = file_get_contents( $url, false, $context );
-    echo "Purged\n";
-    fwrite($logFile, "Purged\n");
+    writeLog($logFile, "Purged");
     sleep(60);
   }
 }
 
-function isScheduleDone($fppSchedule) {
+function isScheduleDone($fppScheduleEndTime) {
   $currentTime = date("H:i");
-  $fppScheduleEndTimes = array();
-  foreach ($fppSchedule as $schedule) {
-    $fppScheduleEndTime = strtotime($schedule->endTime);
-    $fppScheduleEndTime = date("H:i", $fppScheduleEndTime);
-    array_push($fppScheduleEndTimes, $fppScheduleEndTime);
-  }
-  if(count($fppScheduleEndTimes) > 0 && $currentTime >= max($fppScheduleEndTimes)) {
+  $fppScheduleEndTime = strtotime($fppScheduleEndTime);
+  $fppScheduleEndTime = date("H:i", $fppScheduleEndTime);
+  if($currentTime >= $fppScheduleEndTime) {
     return true;
   }
   return false;
 }
 
-function backupScheduleShutdown($fppSchedule, $statusName) {
-  if(isScheduleDone($fppSchedule) && $statusName != "stopping gracefully" && $statusName != "idle") {
-    echo "Executing backup schedule shutdown\n";
-    fwrite($logFile, "Executing backup schedule shutdown\n");
+function backupScheduleShutdown($fppScheduleEndTime, $statusName, $logFile) {
+  if(isScheduleDone($fppScheduleEndTime) && $statusName != "stopping gracefully" && $statusName != "idle") {
+    writeLog($logFile, "Executing backup schedule shutdown");
     stopGracefully();
     sleep(60);
   }
@@ -258,6 +244,71 @@ function getFppSchedule() {
   $context = stream_context_create( $options );
   $result = file_get_contents( $url, false, $context );
   return json_decode( $result );
+}
+
+// <option value='7'>Everyday</option>
+// <option value='0'>Sunday</option>
+// <option value='1'>Monday</option>
+// <option value='2'>Tuesday</option>
+// <option value='3'>Wednesday</option>
+// <option value='4'>Thursday</option>
+// <option value='5'>Friday</option>
+// <option value='6'>Saturday</option>
+// <option value='8'>Mon-Fri</option>
+// <option value='9'>Sat/Sun</option>
+// <option value='10'>Mon/Wed/Fri</option>
+// <option value='11'>Tues/Thurs</option>
+// <option value='12'>Sun-Thurs</option>
+// <option value='13'>Fri/Sat</option>
+// <option value='14'>Odd</option>
+// <option value='15'>Even</option>
+function getScheduleForCurrentDay($fppSchedule) {
+  $dayOfWeek = date("l");
+  foreach ($fppSchedule as $schedule) {
+    if($schedule->enabled == 1) {
+      $fppScheduleDay = $schedule->day;
+      if($fppScheduleDay == 7) {
+        return $schedule;
+      }
+      switch ($dayOfWeek) {
+        case "Monday":
+          if($fppScheduleDay == 1 || $fppScheduleDay == 8 || $fppScheduleDay == 10 || $fppScheduleDay == 12) {
+            return $schedule;
+          }
+          break;
+        case "Tuesday":
+          if($fppScheduleDay == 2 || $fppScheduleDay == 8 || $fppScheduleDay == 11 || $fppScheduleDay == 12) {
+            return $schedule;
+          }
+          break;
+        case "Wednesday":
+          if($fppScheduleDay == 3 || $fppScheduleDay == 8 || $fppScheduleDay == 10 || $fppScheduleDay == 12) {
+            return $schedule;
+          }
+          break;
+        case "Thursday":
+          if($fppScheduleDay == 4 || $fppScheduleDay == 8 || $fppScheduleDay == 11 || $fppScheduleDay == 12) {
+            return $schedule;
+          }
+          break;
+        case "Friday":
+          if($fppScheduleDay == 5 || $fppScheduleDay == 8 || $fppScheduleDay == 10 || $fppScheduleDay == 13) {
+            return $schedule;
+          }
+          break;
+        case "Saturday":
+          if($fppScheduleDay == 6 || $fppScheduleDay == 9 || $fppScheduleDay == 13) {
+            return $schedule;
+          }
+          break;
+        default:
+          if($fppScheduleDay == 0 || $fppScheduleDay == 9 || $fppScheduleDay == 12) {
+            return $schedule;
+          }
+          break;
+      }
+    }
+  }
 }
 
 function insertPlaylistImmediate($remotePlaylistEncoded, $index) {
@@ -371,5 +422,9 @@ function getSequenceIndex($remotePlaylistSequences, $sequenceToPlay) {
     $index = 0;
   }
   return $index;
+}
+
+function writeLog($logFile, $message) {
+  fwrite($logFile, date("Y-m-d H:i:s") . ": " . $message . "\n");
 }
 ?>
