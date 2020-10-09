@@ -225,6 +225,9 @@ function isScheduleDone($fppScheduleEndTime) {
   $currentTime = date("H:i");
   $fppScheduleEndTime = strtotime($fppScheduleEndTime);
   $fppScheduleEndTime = date("H:i", $fppScheduleEndTime);
+  if($fppScheduleEndTime == "00:00" && $currentTime == "00:00") {
+    return true;
+  }
   if($fppScheduleEndTime != "00:00" && $currentTime >= $fppScheduleEndTime) {
     return true;
   }
