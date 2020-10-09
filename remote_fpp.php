@@ -9,7 +9,7 @@ if (file_exists($oldLogFile)) {
 }
 
 echo "Starting Remote Falcon Plugin version 4.6.0\n";
-writeLog($logFile, "Starting Remote Falcon Plugin");
+writeLog($logFile, "Starting Remote Falcon Plugin version 4.6.0");
 
 $remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
 $remotePlaylist = trim(file_get_contents("$pluginPath/remote_playlist.txt"));
