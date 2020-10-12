@@ -242,7 +242,7 @@ function backupScheduleShutdown($fppScheduleEndTime, $statusName, $logFile) {
 }
 
 
-function insertPlaylistImmediate($remotePlaylistEncoded, $index) { //use new method?
+function insertPlaylistImmediate($remotePlaylistEncoded, $index) { 
   $url = "http://127.0.0.1/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
   $options = array(
     'http' => array(
@@ -253,7 +253,7 @@ function insertPlaylistImmediate($remotePlaylistEncoded, $index) { //use new met
   $result = file_get_contents( $url, false, $context );
 }
 
-function insertPlaylistAfterCurrent($remotePlaylistEncoded, $index) {//use new method?
+function insertPlaylistAfterCurrent($remotePlaylistEncoded, $index) {
   $url = "http://127.0.0.1/api/command/Insert%20Playlist%20After%20Current/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
   $options = array(
     'http' => array(
