@@ -8,7 +8,7 @@ $logFile = $settings['logDirectory']."/".$pluginName.".log";
 echo "Starting Remote Falcon Plugin version 4.6.0\n";
 logEntry("Starting Remote Falcon Plugin version 4.6.0"); //Probably should pull the version in from the settings file?
 
-$remoteToken = trim(file_get_contents($pluginPath."remote_token.txt"));
+//$remoteToken = trim(file_get_contents($pluginPath."remote_token.txt"));
 $remotePlaylist = trim(file_get_contents($pluginPath."remote_playlist.txt"));
 $remotePlaylistEncoded = str_replace(' ', '%20', $remotePlaylist);
 $currentlyPlayingInRF = "";
