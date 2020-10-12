@@ -12,7 +12,6 @@ $remoteToken = trim(file_get_contents($pluginPath."remote_token.txt"));
 $remotePlaylist = trim(file_get_contents($pluginPath."remote_playlist.txt"));
 $remotePlaylistEncoded = str_replace(' ', '%20', $remotePlaylist);
 $currentlyPlayingInRF = "";
-logEntry($pluginPath."remote_token.txt");
 //logEntry("Remote Token = ".$remoteToken);
 logEntry("Remote Playlist = ".$remotePlaylist);
 logEntry("Remote Playlist Encoded = ".$remotePlaylistEncoded);
