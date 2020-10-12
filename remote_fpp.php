@@ -2,18 +2,26 @@
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
 $pluginPath = $settings['pluginDirectory']."/".$pluginName."/"; 
-$scriptPath = "/home/fpp/media/plugins/remote-falcon/scripts";//is this needed?
-$logFile = $settings['logDirectory']."/".$pluginName.".log";
 
+$logFile = $settings['logDirectory']."/".$pluginName.".log";
+$pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
+
+if (!file_exists($pluginConfigFile)){//convert old config to settings format-maybe delete text files once done?
+  WriteSettingToFile("remoteToken",trim(file_get_contents($pluginPath."remote_token.txt")),$pluginName);
+  WriteSettingToFile("remotePlaylist",trim(file_get_contents($pluginPath."remote_playlist.txt")),$pluginName);
+  WriteSettingToFile("interrupt_schedule_enabled",trim(file_get_contents($pluginPath."interrupt_schedule_enabled.txt")),$pluginName);
+  WriteSettingToFile("remote_fpp_enabled",trim(file_get_contents($pluginPath."remote_fpp_enabled.txt")),$pluginName);
+}
+$pluginSettings = parse_ini_file($pluginConfigFile);
 echo "Starting Remote Falcon Plugin version 4.6.0\n";
 logEntry("Starting Remote Falcon Plugin version 4.6.0"); //Probably should pull the version in from the settings file?
 
-$remoteToken = trim(file_get_contents($pluginPath."remote_token.txt"));
-$remotePlaylist = trim(file_get_contents($pluginPath."remote_playlist.txt"));
-$remotePlaylistEncoded = str_replace(' ', '%20', $remotePlaylist);
+$remoteToken = urldecode($pluginSettings['remoteToken']);
+$remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
+$remotePlaylistEncoded = urlencode($remotePlaylist); //do we need to decode it and then encode it??
 $currentlyPlayingInRF = "";
+
 //logEntry("Remote Token = ".$remoteToken);
-logEntry("Remote Playlist = ".$remotePlaylist);
 logEntry("Remote Playlist Encoded = ".$remotePlaylistEncoded);
 $playlistDetails = getPlaylistDetails($remotePlaylistEncoded);
 $remotePlaylistSequences = $playlistDetails->mainPlaylist;
@@ -22,7 +30,7 @@ $viewerControlMode = "";
 $remotePreferences = remotePreferences($remoteToken);
 $viewerControlMode = $remotePreferences->viewerControlMode;
 logEntry("Viewer Control Mode: " . $viewerControlMode);
-$interruptSchedule = trim(file_get_contents("$pluginPath/interrupt_schedule_enabled.txt"));
+$interruptSchedule = urldecode($pluginSettings['interrupt_schedule_enabled']);
 logEntry("Interrupt Schedule: " . $interruptSchedule);
 $interruptSchedule = $interruptSchedule == "true" ? true : false;
 
@@ -31,22 +39,21 @@ $fppScheduleStartTime = null;
 $fppScheduleEndTime = null;
 
 while(true) {
-  $fppSchedule = getFppSchedule();
-  $fppSchedule = getScheduleToUse($fppSchedule);
-  if($fppSchedule != null && $currentSchedule != $fppSchedule) {
-    $fppScheduleStartTime = $fppSchedule->startTime;
-    $fppScheduleEndTime = $fppSchedule->endTime;
-    logEntry("Starting Schedule for " . $fppSchedule->startDate . " from " . $fppSchedule->startTime . " to " . $fppSchedule->endTime);
-    $currentSchedule = $fppSchedule;
+  $fppStatus= getFppStatus();
+	
+  if($fppStatus->scheduler->status=="playing") {
+    $fppScheduleStartTime = $fppStatus->scheduler->currentPlaylist->scheduledStartTimeStr;
+    $fppScheduleEndTime = $fppStatus->scheduler->currentPlaylist->scheduledEndTimeStr;
+    logEntry("Starting Schedule from " . $fppScheduleStartTime . " to " . $fppScheduleEndTime);
+    $currentSchedule = $fppSchedule; //is this needed?
   }
   
   preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile);
 
   $currentlyPlaying = "";
-  $fppStatus = getFppStatus();
   $currentlyPlaying = $fppStatus->current_sequence;
   $currentlyPlaying = pathinfo($currentlyPlaying, PATHINFO_FILENAME);
-  $statusName = $fppStatus->status_name;
+  $statusName = $fppStatus->status_name;//will this be needed with FPP 4.3 bug fix?
 
   if($currentlyPlaying != $currentlyPlayingInRF) {
     updateWhatsPlaying($currentlyPlaying, $remoteToken);
@@ -56,10 +63,10 @@ while(true) {
 
   backupScheduleShutdown($fppScheduleEndTime, $statusName, $logFile);
 
-  if($statusName != "idle" && !isScheduleDone($fppScheduleEndTime)) {
+  if($statusName != "idle" && !isScheduleDone($fppScheduleEndTime)) { //what about statusName=="manual" ??
     //Do not interrupt schedule
     if($interruptSchedule != 1) {
-      $fppStatus = getFppStatus();
+      $fppStatus = getFppStatus();//is this really needed as it is constantly being polled?
       $secondsRemaining = intVal($fppStatus->seconds_remaining);
       if($secondsRemaining < 1) {
         logEntry("Fetching next sequence");
@@ -135,10 +142,10 @@ while(true) {
 }
 
 function holdForImmediatePlay() {
-  $fppStatus = getFppStatus();
+  $fppStatus = getFppStatus();//is this needed as it is constantly being polled?
   $secondsRemaining = intVal($fppStatus->seconds_remaining);
   while($secondsRemaining > 1) {
-    $fppStatus = getFppStatus();
+    $fppStatus = getFppStatus();//this one is probably needed since it is in the loop
     $secondsRemaining = intVal($fppStatus->seconds_remaining);
     usleep(250000);
   }
@@ -158,14 +165,7 @@ function remotePreferences($remoteToken) {
 }
 
 function getFppStatus() {
-  $url = "http://127.0.0.1/api/fppd/status";
-  $options = array(
-    'http' => array(
-      'method'  => 'GET'
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
+  $result=file_get_contents("http://127.0.0.1/api/fppd/status");
   return json_decode( $result );
 }
 
@@ -241,78 +241,8 @@ function backupScheduleShutdown($fppScheduleEndTime, $statusName, $logFile) {
   }
 }
 
-function getFppSchedule() {
-  $url = "http://127.0.0.1/api/schedule";
-  $options = array(
-    'http' => array(
-      'method'  => 'GET'
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
-  return json_decode( $result );
-}
 
-function getScheduleToUse($fppSchedule) {
-  $dayOfWeek = date("l");
-  $currentDate = date("Y-m-d");
-  $currentTime = date("H:i:s");
-  foreach ($fppSchedule as $schedule) {
-    $isCorrectDate = false;
-    if($currentDate >= $schedule->startDate && $currentDate <= $schedule->endDate) {
-      $isCorrectDate = true;
-    }
-    $isCorrectTime = false;
-    if($currentTime >= $schedule->startTime && $currentTime <= $schedule->endTime) {
-      $isCorrectTime = true;
-    }
-    if($schedule->enabled == 1 && $isCorrectDate && $isCorrectTime) {
-      $fppScheduleDay = $schedule->day;
-      if($fppScheduleDay == 7) {
-        return $schedule;
-      }
-      switch ($dayOfWeek) {
-        case "Monday":
-          if($fppScheduleDay == 1 || $fppScheduleDay == 8 || $fppScheduleDay == 10 || $fppScheduleDay == 12) {
-            return $schedule;
-          }
-          break;
-        case "Tuesday":
-          if($fppScheduleDay == 2 || $fppScheduleDay == 8 || $fppScheduleDay == 11 || $fppScheduleDay == 12) {
-            return $schedule;
-          }
-          break;
-        case "Wednesday":
-          if($fppScheduleDay == 3 || $fppScheduleDay == 8 || $fppScheduleDay == 10 || $fppScheduleDay == 12) {
-            return $schedule;
-          }
-          break;
-        case "Thursday":
-          if($fppScheduleDay == 4 || $fppScheduleDay == 8 || $fppScheduleDay == 11 || $fppScheduleDay == 12) {
-            return $schedule;
-          }
-          break;
-        case "Friday":
-          if($fppScheduleDay == 5 || $fppScheduleDay == 8 || $fppScheduleDay == 10 || $fppScheduleDay == 13) {
-            return $schedule;
-          }
-          break;
-        case "Saturday":
-          if($fppScheduleDay == 6 || $fppScheduleDay == 9 || $fppScheduleDay == 13) {
-            return $schedule;
-          }
-          break;
-        default:
-          if($fppScheduleDay == 0 || $fppScheduleDay == 9 || $fppScheduleDay == 12) {
-            return $schedule;
-          }
-          break;
-      }
-    }
-  }
-}
-
-function insertPlaylistImmediate($remotePlaylistEncoded, $index) {
+function insertPlaylistImmediate($remotePlaylistEncoded, $index) { //use new method?
   $url = "http://127.0.0.1/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
   $options = array(
     'http' => array(
@@ -323,7 +253,7 @@ function insertPlaylistImmediate($remotePlaylistEncoded, $index) {
   $result = file_get_contents( $url, false, $context );
 }
 
-function insertPlaylistAfterCurrent($remotePlaylistEncoded, $index) {
+function insertPlaylistAfterCurrent($remotePlaylistEncoded, $index) {//use new method?
   $url = "http://127.0.0.1/api/command/Insert%20Playlist%20After%20Current/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
   $options = array(
     'http' => array(
