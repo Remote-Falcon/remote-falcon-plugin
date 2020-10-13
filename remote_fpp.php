@@ -21,7 +21,6 @@ $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
 $remotePlaylistEncoded = urlencode($remotePlaylist); //do we need to decode it and then encode it??
 $currentlyPlayingInRF = "";
 
-//logEntry("Remote Token = ".$remoteToken);
 logEntry("Remote Playlist Encoded = ".$remotePlaylistEncoded);
 $playlistDetails = getPlaylistDetails($remotePlaylistEncoded);
 $remotePlaylistSequences = $playlistDetails->mainPlaylist;
@@ -44,13 +43,10 @@ while(true) {
   if($fppStatus->scheduler->status=="playing") {
     $fppScheduleStartTime = $fppStatus->scheduler->currentPlaylist->scheduledStartTimeStr;
     $fppScheduleEndTime = $fppStatus->scheduler->currentPlaylist->scheduledEndTimeStr;
-    logEntry("Starting Schedule from " . $fppScheduleStartTime . " to " . $fppScheduleEndTime);
-    $currentSchedule = $fppSchedule; //is this needed?
   }
   
   preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile);
 
-  $currentlyPlaying = "";
   $currentlyPlaying = $fppStatus->current_sequence;
   $currentlyPlaying = pathinfo($currentlyPlaying, PATHINFO_FILENAME);
   $statusName = $fppStatus->status_name;//will this be needed with FPP 4.3 bug fix?
@@ -66,7 +62,6 @@ while(true) {
   if($statusName != "idle" && !isScheduleDone($fppScheduleEndTime)) { //what about statusName=="manual" ??
     //Do not interrupt schedule
     if($interruptSchedule != 1) {
-      $fppStatus = getFppStatus();//is this really needed as it is constantly being polled?
       $secondsRemaining = intVal($fppStatus->seconds_remaining);
       if($secondsRemaining < 1) {
         logEntry("Fetching next sequence");
@@ -112,7 +107,7 @@ while(true) {
             logEntry("Updated current playing sequence to " . $winningSequence);
             $currentlyPlayingInRF = $winningSequence;
             sleep(5);
-            holdForImmediatePlay();
+            holdForImmediatePlay($fppStatus);
           }
         }else {
           sleep(5);
@@ -130,7 +125,7 @@ while(true) {
             logEntry("Updated current playing sequence to " . $nextSequence);
             $currentlyPlayingInRF = $nextSequence;
             sleep(5);
-            holdForImmediatePlay();
+            holdForImmediatePlay($fppStatus);
           }
         }else {
           sleep(5);
@@ -141,8 +136,7 @@ while(true) {
   usleep(250000);
 }
 
-function holdForImmediatePlay() {
-  $fppStatus = getFppStatus();//is this needed as it is constantly being polled?
+function holdForImmediatePlay($fppStatus) {
   $secondsRemaining = intVal($fppStatus->seconds_remaining);
   while($secondsRemaining > 1) {
     $fppStatus = getFppStatus();//this one is probably needed since it is in the loop
