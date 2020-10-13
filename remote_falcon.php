@@ -92,6 +92,13 @@ echo "
 		<br />
 		Any changes made to the selected playlist will require it to be resynched. 
 		If at any time you want to change the synched playlist, simply select the one you want and click \"Sync Playlist\".
+		<br />";
+if(strlen($remotePlaylist)<2){
+	$remotePlaylist= "NO PLAYLIST CURRENTLY SAVED";
+}
+echo "
+		<p>Current Synched Playlist-    <b> {$remotePlaylist}</b>
+		</p>
 	</h5>
 	<div style=\"margin-left: 1em;\">
 		<form method=\"post\">
