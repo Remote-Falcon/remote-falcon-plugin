@@ -109,7 +109,7 @@ echo "<input id=\"saveRemotePlaylistButton\" class=\"button\" name=\"saveRemoteP
 	</div>
 ";
 if (isset($_POST['saveRemotePlaylist'])) {
-	$remotePlaylist = trim($_POST['remotePlaylist']);
+	$remotePlaylist=urldecode($pluginSettings['remotePlaylist']);
 	if(strlen($remoteToken)>1) {
 		//WriteSettingToFile("remotePlaylist",urlencode($_POST["remotePlaylist"]),$pluginName);
 		$playlists = array();
