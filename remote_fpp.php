@@ -7,12 +7,13 @@ $logFile = $settings['logDirectory']."/".$pluginName.".log";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
 $pluginSettings = parse_ini_file($pluginConfigFile);
 
+$pluginVersion = urldecode($pluginSettings['pluginVersion']);
 $remoteFppEnabled = urldecode($pluginSettings['remote_fpp_enabled']);
 $remoteFppEnabled = $remoteFppEnabled == "true" ? true : false;
 
 if($remoteFppEnabled == 1) {
-  echo "Starting Remote Falcon Plugin version 4.6.0\n";
-  logEntry("Starting Remote Falcon Plugin version 4.6.0"); //Probably should pull the version in from the settings file?
+  echo "Starting Remote Falcon Plugin v" . $pluginVersion . "\n";
+  logEntry("Starting Remote Falcon Plugin v" . $pluginVersion); //Probably should pull the version in from the settings file?
 
   $remoteToken = urldecode($pluginSettings['remoteToken']);
   $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);

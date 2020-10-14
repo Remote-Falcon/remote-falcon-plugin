@@ -1,13 +1,20 @@
-<h1 style="margin-left: 1em;">Remote Falcon Plugin v4.6.0</h1><!-- Does this need to change? -->
-<h4 style="margin-left: 1em;"></h4>
-
 <?php
 include_once "/opt/fpp/www/common.php"; //Alows use of FPP Functions
 $pluginName = basename(dirname(__FILE__));
 $pluginConfigFile = $settings['configDirectory'] ."/plugin." .$pluginName; //gets path to configuration files for plugin
     
-	if (file_exists($pluginConfigFile))
-		$pluginSettings = parse_ini_file($pluginConfigFile);
+if (file_exists($pluginConfigFile)) {
+	$pluginSettings = parse_ini_file($pluginConfigFile);
+}
+
+$pluginVersion = "5.0.0";
+
+WriteSettingToFile("pluginVersion",urlencode($pluginVersion),$pluginName);
+
+echo "
+	<h1 style=\"margin-left: 1em;\">Remote Falcon Plugin v{$pluginVersion}</h1>
+	<h4 style=\"margin-left: 1em;\"></h4>
+";
 
 $remotePlaylist=urldecode($pluginSettings['remotePlaylist']);// get settings
 $remoteFppEnabled=urldecode($pluginSettings['remote_fpp_enabled']);
@@ -65,11 +72,7 @@ $options = array(
 $context = stream_context_create( $options );
 $result = file_get_contents( $url, false, $context );
 $response = json_decode( $result, true );
-if($response['updatesAvailable'] == 0) {
-	echo "
-		<h3 style=\"margin-left: 1em; color: #D65A31;\">Remote Falcon Plugin is up to date!</h3>
-	";
-}else if($response['updatesAvailable'] == 1) {
+if($response['updatesAvailable'] == 1) {
 	echo "
 		<h3 style=\"margin-left: 1em; color: #a72525;\">A new update is available for the Remote Falcon Plugin!</h3>
 		<h3 style=\"margin-left: 1em; color: #a72525;\">Go to the Plugin Manager to update</h3>
@@ -226,6 +229,18 @@ echo "
 echo "
 	<h5 style=\"margin-left: 1em;\">Changelog:</h5>
 	<ul>
+	<li>
+		<strong>5.0.0: Big thanks to Rick Harris for all the improvements in this version!</strong>
+		<ul>
+			<li>
+				Plugin now works for all schedule types!
+			</li>
+			<li>
+				Main plugin page updated to use FPP common functions to improve toggles. This change also ensures plugin updates 
+				work properly.
+			</li>
+		</ul>
+	</li>
 		<li>
 			<strong>4.6.0</strong>
 			<ul>
@@ -237,34 +252,6 @@ echo "
 				</li>
 				<li>
 					Fix repeating sequence for schedules that end at 24:00:00.
-				</li>
-			</ul>
-		</li>
-		<li>
-			<strong>4.5.4</strong>
-			<ul>
-				<li>
-					Checking all active schedules to ensure the proper schedule is used when starting Remote Falcon
-				</li>
-			</ul>
-		</li>
-		<li>
-			<strong>4.5.3</strong>
-			<ul>
-				<li>
-					Added logging from the plugin
-					<br />
-					Logs can be found in the File Manager under the Logs tab. Logs will appear as \"RF-\" followed by the date of the log
-					<br />
-					Logs will be automatically deleted after 3 days
-				</li>
-			</ul>
-		</li>
-		<li>
-			<strong>4.5.2</strong>
-			<ul>
-				<li>
-					Removed FPP Stats feature
 				</li>
 			</ul>
 		</li>
