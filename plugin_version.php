@@ -1,7 +1,6 @@
 <?php
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
-$pluginPath = $settings['pluginDirectory']."/".$pluginName."/"; 
 
 $logFile = $settings['logDirectory']."/".$pluginName.".log";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
