@@ -187,7 +187,7 @@ echo "
 		Any time this toggle is modified you must Restart FPP.</h5>
 		<div style=\"margin-left: 1em;\">
 		<b>Enable Remote Falcon</b> ";
-			PrintSettingCheckbox("Enabled", "remote_fpp_enabled", $restart = 1, $reboot = 0, "true", "false", $pluginName = $pluginName, $callbackName = "", $defaultValue = 0, $desc = "", $sData = Array());
+			PrintSettingCheckbox("Remote Falcon", "remote_fpp_enabled", $restart = 1, $reboot = 0, "true", "false", $pluginName = $pluginName, $callbackName = "", $defaultValue = 0, $desc = "", $sData = Array());
 echo "		
 		</div>
 	";
