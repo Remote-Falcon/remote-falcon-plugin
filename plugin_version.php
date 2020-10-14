@@ -1,10 +1,16 @@
 <?php
-$pluginPath = "/home/fpp/media/plugins/remote-falcon";
+include_once "/opt/fpp/www/common.php";
+$pluginName = basename(dirname(__FILE__));
+$pluginPath = $settings['pluginDirectory']."/".$pluginName."/"; 
 
-if(file_exists("$pluginPath/remote_token.txt")) {
-	$remoteToken = trim(file_get_contents("$pluginPath/remote_token.txt"));
-	$pluginVersion = "4.6.0";
+$logFile = $settings['logDirectory']."/".$pluginName.".log";
+$pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
+$pluginSettings = parse_ini_file($pluginConfigFile);
 
+$pluginVersion = urldecode($pluginSettings['pluginVersion']);
+$remoteToken = urldecode($pluginSettings['remoteToken']);
+
+if(strlen($remoteToken)>1) {
 	$url = "http://127.0.0.1/api/fppd/version";
 	$options = array(
 		'http' => array(
