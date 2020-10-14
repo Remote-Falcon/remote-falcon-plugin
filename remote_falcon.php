@@ -7,9 +7,11 @@ if (file_exists($pluginConfigFile)) {
 	$pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "5.0.0";
+$pluginVersion = "5.0.1";
 
 WriteSettingToFile("pluginVersion",urlencode($pluginVersion),$pluginName);
+WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+WriteSettingToFile("interrupt_schedule_enabled",urlencode("false"),$pluginName);
 
 echo "
 	<h1 style=\"margin-left: 1em;\">Remote Falcon Plugin v{$pluginVersion}</h1>
@@ -32,6 +34,7 @@ $options = array(
 
 if (is_dir($playlistDirectory)){
 	$playlistDropdown=array();
+	$playlistDropdown[""]="";
 	if ($dirTemp = opendir($playlistDirectory)){
 		while (($fileRead = readdir($dirTemp)) !== false){
 			if (($fileRead == ".") || ($fileRead == "..")){
@@ -45,7 +48,6 @@ if (is_dir($playlistDirectory)){
 }
 
 if (is_dir($playlistDirectory)){
-	
 	if ($dirTemp = opendir($playlistDirectory)){
 		while (($fileRead = readdir($dirTemp)) !== false){
 			if (($fileRead == ".") || ($fileRead == "..")){
