@@ -9,9 +9,12 @@ if (file_exists($pluginConfigFile)) {
 
 $pluginVersion = "5.0.1";
 
+if(!file_exists($pluginConfigFile)) {
+	WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+	WriteSettingToFile("interrupt_schedule_enabled",urlencode("false"),$pluginName);
+}
+
 WriteSettingToFile("pluginVersion",urlencode($pluginVersion),$pluginName);
-WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
-WriteSettingToFile("interrupt_schedule_enabled",urlencode("false"),$pluginName);
 
 echo "
 	<h1 style=\"margin-left: 1em;\">Remote Falcon Plugin v{$pluginVersion}</h1>
