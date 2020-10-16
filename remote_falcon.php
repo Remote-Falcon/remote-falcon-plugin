@@ -7,7 +7,7 @@ if (file_exists($pluginConfigFile)) {
 	$pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "5.0.1";
+$pluginVersion = "5.0.2";
 
 if(!file_exists($pluginConfigFile)) {
 	WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
@@ -230,36 +230,4 @@ echo "
 		<h5 style=\"margin-left: 1em;\">Donations will <strong>never</strong> be required but will <strong>always</strong> be appreciated.</h5>
 		<a href=\"https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url\" target=\"_blank\"> <img style=\"margin-left: 1em;\" alt=\"RF_Donate\" src=\"https://remotefalcon.com/support-button.png\"></a>
 	";
-
-echo "
-	<h5 style=\"margin-left: 1em;\">Changelog:</h5>
-	<ul>
-	<li>
-		<strong>5.0.0: Big thanks to Rick Harris for all the improvements in this version!</strong>
-		<ul>
-			<li>
-				Plugin now works for all schedule types!
-			</li>
-			<li>
-				Main plugin page updated to use FPP common functions to improve toggles. This change also ensures plugin updates 
-				work properly.
-			</li>
-		</ul>
-	</li>
-		<li>
-			<strong>4.6.0</strong>
-			<ul>
-				<li>
-					Checking schedule times in addition to the day
-				</li>
-				<li>
-					More logging so you know things about things
-				</li>
-				<li>
-					Fix repeating sequence for schedules that end at 24:00:00.
-				</li>
-			</ul>
-		</li>
-	</ul>
-";
 ?>
