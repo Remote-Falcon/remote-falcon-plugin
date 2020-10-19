@@ -90,7 +90,7 @@ if (isset($_POST['saveRemotePlaylist'])) {
 	if (strlen($remotePlaylist)>2){
 		if(strlen($remoteToken)>1) {
 			$playlists = array();
-			$remotePlaylistEncoded = str_replace(' ', '%20', $remotePlaylist);// change to urlencode?
+			$remotePlaylistEncoded = rawurlencode($remotePlaylist);
 			$url = "http://127.0.0.1/api/playlist/${remotePlaylistEncoded}";
 			$options = array(
 				'http' => array(
@@ -188,7 +188,7 @@ PrintSettingTextSaved("remoteToken", $restart = 0, $reboot = 0, $maxlength = 32,
 		If at any time you want to change the synched playlist, simply select the one you want and click "Sync Playlist".
 		<br />
 		<div id="remotePlaylistDiv" style= "<? echo "$remotePlaylistStyle" ?>" >
-			<h2>Current Synched Playlist-    <b> <? echo "$remotePlaylist "; ?></b>
+			<h2>Current Synched Playlist-    <strong> <? echo "$remotePlaylist "; ?></strong>
 			</h2>
 		</div>
 	<div>
@@ -211,7 +211,7 @@ PrintSettingSelect("remotePlaylist", "remotePlaylist", $restart = 1, $reboot = 0
 		<br />
 		Any time this toggle is modified you must Restart FPP.</h5>
 		<div>
-			<b>Enable Remote Falcon</b> 
+			<strong>Enable Remote Falcon</strong> 
 <?			
 PrintSettingCheckbox("Remote Falcon", "remote_fpp_enabled", $restart = 1, $reboot = 0, "true", "false", $pluginName = $pluginName, $callbackName = "", $defaultValue = 0, $desc = "", $sData = Array());
 ?>
@@ -223,7 +223,7 @@ PrintSettingCheckbox("Remote Falcon", "remote_fpp_enabled", $restart = 1, $reboo
 		<br />
 		Any time this toggle is modified you must Restart FPP.</h5>
 		<div>
-			<b>Interrupt Schedule</b> 
+			<strong>Interrupt Schedule</strong> 
 <?
 PrintSettingCheckbox("Interrupt Schedule", "interrupt_schedule_enabled", $restart = 1, $reboot = 0, "true", "false", $pluginName = $pluginName, $callbackName = "", $defaultValue = 0, $desc = "", $sData = Array());
 ?>
@@ -235,7 +235,7 @@ PrintSettingCheckbox("Interrupt Schedule", "interrupt_schedule_enabled", $restar
 		<h5>While Remote Falcon is 100% free for users, there are still associated costs with owning and maintaining a server and 
 		database. If you would like to help support Remote Falcon you can donate using the button below.</h5>
 		<h5>Donations will <strong>never</strong> be required but will <strong>always</strong> be appreciated.</h5>
-		<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url" target="_blank"> <img style="margin-left: 1em;" alt="RF_Donate" src="https://remotefalcon.com/support-button.png"></a>
+		<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url" target="_blank" rel="noopener noreferrer"> <img style="margin-left: 1em;" alt="RF_Donate" src="https://remotefalcon.com/support-button.png"></a>
 	
 	
 </div>

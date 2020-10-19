@@ -13,14 +13,14 @@ $remoteFppEnabled = $remoteFppEnabled == "true" ? true : false;
 
 if($remoteFppEnabled == 1) {
   echo "Starting Remote Falcon Plugin v" . $pluginVersion . "\n";
-  logEntry("Starting Remote Falcon Plugin v" . $pluginVersion); //Probably should pull the version in from the settings file?
+  logEntry("Starting Remote Falcon Plugin v" . $pluginVersion);
 
   $remoteToken = urldecode($pluginSettings['remoteToken']);
   $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
-  $remotePlaylistEncoded = urlencode($remotePlaylist); //do we need to decode it and then encode it??
+  $remotePlaylistEncoded = rawurlencode($remotePlaylist);
   $currentlyPlayingInRF = "";
 
-  logEntry("Remote Playlist Encoded = ".$remotePlaylistEncoded);
+  logEntry("Remote Playlist: ".$remotePlaylist);
   $playlistDetails = getPlaylistDetails($remotePlaylistEncoded);
   $remotePlaylistSequences = $playlistDetails->mainPlaylist;
 
