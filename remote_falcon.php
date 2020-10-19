@@ -17,9 +17,6 @@ $pluginVersion = "5.0.2";
 //remotePlaylist
 //remoteToken
 
-foreach ($pluginSettings as $key => $value) { 
-	${$key} = urldecode($value);
-}
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
 	WriteSettingToFile("remotePlaylist",urlencode(""),$pluginName);
@@ -33,8 +30,11 @@ if (strlen(urldecode($pluginSettings['remote_fpp_enabled']))<1){
 if (strlen(urldecode($pluginSettings['remoteToken']))<1){
 	WriteSettingToFile("remoteToken",urlencode(""),$pluginName);
 }
-
 WriteSettingToFile("pluginVersion",urlencode($pluginVersion),$pluginName);
+
+foreach ($pluginSettings as $key => $value) { 
+	${$key} = urldecode($value);
+}
 
 if(strlen($remotePlaylist)<2){
 	$remotePlaylist= "NO PLAYLIST CURRENTLY SAVED";
