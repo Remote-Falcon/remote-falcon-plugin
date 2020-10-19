@@ -41,7 +41,7 @@ if($remoteFppEnabled == 1) {
     
     if($fppStatus->scheduler->status=="playing") {
       $fppScheduleStartTime = $fppStatus->scheduler->currentPlaylist->scheduledStartTimeStr;
-      $fppScheduleEndTime = $fppStatus->scheduler->currentPlaylist->scheduledEndTimeStr;
+      $fppScheduleEndTime = $fppStatus->scheduler->currentPlaylist->actualEndTimeStr;
     }
     
     preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile);
