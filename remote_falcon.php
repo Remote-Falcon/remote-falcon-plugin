@@ -7,7 +7,7 @@ if (file_exists($pluginConfigFile)) {
 	$pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "5.0.2";
+$pluginVersion = "5.1.0";
 
 //foreach below will read all of the settings and thier values instead of reading each one individually
 //settings saved are:
