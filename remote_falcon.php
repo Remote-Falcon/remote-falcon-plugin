@@ -36,7 +36,7 @@ foreach ($pluginSettings as $key => $value) {
 	${$key} = urldecode($value);
 }
 
-if(strlen($remotePlaylist)<2){
+if(strlen($remotePlaylist)<1){
 	$remotePlaylist= "NO PLAYLIST CURRENTLY SAVED";
 	$remotePlaylistStyle="color: #ff0000";
 }
