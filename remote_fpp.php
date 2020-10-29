@@ -13,14 +13,14 @@ $remoteFppEnabled = $remoteFppEnabled == "true" ? true : false;
 
 if($remoteFppEnabled == 1) {
   echo "Starting Remote Falcon Plugin v" . $pluginVersion . "\n";
-  logEntry("Starting Remote Falcon Plugin v" . $pluginVersion); //Probably should pull the version in from the settings file?
+  logEntry("Starting Remote Falcon Plugin v" . $pluginVersion);
 
   $remoteToken = urldecode($pluginSettings['remoteToken']);
   $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
-  $remotePlaylistEncoded = urlencode($remotePlaylist); //do we need to decode it and then encode it??
+  $remotePlaylistEncoded = rawurlencode($remotePlaylist);
   $currentlyPlayingInRF = "";
 
-  logEntry("Remote Playlist Encoded = ".$remotePlaylistEncoded);
+  logEntry("Remote Playlist: ".$remotePlaylist);
   $playlistDetails = getPlaylistDetails($remotePlaylistEncoded);
   $remotePlaylistSequences = $playlistDetails->mainPlaylist;
 
@@ -37,11 +37,11 @@ if($remoteFppEnabled == 1) {
   $fppScheduleEndTime = null;
 
   while(true) {
-    $fppStatus= getFppStatus();
+    $fppStatus = getFppStatus();
     
     if($fppStatus->scheduler->status=="playing") {
       $fppScheduleStartTime = $fppStatus->scheduler->currentPlaylist->scheduledStartTimeStr;
-      $fppScheduleEndTime = $fppStatus->scheduler->currentPlaylist->scheduledEndTimeStr;
+      $fppScheduleEndTime = $fppStatus->scheduler->currentPlaylist->actualEndTimeStr;
     }
     
     preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile);
@@ -105,8 +105,7 @@ if($remoteFppEnabled == 1) {
               updateWhatsPlaying($winningSequence, $remoteToken);
               logEntry("Updated current playing sequence to " . $winningSequence);
               $currentlyPlayingInRF = $winningSequence;
-              sleep(5);
-              holdForImmediatePlay($fppStatus);
+              holdForImmediatePlay();
             }
           }else {
             sleep(5);
@@ -123,8 +122,7 @@ if($remoteFppEnabled == 1) {
               updateWhatsPlaying($nextSequence, $remoteToken);
               logEntry("Updated current playing sequence to " . $nextSequence);
               $currentlyPlayingInRF = $nextSequence;
-              sleep(5);
-              holdForImmediatePlay($fppStatus);
+              holdForImmediatePlay();
             }
           }else {
             sleep(5);
@@ -138,10 +136,13 @@ if($remoteFppEnabled == 1) {
   logEntry("Remote Falcon is disabled");
 }
 
-function holdForImmediatePlay($fppStatus) {
+function holdForImmediatePlay() {
+  sleep(5);
+  $fppStatus = getFppStatus();
   $secondsRemaining = intVal($fppStatus->seconds_remaining);
+  logEntry("Sitting tight for " . $secondsRemaining . " seconds");
   while($secondsRemaining > 1) {
-    $fppStatus = getFppStatus();//this one is probably needed since it is in the loop
+    $fppStatus = getFppStatus();
     $secondsRemaining = intVal($fppStatus->seconds_remaining);
     usleep(250000);
   }
