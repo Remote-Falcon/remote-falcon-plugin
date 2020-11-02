@@ -1,0 +1,5 @@
+remote_fpp_enabled = "true"
+interrupt_schedule_enabled = "false"
+pluginVersion = "5.1.0"
+remoteToken = "ShY556HTWLkaBJQ306tyQYyr1"
+remotePlaylist = "Playlist_Name With Spaces"
