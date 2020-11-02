@@ -7,7 +7,11 @@ if (file_exists($pluginConfigFile)) {
 	$pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "5.0.2";
+if (!file_exists("/home/fpp/media/scripts/toggle_viewer_control.php")){
+	copy("/home/fpp/media/plugins/remote-falcon/toggle_viewer_control.php", "/home/fpp/media/scripts/toggle_viewer_control.php");
+}
+
+$pluginVersion = "5.1.0";
 
 //foreach below will read all of the settings and thier values instead of reading each one individually
 //settings saved are:
@@ -36,7 +40,7 @@ foreach ($pluginSettings as $key => $value) {
 	${$key} = urldecode($value);
 }
 
-if(strlen($remotePlaylist)<2){
+if(strlen($remotePlaylist)<1){
 	$remotePlaylist= "NO PLAYLIST CURRENTLY SAVED";
 	$remotePlaylistStyle="color: #ff0000";
 }
@@ -87,7 +91,7 @@ $syncResultMessage="";
 
 if (isset($_POST['saveRemotePlaylist'])) { 
 	$remotePlaylist=urldecode($pluginSettings['remotePlaylist']);
-	if (strlen($remotePlaylist)>2){
+	if (strlen($remotePlaylist)>=2){
 		if(strlen($remoteToken)>1) {
 			$playlists = array();
 			$remotePlaylistEncoded = rawurlencode($remotePlaylist);
