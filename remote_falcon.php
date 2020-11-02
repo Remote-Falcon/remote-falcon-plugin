@@ -7,6 +7,10 @@ if (file_exists($pluginConfigFile)) {
 	$pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
+if (!file_exists("/home/fpp/media/scripts/toggle_viewer_control.php")){
+	copy("/home/fpp/media/plugins/remote-falcon/toggle_viewer_control.php", "/home/fpp/media/scripts/toggle_viewer_control.php");
+}
+
 $pluginVersion = "5.1.0";
 
 //foreach below will read all of the settings and thier values instead of reading each one individually
