@@ -87,7 +87,7 @@ $syncResultMessage="";
 
 if (isset($_POST['saveRemotePlaylist'])) { 
 	$remotePlaylist=urldecode($pluginSettings['remotePlaylist']);
-	if (strlen($remotePlaylist)>2){
+	if (strlen($remotePlaylist)>=2){
 		if(strlen($remoteToken)>1) {
 			$playlists = array();
 			$remotePlaylistEncoded = rawurlencode($remotePlaylist);
