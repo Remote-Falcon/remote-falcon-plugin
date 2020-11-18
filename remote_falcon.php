@@ -7,11 +7,14 @@ if (file_exists($pluginConfigFile)) {
 	$pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-if (!file_exists("/home/fpp/media/scripts/toggle_viewer_control.php")){
-	copy("/home/fpp/media/plugins/remote-falcon/toggle_viewer_control.php", "/home/fpp/media/scripts/toggle_viewer_control.php");
+if (!file_exists("/home/fpp/media/scripts/viewer_control_on.php")){
+	copy("/home/fpp/media/plugins/remote-falcon/viewer_control_on.php", "/home/fpp/media/scripts/viewer_control_on.php");
+}
+if (!file_exists("/home/fpp/media/scripts/viewer_control_off.php")){
+	copy("/home/fpp/media/plugins/remote-falcon/viewer_control_off.php", "/home/fpp/media/scripts/viewer_control_off.php");
 }
 
-$pluginVersion = "5.1.0";
+$pluginVersion = "5.1.1";
 
 //foreach below will read all of the settings and thier values instead of reading each one individually
 //settings saved are:
