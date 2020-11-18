@@ -3,12 +3,13 @@ include_once "/opt/fpp/www/common.php";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin.remote-falcon";
 $pluginSettings = parse_ini_file($pluginConfigFile);
 
-$pluginVersion = urldecode($pluginSettings['pluginVersion']);
 $remoteToken = urldecode($pluginSettings['remoteToken']);
 
 if(strlen($remoteToken)>1) {
-	$url = "https://remotefalcon.com/remotefalcon/api/toggleViewerControl";
-	$data = array();
+	$url = "https://remotefalcon.com/remotefalcon/api/updateViewerControl";
+	$data = array(
+		'viewerControlEnabled' => 'N'
+	);
 	$options = array(
 		'http' => array(
 			'method'  => 'POST',
