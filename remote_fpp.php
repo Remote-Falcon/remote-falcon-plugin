@@ -62,35 +62,44 @@ if($remoteFppEnabled == 1) {
       //Do not interrupt schedule
       if($interruptSchedule != 1) {
         $secondsRemaining = intVal($fppStatus->seconds_remaining);
-        if($secondsRemaining < 1) {
-          logEntry("Fetching next sequence");
+        if($secondsRemaining < 3) {
+          logEntry("3 seconds remaining, so fetching next request");
           if($viewerControlMode == "voting") {
             $highestVotedSequence = highestVotedSequence($remoteToken);
             $winningSequence = $highestVotedSequence->winningPlaylist;
             if($winningSequence != null) {
+              logEntry("Looking for " . $winningSequence . " in " . $remotePlaylist . " playlist");
               $index = getSequenceIndex($remotePlaylistSequences, $winningSequence);
               if($index != 0) {
-                insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
                 logEntry("Queuing winning sequence " . $winningSequence);
+                insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
+                sleep(4);
+              }else {
+                logEntry($winningSequence . " was not found in " . $remotePlaylist);
               }
             }else {
               logEntry("No votes");
+              sleep(4);
             }
           }else {
             $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
             $nextSequence = $nextPlaylistInQueue->nextPlaylist;
             if($nextSequence != null) {
+              logEntry("Looking for " . $nextSequence . " in " . $remotePlaylist . " playlist");
               $index = getSequenceIndex($remotePlaylistSequences, $nextSequence);
               if($index != 0) {
+                logEntry("Queuing requested sequence " . $nextSequence);
                 insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
+                sleep(4);
                 updatePlaylistQueue($remoteToken);
-              logEntry("Queuing requested sequence " . $nextSequence);
+              }else {
+                logEntry($nextSequence . " was not found in " . $remotePlaylist);
               }
             }else {
               logEntry("No requests");
+              sleep(4);
             }
           }
-          sleep(5);
         }
       //Do interrupt schedule
       }else {
@@ -98,6 +107,7 @@ if($remoteFppEnabled == 1) {
           $highestVotedSequence = highestVotedSequence($remoteToken);
           $winningSequence = $highestVotedSequence->winningPlaylist;
           if($winningSequence != null) {
+            logEntry("Looking for " . $nextSequence . " in " . $remotePlaylist . " playlist");
             $index = getSequenceIndex($remotePlaylistSequences, $winningSequence);
             if($index != 0) {
               insertPlaylistImmediate($remotePlaylistEncoded, $index);
@@ -106,6 +116,8 @@ if($remoteFppEnabled == 1) {
               logEntry("Updated current playing sequence to " . $winningSequence);
               $currentlyPlayingInRF = $winningSequence;
               holdForImmediatePlay();
+            }else {
+              logEntry($nextSequence . " was not found in " . $remotePlaylist);
             }
           }else {
             sleep(5);
@@ -114,6 +126,7 @@ if($remoteFppEnabled == 1) {
           $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
           $nextSequence = $nextPlaylistInQueue->nextPlaylist;
           if($nextSequence != null) {
+            logEntry("Looking for " . $nextSequence . " in " . $remotePlaylist . " playlist");
             $index = getSequenceIndex($remotePlaylistSequences, $nextSequence);
             if($index != 0) {
               insertPlaylistImmediate($remotePlaylistEncoded, $index);
@@ -123,6 +136,8 @@ if($remoteFppEnabled == 1) {
               logEntry("Updated current playing sequence to " . $nextSequence);
               $currentlyPlayingInRF = $nextSequence;
               holdForImmediatePlay();
+            }else {
+              logEntry($nextSequence . " was not found in " . $remotePlaylist);
             }
           }else {
             sleep(5);
