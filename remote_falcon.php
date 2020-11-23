@@ -14,7 +14,7 @@ if (!file_exists("/home/fpp/media/scripts/viewer_control_off.php")){
 	copy("/home/fpp/media/plugins/remote-falcon/viewer_control_off.php", "/home/fpp/media/scripts/viewer_control_off.php");
 }
 
-$pluginVersion = "5.1.2";
+$pluginVersion = "5.1.3";
 
 //foreach below will read all of the settings and thier values instead of reading each one individually
 //settings saved are:

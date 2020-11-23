@@ -67,15 +67,14 @@ if($remoteFppEnabled == 1) {
           if($viewerControlMode == "voting") {
             $highestVotedSequence = highestVotedSequence($remoteToken);
             $winningSequence = $highestVotedSequence->winningPlaylist;
+            $winningSequenceIndex = $highestVotedSequence->playlistIndex;
             if($winningSequence != null) {
-              logEntry("Looking for " . $winningSequence . " in " . $remotePlaylist . " playlist");
-              $index = getSequenceIndex($remotePlaylistSequences, $winningSequence);
-              if($index != 0) {
-                logEntry("Queuing winning sequence " . $winningSequence);
-                insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
+              if($winningSequenceIndex != 0 && $winningSequenceIndex != -1) {
+                logEntry("Queuing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
+                insertPlaylistAfterCurrent($remotePlaylistEncoded, $winningSequenceIndex);
                 sleep(4);
               }else {
-                logEntry($winningSequence . " was not found in " . $remotePlaylist);
+                logEntry($winningSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $winningSequenceIndex . ")");
               }
             }else {
               logEntry("No votes");
@@ -84,16 +83,15 @@ if($remoteFppEnabled == 1) {
           }else {
             $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
             $nextSequence = $nextPlaylistInQueue->nextPlaylist;
+            $nextSequenceIndex = $nextPlaylistInQueue->playlistIndex;
             if($nextSequence != null) {
-              logEntry("Looking for " . $nextSequence . " in " . $remotePlaylist . " playlist");
-              $index = getSequenceIndex($remotePlaylistSequences, $nextSequence);
-              if($index != 0) {
-                logEntry("Queuing requested sequence " . $nextSequence);
-                insertPlaylistAfterCurrent($remotePlaylistEncoded, $index);
+              if($nextSequenceIndex != 0 && $nextSequenceIndex != -1) {
+                logEntry("Queuing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
+                insertPlaylistAfterCurrent($remotePlaylistEncoded, $nextSequenceIndex);
                 sleep(4);
                 updatePlaylistQueue($remoteToken);
               }else {
-                logEntry($nextSequence . " was not found in " . $remotePlaylist);
+                logEntry($nextSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $nextSequenceIndex . ")");
               }
             }else {
               logEntry("No requests");
@@ -106,18 +104,17 @@ if($remoteFppEnabled == 1) {
         if($viewerControlMode == "voting") {
           $highestVotedSequence = highestVotedSequence($remoteToken);
           $winningSequence = $highestVotedSequence->winningPlaylist;
+          $winningSequenceIndex = $highestVotedSequence->playlistIndex;
           if($winningSequence != null) {
-            logEntry("Looking for " . $nextSequence . " in " . $remotePlaylist . " playlist");
-            $index = getSequenceIndex($remotePlaylistSequences, $winningSequence);
-            if($index != 0) {
-              insertPlaylistImmediate($remotePlaylistEncoded, $index);
-              logEntry("Playing winning sequence " . $winningSequence);
+            if($winningSequenceIndex != 0 && $winningSequenceIndex != -1) {
+              insertPlaylistImmediate($remotePlaylistEncoded, $winningSequenceIndex);
+              logEntry("Playing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
               updateWhatsPlaying($winningSequence, $remoteToken);
               logEntry("Updated current playing sequence to " . $winningSequence);
               $currentlyPlayingInRF = $winningSequence;
               holdForImmediatePlay();
             }else {
-              logEntry($nextSequence . " was not found in " . $remotePlaylist);
+              logEntry($winningSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $winningSequenceIndex . ")");
             }
           }else {
             sleep(5);
@@ -125,19 +122,18 @@ if($remoteFppEnabled == 1) {
         }else {
           $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
           $nextSequence = $nextPlaylistInQueue->nextPlaylist;
+          $nextSequenceIndex = $nextPlaylistInQueue->playlistIndex;
           if($nextSequence != null) {
-            logEntry("Looking for " . $nextSequence . " in " . $remotePlaylist . " playlist");
-            $index = getSequenceIndex($remotePlaylistSequences, $nextSequence);
-            if($index != 0) {
-              insertPlaylistImmediate($remotePlaylistEncoded, $index);
+            if($nextSequenceIndex != 0 && $nextSequenceIndex != -1) {
+              insertPlaylistImmediate($remotePlaylistEncoded, $nextSequenceIndex);
               updatePlaylistQueue($remoteToken);
-              logEntry("Playing requested sequence " . $nextSequence);
+              logEntry("Playing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
               updateWhatsPlaying($nextSequence, $remoteToken);
               logEntry("Updated current playing sequence to " . $nextSequence);
               $currentlyPlayingInRF = $nextSequence;
               holdForImmediatePlay();
             }else {
-              logEntry($nextSequence . " was not found in " . $remotePlaylist);
+              logEntry($nextSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $nextSequenceIndex . ")");
             }
           }else {
             sleep(5);
@@ -337,34 +333,6 @@ function updatePlaylistQueue($remoteToken) {
   );
   $context = stream_context_create( $options );
   $result = file_get_contents( $url, false, $context );
-}
-
-function getSequenceIndex($remotePlaylistSequences, $sequenceToPlay) {
-  $index = 1;
-  $validSequence = false;
-  foreach ($remotePlaylistSequences as $sequence) {
-    if(property_exists($sequence, 'sequenceName')) {
-      $sequenceName = $sequence->sequenceName;
-      $sequenceName = pathinfo($sequenceName, PATHINFO_FILENAME);
-      if($sequenceName == $sequenceToPlay) {
-        $validSequence = true;
-        break;
-      }
-    }
-    if(property_exists($sequence, 'mediaName')) {
-      $sequenceName = $sequence->mediaName;
-      $sequenceName = pathinfo($sequenceName, PATHINFO_FILENAME);
-      if($sequenceName == $sequenceToPlay) {
-        $validSequence = true;
-        break;
-      }
-    }
-    $index++;
-  }
-  if(!$validSequence) {
-    $index = 0;
-  }
-  return $index;
 }
 
 function logEntry($data) {
