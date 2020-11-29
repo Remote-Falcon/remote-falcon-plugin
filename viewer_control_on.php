@@ -1,12 +1,14 @@
 <?php
 include_once "/opt/fpp/www/common.php";
+include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
+$baseUrl = getBaseUrl();
 $pluginConfigFile = $settings['configDirectory'] . "/plugin.remote-falcon";
 $pluginSettings = parse_ini_file($pluginConfigFile);
 
 $remoteToken = urldecode($pluginSettings['remoteToken']);
 
 if(strlen($remoteToken)>1) {
-	$url = "https://remotefalcon.com/remotefalcon/api/updateViewerControl";
+	$url = $baseUrl . "/remotefalcon/api/updateViewerControl";
 	$data = array(
 		'viewerControlEnabled' => 'Y'
 	);

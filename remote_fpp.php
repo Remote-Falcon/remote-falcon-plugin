@@ -1,5 +1,7 @@
 <?php
 include_once "/opt/fpp/www/common.php";
+include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
+$baseUrl = getBaseUrl();
 $pluginName = basename(dirname(__FILE__));
 $pluginPath = $settings['pluginDirectory']."/".$pluginName."/"; 
 
@@ -48,7 +50,7 @@ if($remoteFppEnabled == 1) {
 
     $currentlyPlaying = $fppStatus->current_sequence;
     $currentlyPlaying = pathinfo($currentlyPlaying, PATHINFO_FILENAME);
-    $statusName = $fppStatus->status_name;//will this be needed with FPP 4.3 bug fix?
+    $statusName = $fppStatus->status_name;
 
     if($currentlyPlaying != $currentlyPlayingInRF) {
       updateWhatsPlaying($currentlyPlaying, $remoteToken);
@@ -56,9 +58,7 @@ if($remoteFppEnabled == 1) {
       $currentlyPlayingInRF = $currentlyPlaying;
     }
 
-    backupScheduleShutdown($fppScheduleEndTime, $statusName, $logFile);
-
-    if($statusName != "idle" && !isScheduleDone($fppScheduleEndTime)) { //what about statusName=="manual" ??
+    if($statusName != "idle" && !isScheduleDone($fppScheduleEndTime)) {
       //Do not interrupt schedule
       if($interruptSchedule != 1) {
         $secondsRemaining = intVal($fppStatus->seconds_remaining);
@@ -160,7 +160,7 @@ function holdForImmediatePlay() {
 }
 
 function remotePreferences($remoteToken) {
-  $url = "https://remotefalcon.com/remotefalcon/api/remotePreferences";
+  $url = $baseUrl . "/remotefalcon/api/remotePreferences";
   $options = array(
     'http' => array(
       'method'  => 'GET',
@@ -178,7 +178,7 @@ function getFppStatus() {
 }
 
 function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
-  $url = "https://remotefalcon.com/remotefalcon/api/updateWhatsPlaying";
+  $url = $baseUrl . "/remotefalcon/api/updateWhatsPlaying";
   $data = array(
     'playlist' => trim($currentlyPlaying)
   );
@@ -201,7 +201,7 @@ function preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile) {
   $fppScheduleStartTime = date("H:i:s", $fppScheduleStartTime);
   if($currentTime == $fppScheduleStartTime) {
     logEntry("Purging queue and votes");
-    $url = "https://remotefalcon.com/remotefalcon/api/purgeQueue";
+    $url = $baseUrl . "/remotefalcon/api/purgeQueue";
     $options = array(
       'http' => array(
         'method'  => 'DELETE',
@@ -212,7 +212,7 @@ function preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile) {
     );
     $context = stream_context_create( $options );
     $result = file_get_contents( $url, false, $context );
-    $url = "https://remotefalcon.com/remotefalcon/api/resetAllVotes";
+    $url = $baseUrl . "/remotefalcon/api/resetAllVotes";
     $options = array(
       'http' => array(
         'method'  => 'DELETE',
@@ -240,15 +240,6 @@ function isScheduleDone($fppScheduleEndTime) {
   }
   return false;
 }
-
-function backupScheduleShutdown($fppScheduleEndTime, $statusName, $logFile) {
-  if(isScheduleDone($fppScheduleEndTime) && $statusName != "stopping gracefully" && $statusName != "idle") {
-    logEntry("Schedule is done, so stopping gracefully");
-    stopGracefully();
-    sleep(60);
-  }
-}
-
 
 function insertPlaylistImmediate($remotePlaylistEncoded, $index) { 
   $url = "http://127.0.0.1/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
@@ -296,7 +287,7 @@ function getPlaylistDetails($remotePlaylistEncoded) {
 }
 
 function highestVotedSequence($remoteToken) {
-  $url = "https://remotefalcon.com/remotefalcon/api/highestVotedPlaylist";
+  $url = $baseUrl . "/remotefalcon/api/highestVotedPlaylist";
   $options = array(
     'http' => array(
       'method'  => 'GET',
@@ -309,7 +300,7 @@ function highestVotedSequence($remoteToken) {
 }
 
 function nextPlaylistInQueue($remoteToken) {
-  $url = "https://remotefalcon.com/remotefalcon/api/nextPlaylistInQueue";
+  $url = $baseUrl . "/remotefalcon/api/nextPlaylistInQueue";
   $options = array(
     'http' => array(
       'method'  => 'GET',
@@ -322,7 +313,7 @@ function nextPlaylistInQueue($remoteToken) {
 }
 
 function updatePlaylistQueue($remoteToken) {
-  $url = "https://remotefalcon.com/remotefalcon/api/updatePlaylistQueue";
+  $url = $baseUrl . "/remotefalcon/api/updatePlaylistQueue";
   $options = array(
     'http' => array(
       'method'  => 'POST',
