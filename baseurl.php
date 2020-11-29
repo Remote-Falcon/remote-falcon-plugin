@@ -1,7 +1,8 @@
 <?php
 function getBaseUrl() {
   $host = getenv('HTTP_HOST');
-  if($host == "localhost:8090") {
+  $useTest = false;
+  if($useTest) {
     return "https://remotefalcon.me";
   }else {
     return "https://remotefalcon.com";

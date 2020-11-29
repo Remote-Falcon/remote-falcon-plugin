@@ -160,7 +160,7 @@ function holdForImmediatePlay() {
 }
 
 function remotePreferences($remoteToken) {
-  $url = $baseUrl . "/remotefalcon/api/remotePreferences";
+  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/remotePreferences";
   $options = array(
     'http' => array(
       'method'  => 'GET',
@@ -178,7 +178,7 @@ function getFppStatus() {
 }
 
 function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
-  $url = $baseUrl . "/remotefalcon/api/updateWhatsPlaying";
+  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/updateWhatsPlaying";
   $data = array(
     'playlist' => trim($currentlyPlaying)
   );
@@ -201,7 +201,7 @@ function preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile) {
   $fppScheduleStartTime = date("H:i:s", $fppScheduleStartTime);
   if($currentTime == $fppScheduleStartTime) {
     logEntry("Purging queue and votes");
-    $url = $baseUrl . "/remotefalcon/api/purgeQueue";
+    $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/purgeQueue";
     $options = array(
       'http' => array(
         'method'  => 'DELETE',
@@ -212,7 +212,7 @@ function preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile) {
     );
     $context = stream_context_create( $options );
     $result = file_get_contents( $url, false, $context );
-    $url = $baseUrl . "/remotefalcon/api/resetAllVotes";
+    $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/resetAllVotes";
     $options = array(
       'http' => array(
         'method'  => 'DELETE',
@@ -287,7 +287,7 @@ function getPlaylistDetails($remotePlaylistEncoded) {
 }
 
 function highestVotedSequence($remoteToken) {
-  $url = $baseUrl . "/remotefalcon/api/highestVotedPlaylist";
+  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/highestVotedPlaylist";
   $options = array(
     'http' => array(
       'method'  => 'GET',
@@ -300,7 +300,7 @@ function highestVotedSequence($remoteToken) {
 }
 
 function nextPlaylistInQueue($remoteToken) {
-  $url = $baseUrl . "/remotefalcon/api/nextPlaylistInQueue";
+  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/nextPlaylistInQueue";
   $options = array(
     'http' => array(
       'method'  => 'GET',
@@ -313,7 +313,7 @@ function nextPlaylistInQueue($remoteToken) {
 }
 
 function updatePlaylistQueue($remoteToken) {
-  $url = $baseUrl . "/remotefalcon/api/updatePlaylistQueue";
+  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/updatePlaylistQueue";
   $options = array(
     'http' => array(
       'method'  => 'POST',
