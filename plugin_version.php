@@ -1,5 +1,7 @@
 <?php
 include_once "/opt/fpp/www/common.php";
+include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
+$baseUrl = getBaseUrl();
 $pluginName = basename(dirname(__FILE__));
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
 $pluginSettings = parse_ini_file($pluginConfigFile);
@@ -19,7 +21,7 @@ if(strlen($remoteToken)>1) {
 	$response = json_decode( $result );
 	$fppVersion = $response->version;
 	
-	$url = "https://remotefalcon.com/remotefalcon/api/pluginVersion";
+	$url = $baseUrl . "/remotefalcon/api/pluginVersion";
 	$data = array(
 		'pluginVersion' => $pluginVersion,
 		'fppVersion' => $fppVersion

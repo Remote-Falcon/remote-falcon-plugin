@@ -1,5 +1,7 @@
 <?php
 include_once "/opt/fpp/www/common.php"; //Alows use of FPP Functions
+include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
+$baseUrl = getBaseUrl();
 $pluginName = basename(dirname(__FILE__));
 $pluginConfigFile = $settings['configDirectory'] ."/plugin." .$pluginName; //gets path to configuration files for plugin
     
@@ -14,7 +16,7 @@ if (!file_exists("/home/fpp/media/scripts/viewer_control_off.php")){
 	copy("/home/fpp/media/plugins/remote-falcon/viewer_control_off.php", "/home/fpp/media/scripts/viewer_control_off.php");
 }
 
-$pluginVersion = "5.1.3";
+$pluginVersion = "5.1.4";
 
 //foreach below will read all of the settings and thier values instead of reading each one individually
 //settings saved are:
@@ -92,6 +94,25 @@ if ($response['updatesAvailable'] == 1) {//show/hide the updates available secti
 $syncResultDiv= "display:none";
 $syncResultMessage="";
 
+if(strlen($remoteToken) > 1) {
+	$startTime = time();
+	$url = $baseUrl . "/remotefalcon/api/apiTest";
+  $options = array(
+    'http' => array(
+      'method'  => 'GET',
+      'header'=>  "remotetoken: $remoteToken\r\n"
+      )
+  );
+  $context = stream_context_create( $options );
+	$result = file_get_contents( $url, false, $context );
+	$endTime = time();
+	$responseTime = intval($endTime - $startTime);
+	$responseTimeMessage = "";
+	if($responseTime >= 1) {
+		$responseTimeMessage = "Your network latency may prevent Remote Falcon from functioning properly!";
+	}
+}
+
 if (isset($_POST['saveRemotePlaylist'])) { 
 	$remotePlaylist=urldecode($pluginSettings['remotePlaylist']);
 	if (strlen($remotePlaylist)>=2){
@@ -125,7 +146,7 @@ if (isset($_POST['saveRemotePlaylist'])) {
 				}
 				$index++;
 			}
-			$url = "https://remotefalcon.com/remotefalcon/api/syncPlaylists";
+			$url = $baseUrl . "/remotefalcon/api/syncPlaylists";
 			$data = array(
 				'playlists' => $playlists
 			);
@@ -173,12 +194,14 @@ if (isset($_POST['saveRemotePlaylist'])) {
 <div class="pluginBody" style="margin-left: 1em;">
 	<div class="title">
 		<h1>Remote Falcon Plugin v<? echo $pluginVersion; ?></h1>
+		<? echo $baseUrl == "https://remotefalcon.me" ? "TEST" : "" ?>
 		<h4></h4>
 	</div>
 	<div id="showUpdate" style=" <? echo "$showUpdateDiv"; ?>">
 		<h3 style="color: #a72525;">A new update is available for the Remote Falcon Plugin!</h3>
 		<h3 style="color: #a72525;">Go to the Plugin Manager to update</h3>
 	</div>
+	<h3 style="color: #a72525;"><? echo $responseTimeMessage ?></h3>
 
 	<h3 style="color: #D65A31;">Step 1:</h3>
 	<h5>If you need to update your remote token, place it in the input box below.</h5>
