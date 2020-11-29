@@ -62,8 +62,8 @@ if($remoteFppEnabled == 1) {
       //Do not interrupt schedule
       if($interruptSchedule != 1) {
         $secondsRemaining = intVal($fppStatus->seconds_remaining);
-        if($secondsRemaining < 3) {
-          logEntry("3 seconds remaining, so fetching next request");
+        if($secondsRemaining < 10) {
+          logEntry("10 seconds remaining, so fetching next request");
           if($viewerControlMode == "voting") {
             $highestVotedSequence = highestVotedSequence($remoteToken);
             $winningSequence = $highestVotedSequence->winningPlaylist;
@@ -72,13 +72,13 @@ if($remoteFppEnabled == 1) {
               if($winningSequenceIndex != 0 && $winningSequenceIndex != -1) {
                 logEntry("Queuing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
                 insertPlaylistAfterCurrent($remotePlaylistEncoded, $winningSequenceIndex);
-                sleep(4);
+                sleep(12);
               }else {
                 logEntry($winningSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $winningSequenceIndex . ")");
               }
             }else {
               logEntry("No votes");
-              sleep(4);
+              sleep(12);
             }
           }else {
             $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
@@ -88,14 +88,14 @@ if($remoteFppEnabled == 1) {
               if($nextSequenceIndex != 0 && $nextSequenceIndex != -1) {
                 logEntry("Queuing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
                 insertPlaylistAfterCurrent($remotePlaylistEncoded, $nextSequenceIndex);
-                sleep(4);
+                sleep(12);
                 updatePlaylistQueue($remoteToken);
               }else {
                 logEntry($nextSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $nextSequenceIndex . ")");
               }
             }else {
               logEntry("No requests");
-              sleep(4);
+              sleep(12);
             }
           }
         }
