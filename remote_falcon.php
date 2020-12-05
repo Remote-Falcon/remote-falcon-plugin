@@ -16,7 +16,7 @@ if (!file_exists("/home/fpp/media/scripts/viewer_control_off.php")){
 	copy("/home/fpp/media/plugins/remote-falcon/viewer_control_off.php", "/home/fpp/media/scripts/viewer_control_off.php");
 }
 
-$pluginVersion = "5.1.4";
+$pluginVersion = "5.1.5";
 
 //foreach below will read all of the settings and thier values instead of reading each one individually
 //settings saved are:
@@ -95,22 +95,29 @@ $syncResultDiv= "display:none";
 $syncResultMessage="";
 
 if(strlen($remoteToken) > 1) {
-	$startTime = time();
+	$startTime = microtime(true);
 	$url = $baseUrl . "/remotefalcon/api/apiTest";
-  $options = array(
-    'http' => array(
-      'method'  => 'GET',
-      'header'=>  "remotetoken: $remoteToken\r\n"
-      )
-  );
-  $context = stream_context_create( $options );
+	$options = array(
+		'http' => array(
+		'method'  => 'GET',
+		'header'=>  "remotetoken: $remoteToken\r\n"
+		)
+	);
+	$context = stream_context_create( $options );
 	$result = file_get_contents( $url, false, $context );
-	$endTime = time();
-	$responseTime = intval($endTime - $startTime);
-	$responseTimeMessage = "";
-	if($responseTime >= 1) {
-		$responseTimeMessage = "Your network latency may prevent Remote Falcon from functioning properly!";
-	}
+	$responseCode = getHttpCode($http_response_header);
+	$endTime = microtime(true);
+	$responseTime = intval(($endTime - $startTime)*100);
+	$responseTimeMessage = "Remote Falcon responded in  " . $responseTime . "ms with a response code of " . $responseCode;
+}
+
+function getHttpCode($http_response_header) {
+    if(is_array($http_response_header)) {
+        $parts=explode(' ',$http_response_header[0]);
+        if(count($parts)>1)
+            return intval($parts[1]);
+    }
+    return 0;
 }
 
 if (isset($_POST['saveRemotePlaylist'])) { 
@@ -201,7 +208,6 @@ if (isset($_POST['saveRemotePlaylist'])) {
 		<h3 style="color: #a72525;">A new update is available for the Remote Falcon Plugin!</h3>
 		<h3 style="color: #a72525;">Go to the Plugin Manager to update</h3>
 	</div>
-	<h3 style="color: #a72525;"><? echo $responseTimeMessage ?></h3>
 
 	<h3 style="color: #D65A31;">Step 1:</h3>
 	<h5>If you need to update your remote token, place it in the input box below.</h5>
@@ -266,6 +272,10 @@ PrintSettingCheckbox("Interrupt Schedule", "interrupt_schedule_enabled", $restar
 		database. If you would like to help support Remote Falcon you can donate using the button below.</h5>
 		<h5>Donations will <strong>never</strong> be required but will <strong>always</strong> be appreciated.</h5>
 		<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url" target="_blank" rel="noopener noreferrer"> <img style="margin-left: 1em;" alt="RF_Donate" src="https://remotefalcon.com/support-button.png"></a>
+
+		<p>
+			<? echo $responseTimeMessage ?>
+		</p>
 	
 	
 </div>
