@@ -38,6 +38,8 @@ if($remoteFppEnabled == 1) {
   $fppScheduleStartTime = null;
   $fppScheduleEndTime = null;
 
+  scriptStartupPurge($remoteToken, $logFile);
+
   while(true) {
     $fppStatus = getFppStatus();
     
@@ -193,6 +195,33 @@ function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
   );
   $context = stream_context_create( $options );
   $result = file_get_contents( $url, false, $context );
+}
+
+function scriptStartupPurge($remoteToken, $logFile) {
+  logEntry("Purging queue and votes");
+  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/purgeQueue";
+  $options = array(
+    'http' => array(
+      'method'  => 'DELETE',
+      'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+                  "Accept: application/json\r\n" .
+                  "remotetoken: $remoteToken\r\n"
+      )
+  );
+  $context = stream_context_create( $options );
+  $result = file_get_contents( $url, false, $context );
+  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/resetAllVotes";
+  $options = array(
+    'http' => array(
+      'method'  => 'DELETE',
+      'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+                  "Accept: application/json\r\n" .
+                  "remotetoken: $remoteToken\r\n"
+      )
+  );
+  $context = stream_context_create( $options );
+  $result = file_get_contents( $url, false, $context );
+  logEntry("Purged");
 }
 
 function preSchedulePurge($fppScheduleStartTime, $remoteToken, $logFile) {
