@@ -16,7 +16,7 @@ if (!file_exists("/home/fpp/media/scripts/viewer_control_off.php")){
 	copy("/home/fpp/media/plugins/remote-falcon/viewer_control_off.php", "/home/fpp/media/scripts/viewer_control_off.php");
 }
 
-$pluginVersion = "5.1.5";
+$pluginVersion = "5.1.6";
 
 //foreach below will read all of the settings and thier values instead of reading each one individually
 //settings saved are:
@@ -209,11 +209,13 @@ if (isset($_POST['saveRemotePlaylist'])) {
 		<h3 style="color: #a72525;">Go to the Plugin Manager to update</h3>
 	</div>
 
+	<h3>Remote Falcon log is located in the Logs tab under File Manager.</h3>
+
 	<h3 style="color: #D65A31;">Step 1:</h3>
-	<h5>If you need to update your remote token, place it in the input box below.</h5>
+	<h5>Place your Remote Token (found in your Remote Falcon Control Panel) in the box below and press Enter.</h5>
 	<div>
 <?
-PrintSettingTextSaved("remoteToken", $restart = 0, $reboot = 0, $maxlength = 32, $size = 32, $pluginName = $pluginName, $defaultValue = "Enter Your Token");
+PrintSettingTextSaved("remoteToken", $restart = 1, $reboot = 0, $maxlength = 25, $size = 25, $pluginName = $pluginName);
 ?>
 	</div>	
 		<h3 style="color: #D65A31;">Step 2:</h3>
