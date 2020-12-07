@@ -1,6 +1,9 @@
 <?php
 function getBaseUrl() {
-  $host = getenv('HTTP_HOST');
+  $host = gethostname();
+  if($host == "fpplocal") {
+    return "https://remotefalcon.me";
+  }
   return "https://remotefalcon.com";
 }
 ?>
