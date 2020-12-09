@@ -14,13 +14,6 @@ $remoteFppEnabled = urldecode($pluginSettings['remote_fpp_enabled']);
 $remoteFppEnabled = $remoteFppEnabled == "true" ? true : false;
 
 $remoteToken = urldecode($pluginSettings['remoteToken']);
-$validateRemoteToken = validateRemoteToken($remoteToken);
-$isRemoteTokenValid = $validateRemoteToken->isValidRemoteToken;
-
-if(!$isRemoteTokenValid) {
-  logEntry("The Remote Token entered is not valid!");
-  exit;
-}
 
 if($remoteFppEnabled == 1) {
   echo "Starting Remote Falcon Plugin v" . $pluginVersion . "\n";
@@ -155,19 +148,6 @@ if($remoteFppEnabled == 1) {
   }
 }else {
   logEntry("Remote Falcon is disabled");
-}
-
-function validateRemoteToken($remoteToken) {
-  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/isValidRemoteToken";
-  $options = array(
-    'http' => array(
-      'method'  => 'GET',
-      'header'=>  "remotetoken: $remoteToken\r\n"
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
-  return json_decode( $result );
 }
 
 function holdForImmediatePlay() {

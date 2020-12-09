@@ -16,7 +16,7 @@ if (!file_exists("/home/fpp/media/scripts/viewer_control_off.php")){
 	copy("/home/fpp/media/plugins/remote-falcon/viewer_control_off.php", "/home/fpp/media/scripts/viewer_control_off.php");
 }
 
-$pluginVersion = "5.1.6";
+$pluginVersion = "5.1.7";
 
 //foreach below will read all of the settings and thier values instead of reading each one individually
 //settings saved are:
@@ -45,6 +45,7 @@ foreach ($pluginSettings as $key => $value) {
 	${$key} = urldecode($value);
 }
 
+$remotePlaylistStyle="";
 if(strlen($remotePlaylist)<1){
 	$remotePlaylist= "NO PLAYLIST CURRENTLY SAVED";
 	$remotePlaylistStyle="color: #ff0000";
@@ -95,6 +96,7 @@ $syncResultDiv= "display:none";
 $syncResultMessage="";
 
 if(strlen($remoteToken) > 1) {
+	//Get Response Times
 	$startTime = microtime(true);
 	$url = $baseUrl . "/remotefalcon/api/apiTest";
 	$options = array(
@@ -109,6 +111,23 @@ if(strlen($remoteToken) > 1) {
 	$endTime = microtime(true);
 	$responseTime = intval(($endTime - $startTime)*100);
 	$responseTimeMessage = "Remote Falcon responded in  " . $responseTime . "ms with a response code of " . $responseCode;
+
+	//Validate Token
+	$url = $GLOBALS['baseUrl'] . "/remotefalcon/api/isValidRemoteToken";
+	$options = array(
+		'http' => array(
+		'method'  => 'GET',
+		'header'=>  "remotetoken: $remoteToken\r\n"
+		)
+	);
+	$context = stream_context_create( $options );
+	$result = file_get_contents( $url, false, $context );
+	$response = json_decode( $result );
+	$isRemoteTokenValid = $response->isValidRemoteToken;
+	$validTokenMessage = "";
+	if(!$isRemoteTokenValid) {
+		$validTokenMessage = "The Remote Token entered is not valid!";
+	}
 }
 
 function getHttpCode($http_response_header) {
@@ -213,6 +232,7 @@ if (isset($_POST['saveRemotePlaylist'])) {
 
 	<h3 style="color: #D65A31;">Step 1:</h3>
 	<h5>Place your Remote Token (found in your Remote Falcon Control Panel) in the box below and press Enter.</h5>
+	<h4 style="color: #ff0000"><? echo $validTokenMessage ?></h4>
 	<div>
 <?
 PrintSettingTextSaved("remoteToken", $restart = 1, $reboot = 0, $maxlength = 25, $size = 25, $pluginName = $pluginName);
