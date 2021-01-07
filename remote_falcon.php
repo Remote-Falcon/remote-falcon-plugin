@@ -304,8 +304,8 @@ if (isset($_POST['stopRemoteFalcon'])) {
   </style>
 </head>
 <body>
-  <div class="container plugin-body">
-    <div class="container" style="padding-top: 2em;">
+  <div class="container-fluid plugin-body">
+    <div class="container-fluid" style="padding-top: 2em;">
       <div class="justify-content-md-center row" style="padding-bottom: 1em;">
         <div class="col-md-auto">
           <h1>Remote Falcon Plugin v<? echo $pluginVersion; ?></h1>
@@ -336,7 +336,7 @@ if (isset($_POST['stopRemoteFalcon'])) {
         </div>
       </div>
     </div>
-    <div class="container">
+    <div class="container-fluid">
       <div class="card">
         <div class="card-body">
           <!-- Remote Token -->
