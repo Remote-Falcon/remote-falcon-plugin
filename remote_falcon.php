@@ -10,6 +10,7 @@ if (file_exists($pluginConfigFile)) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
+//Copy RF Scripts
 if (!file_exists("/home/fpp/media/scripts/viewer_control_on.php")){
   copy("/home/fpp/media/plugins/remote-falcon/viewer_control_on.php", "/home/fpp/media/scripts/viewer_control_on.php");
 }
@@ -18,6 +19,18 @@ if (!file_exists("/home/fpp/media/scripts/viewer_control_off.php")){
 }
 if (!file_exists("/home/fpp/media/scripts/purge_queue.php")){
   copy("/home/fpp/media/plugins/remote-falcon/purge_queue.php", "/home/fpp/media/scripts/purge_queue.php");
+}
+if (!file_exists("/home/fpp/media/scripts/interrupt_schedule_on.php")){
+  copy("/home/fpp/media/plugins/remote-falcon/interrupt_schedule_on.php", "/home/fpp/media/scripts/interrupt_schedule_on.php");
+}
+if (!file_exists("/home/fpp/media/scripts/interrupt_schedule_off.php")){
+  copy("/home/fpp/media/plugins/remote-falcon/interrupt_schedule_off.php", "/home/fpp/media/scripts/interrupt_schedule_off.php");
+}
+if (!file_exists("/home/fpp/media/scripts/restart_remote_falcon.php")){
+  copy("/home/fpp/media/plugins/remote-falcon/restart_remote_falcon.php", "/home/fpp/media/scripts/restart_remote_falcon.php");
+}
+if (!file_exists("/home/fpp/media/scripts/stop_remote_falcon.php")){
+  copy("/home/fpp/media/plugins/remote-falcon/stop_remote_falcon.php", "/home/fpp/media/scripts/stop_remote_falcon.php");
 }
 
 $pluginVersion = "6.0.0";
@@ -35,11 +48,19 @@ if (strlen(urldecode($pluginSettings['remoteToken']))<1){
 if (strlen(urldecode($pluginSettings['requestFetchTime']))<1){
   WriteSettingToFile("requestFetchTime",urlencode("10"),$pluginName);
 }
+if (strlen(urldecode($pluginSettings['autoRestartPlugin']))<1){
+  WriteSettingToFile("autoRestartPlugin",urlencode("false"),$pluginName);
+}
 WriteSettingToFile("pluginVersion",urlencode($pluginVersion),$pluginName);
 
 foreach ($pluginSettings as $key => $value) { 
   ${$key} = urldecode($value);
 }
+
+$remoteFppEnabled = urldecode($pluginSettings['remote_fpp_enabled']);
+$remoteFppEnabled = $remoteFppEnabled == "true" ? true : false;
+$autoRestartPlugin = urldecode($pluginSettings['autoRestartPlugin']);
+$autoRestartPlugin = $autoRestartPlugin == "true" ? true : false;
 
 $url = "http://127.0.0.1/api/plugin/remote-falcon/updates";
 $options = array(
@@ -125,6 +146,10 @@ if (isset($_POST['updateRemotePlaylist'])) {
       $response = json_decode( $result );
       if($response) {
         WriteSettingToFile("remotePlaylist",$remotePlaylist,$pluginName);
+        if($autoRestartPlugin == 1 && $remoteFppEnabled == 1) {
+          WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+          WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+        }
         echo "<script type=\"text/javascript\">$.jGrowl('Remote Playlist Synced!');</script>";
       }else {
         echo "<script type=\"text/javascript\">$.jGrowl('Remote Playlist Sync Failed!');</script>";
@@ -137,8 +162,6 @@ if (isset($_POST['updateRemotePlaylist'])) {
   }
 }
 
-$remoteFppEnabled = urldecode($pluginSettings['remote_fpp_enabled']);
-$remoteFppEnabled = $remoteFppEnabled == "true" ? true : false;
 $remoteFalconState = "<h4 id=\"remoteFalconRunning\">Remote Falcon is currently running</h4>";
 if($remoteFppEnabled == 0) {
   $remoteFalconState = "<h4 id=\"remoteFalconStopped\">Remote Falcon is currently stopped</h4>";
@@ -147,12 +170,20 @@ if($remoteFppEnabled == 0) {
 if (isset($_POST['updateRemoteToken'])) { 
   $remoteToken = trim($_POST['remoteToken']);
   WriteSettingToFile("remoteToken",$remoteToken,$pluginName);
+  if($autoRestartPlugin == 1 && $remoteFppEnabled == 1) {
+    WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+    WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+  }
   echo "<script type=\"text/javascript\">$.jGrowl('Remote Token Updated');</script>";
 }
 
 if (isset($_POST['updateRequestFetchTime'])) { 
   $requestFetchTime = trim($_POST['requestFetchTime']);
   WriteSettingToFile("requestFetchTime",$requestFetchTime,$pluginName);
+  if($autoRestartPlugin == 1 && $remoteFppEnabled == 1) {
+    WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+    WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+  }
   echo "<script type=\"text/javascript\">$.jGrowl('Request Fetch Time Updated');</script>";
 }
 
@@ -170,12 +201,20 @@ if (isset($_POST['interruptScheduleYes'])) {
   $interruptYes = "btn-primary";
   $interruptNo = "btn-secondary";
   WriteSettingToFile("interrupt_schedule_enabled",urlencode("true"),$pluginName);
+  if($autoRestartPlugin == 1 && $remoteFppEnabled == 1) {
+    WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+    WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+  }
   echo "<script type=\"text/javascript\">$.jGrowl('Interrupt Schedule On');</script>";
 }
 if (isset($_POST['interruptScheduleNo'])) {
   $interruptYes = "btn-secondary";
   $interruptNo = "btn-primary";
   WriteSettingToFile("interrupt_schedule_enabled",urlencode("false"),$pluginName);
+  if($autoRestartPlugin == 1 && $remoteFppEnabled == 1) {
+    WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+    WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+  }
   echo "<script type=\"text/javascript\">$.jGrowl('Interrupt Schedule Off');</script>";
 }
 
@@ -187,6 +226,29 @@ if (isset($_POST['restartRemoteFalcon'])) {
 if (isset($_POST['stopRemoteFalcon'])) {
   $remoteFalconState = "<h4 id=\"remoteFalconStopped\">Remote Falcon is currently stopped</h4>";
   WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+}
+
+$restartNotice = "";
+if($autoRestartPlugin == 1) {
+  $autoRestartPluginYes = "btn-primary";
+  $autoRestartPluginNo = "btn-secondary";
+  $restartNotice = "visibility: hidden;";
+}else {
+  $autoRestartPluginYes = "btn-secondary";
+  $autoRestartPluginNo = "btn-primary";
+  $restartNotice = "visibility: visible;";
+}
+if (isset($_POST['autoRestartPluginYes'])) {
+  $autoRestartPluginYes = "btn-primary";
+  $autoRestartPluginNo = "btn-secondary";
+  WriteSettingToFile("autoRestartPlugin",urlencode("true"),$pluginName);
+  echo "<script type=\"text/javascript\">$.jGrowl('Auto Restart On');</script>";
+}
+if (isset($_POST['autoRestartPluginNo'])) {
+  $autoRestartPluginYes = "btn-secondary";
+  $autoRestartPluginNo = "btn-primary";
+  WriteSettingToFile("autoRestartPlugin",urlencode("false"),$pluginName);
+  echo "<script type=\"text/javascript\">$.jGrowl('Auto Restart Off');</script>";
 }
 
 ?>
@@ -299,7 +361,8 @@ if (isset($_POST['stopRemoteFalcon'])) {
     }
 		#restartNotice {
 			font-weight: bold;
-			color: #D65A31;
+      color: #D65A31;
+      <? echo $restartNotice; ?>
 		}
   </style>
 </head>
@@ -442,6 +505,27 @@ if (isset($_POST['stopRemoteFalcon'])) {
               </form>
             </div>
           </div>
+          <!-- Auto Restart Plugin -->
+          <div class="justify-content-md-center row setting-item">
+            <div class="col-md-6">
+              <div class="card-title h5">
+                Auto Restart Remote Falcon
+              </div>
+              <div class="mb-2 text-muted card-subtitle h6">
+                Turning this on will automatically restart Remote Falcon when a plugin change is made
+              </div>
+            </div>
+            <div class="col-md-6">
+              <form method="post">
+                <button class="btn mr-md-3 hvr-underline-from-center <? echo $autoRestartPluginYes; ?>" id="autoRestartPluginYes" name="autoRestartPluginYes" type="submit">
+                  Yes
+                </button>
+                <button class="btn mr-md-3 hvr-underline-from-center <? echo $autoRestartPluginNo; ?>" id="autoRestartPluginNo" name="autoRestartPluginNo" type="submit">
+                  No
+                </button>
+              </form>
+            </div>
+          </div>
           <!-- Restart Remote Falcon -->
           <div class="justify-content-md-center row setting-item">
             <div class="col-md-6">
@@ -454,7 +538,7 @@ if (isset($_POST['stopRemoteFalcon'])) {
             </div>
             <div class="col-md-6">
               <form method="post">
-                <button class="btn mr-md-3 hvr-underline-from-center btn-danger" id="restartRemoteFalcon" name="restartRemoteFalcon" type="submit">
+                <button class="btn mr-md-3 hvr-underline-from-center btn-primary" id="restartRemoteFalcon" name="restartRemoteFalcon" type="submit">
                   Restart Remote Falcon
                 </button>
               </form>

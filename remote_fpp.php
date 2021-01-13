@@ -81,6 +81,7 @@ while(true) {
                 logEntry("Queuing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
                 insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $winningSequenceIndex);
                 sleep($requestFetchTime);
+                updateCurrentlyPlaying($winningSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
               }else {
                 logEntry($winningSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $winningSequenceIndex . ")");
               }
@@ -97,6 +98,7 @@ while(true) {
                 logEntry("Queuing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
                 insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $nextSequenceIndex);
                 sleep($requestFetchTime);
+                updateCurrentlyPlaying($nextSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
               }else {
                 logEntry($nextSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $nextSequenceIndex . ")");
               }
@@ -116,9 +118,7 @@ while(true) {
             if($winningSequenceIndex != 0 && $winningSequenceIndex != -1) {
               insertPlaylistImmediate(rawurlencode($remotePlaylist), $winningSequenceIndex);
               logEntry("Playing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
-              updateWhatsPlaying($winningSequence, $remoteToken);
-              logEntry("Updated current playing sequence to " . $winningSequence);
-              $currentlyPlayingInRF = $winningSequence;
+              updateCurrentlyPlaying($winningSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
               holdForImmediatePlay();
             }else {
               logEntry($winningSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $winningSequenceIndex . ")");
@@ -134,9 +134,7 @@ while(true) {
             if($nextSequenceIndex != 0 && $nextSequenceIndex != -1) {
               insertPlaylistImmediate(rawurlencode($remotePlaylist), $nextSequenceIndex);
               logEntry("Playing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
-              updateWhatsPlaying($nextSequence, $remoteToken);
-              logEntry("Updated current playing sequence to " . $nextSequence);
-              $currentlyPlayingInRF = $nextSequence;
+              updateCurrentlyPlaying($nextSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
               holdForImmediatePlay();
             }else {
               logEntry($nextSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $nextSequenceIndex . ")");
@@ -269,7 +267,7 @@ function highestVotedSequence($remoteToken) {
 }
 
 function nextPlaylistInQueue($remoteToken) {
-  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/nextPlaylistInQueue";
+  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/nextPlaylistInQueue?updateQueue=true";
   $options = array(
     'http' => array(
       'method'  => 'GET',
