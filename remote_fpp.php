@@ -20,6 +20,7 @@ $remotePlaylist = "";
 $viewerControlMode = "";
 $interruptSchedule = "";
 $currentlyPlayingInRF = "";
+$nextScheduledInRF= "";
 $requestFetchTime = "";
 
 $remoteToken = urldecode($pluginSettings['remoteToken']);
@@ -66,6 +67,7 @@ while(true) {
     if($statusName != "idle") {
       $currentlyPlaying = pathinfo($fppStatus->current_sequence, PATHINFO_FILENAME);
       updateCurrentlyPlaying($currentlyPlaying, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+      updateNextScheduledSequence($fppStatus, $currentlyPlaying, $GLOBALS['nextScheduledInRF'], $remoteToken);
 
       //Do not interrupt schedule
       if($interruptSchedule != 1) {
@@ -160,6 +162,33 @@ function updateCurrentlyPlaying($currentlyPlaying, $currentlyPlayingInRF, $remot
   }
 }
 
+function updateNextScheduledSequence($fppStatus, $currentlyPlaying, $nextScheduledInRF, $remoteToken) {
+  $currentPlaylist = $fppStatus->current_playlist->playlist;
+  $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
+  $mainPlaylist = $playlistDetails->mainPlaylist;
+  $nextScheduled = getNextSequence($mainPlaylist, $currentlyPlaying);
+  if($nextScheduled != $nextScheduledInRF && $currentPlaylist != $GLOBALS['remotePlaylist']) {
+    echo ("Updating sequence\n");
+    updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
+    logEntry("Updated next scheduled sequence to " . $currentlyPlaying);
+    $GLOBALS['nextScheduledInRF'] = $nextScheduled;
+  }
+}
+
+function getNextSequence($mainPlaylist, $currentlyPlaying) {
+  $nextScheduled = "";
+  for ($i = 0; $i < count($mainPlaylist); $i++) {
+    if(pathinfo($mainPlaylist[$i]->sequenceName, PATHINFO_FILENAME) == $currentlyPlaying) {
+      if($i+1 == count($mainPlaylist)) {
+        $nextScheduled = $mainPlaylist[0]->sequenceName;
+      }else {
+        $nextScheduled = $mainPlaylist[$i+1]->sequenceName;
+      }
+    }
+  }
+  return pathinfo($nextScheduled, PATHINFO_FILENAME);
+}
+
 function holdForImmediatePlay() {
   sleep(5);
   $fppStatus = getFppStatus();
@@ -194,6 +223,24 @@ function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
   $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/updateWhatsPlaying";
   $data = array(
     'playlist' => trim($currentlyPlaying)
+  );
+  $options = array(
+    'http' => array(
+      'method'  => 'POST',
+      'content' => json_encode( $data ),
+      'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+                  "Accept: application/json\r\n" .
+                  "remotetoken: $remoteToken\r\n"
+      )
+  );
+  $context = stream_context_create( $options );
+  $result = file_get_contents( $url, false, $context );
+}
+
+function updateNextScheduledSequenceInRf($nextScheduled, $remoteToken) {
+  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/updateNextScheduledSequence";
+  $data = array(
+    'sequence' => trim($nextScheduled)
   );
   $options = array(
     'http' => array(
