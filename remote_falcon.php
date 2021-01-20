@@ -272,12 +272,20 @@ if (isset($_POST['autoRestartPluginNo'])) {
       font-weight: 400;
       line-height: 1.5;
       padding-bottom: 2em;
+      background-image: url("https://remotefalcon.com/brick-wall-background-with-juke.jpg");
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      background-position: top center;
+      background-size: autp 100%;
     }
     .card {
-      background-color: rgb(59, 69, 84);
+      background-color: rgba(59, 69, 84, 0.7);
       border-radius: 0.5em;
       margin: 1em 1em 1em 1em;
       padding: 1em 1em 1em 1em;
+    }
+    .card-body {
+      background-color: rgba(59, 69, 84, 0);
     }
     .card-subtitle {
       font-size: .9rem;
@@ -369,33 +377,35 @@ if (isset($_POST['autoRestartPluginNo'])) {
 <body>
   <div class="container-fluid plugin-body">
     <div class="container-fluid" style="padding-top: 2em;">
-      <div class="justify-content-md-center row" style="padding-bottom: 1em;">
-        <div class="col-md-auto">
-          <h1>Remote Falcon Plugin v<? echo $pluginVersion; ?></h1>
-        </div>
-      </div>
-      <div class="justify-content-md-center row" style="padding-bottom: 1em;">
-        <div class="col-md-auto">
-          <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url" target="_blank" rel="noopener noreferrer">
-            <img style="margin-left: 1em;" alt="RF_Donate" src="https://remotefalcon.com/support-button-v2.png">
-          </a>
-        </div>
-      </div>
-			<div class="justify-content-md-center row" style="padding-bottom: 1em;">
-				<div class="col-md-auto">
-          <? echo $remoteFalconState; ?>
-				</div>
-			</div>
-      <div style=<? echo "$showUpdateDiv"; ?>>
-        <div id="update" class="justify-content-md-center row">
+      <div class="card">
+        <div class="card-body"><div class="justify-content-md-center row" style="padding-bottom: 1em;">
           <div class="col-md-auto">
-            <h4>An update is available!</h4>
+            <h1>Remote Falcon Plugin v<? echo $pluginVersion; ?></h1>
           </div>
         </div>
-      </div>
-      <div class="justify-content-md-center row">
-        <div class="col-md-auto">
-          <h4 id="env"><? echo $baseUrl == "https://remotefalcon.me" ? "TEST" : "" ?></h4>
+        <div class="justify-content-md-center row" style="padding-bottom: 1em;">
+          <div class="col-md-auto">
+            <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url" target="_blank" rel="noopener noreferrer">
+              <img style="margin-left: 1em;" alt="RF_Donate" src="https://remotefalcon.com/support-button-v2.png">
+            </a>
+          </div>
+        </div>
+        <div class="justify-content-md-center row" style="padding-bottom: 1em;">
+          <div class="col-md-auto">
+            <? echo $remoteFalconState; ?>
+          </div>
+        </div>
+        <div style=<? echo "$showUpdateDiv"; ?>>
+          <div id="update" class="justify-content-md-center row">
+            <div class="col-md-auto">
+              <h4>An update is available!</h4>
+            </div>
+          </div>
+        </div>
+        <div class="justify-content-md-center row">
+          <div class="col-md-auto">
+            <h4 id="env"><? echo $baseUrl == "https://remotefalcon.me" ? "TEST" : "" ?></h4>
+          </div>
         </div>
       </div>
     </div>
