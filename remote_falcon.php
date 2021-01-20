@@ -276,7 +276,7 @@ if (isset($_POST['autoRestartPluginNo'])) {
       background-repeat: no-repeat;
       background-attachment: fixed;
       background-position: top center;
-      background-size: autp 100%;
+      background-size: auto 100%;
     }
     .card {
       background-color: rgba(59, 69, 84, 0.7);
