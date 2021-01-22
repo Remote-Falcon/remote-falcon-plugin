@@ -168,7 +168,6 @@ function updateNextScheduledSequence($fppStatus, $currentlyPlaying, $nextSchedul
   $mainPlaylist = $playlistDetails->mainPlaylist;
   $nextScheduled = getNextSequence($mainPlaylist, $currentlyPlaying);
   if($nextScheduled != $nextScheduledInRF && $currentPlaylist != $GLOBALS['remotePlaylist']) {
-    echo ("Updating sequence\n");
     updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
     logEntry("Updated next scheduled sequence to " . $currentlyPlaying);
     $GLOBALS['nextScheduledInRF'] = $nextScheduled;
