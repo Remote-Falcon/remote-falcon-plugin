@@ -33,7 +33,7 @@ if (!file_exists("/home/fpp/media/scripts/stop_remote_falcon.php")){
   copy("/home/fpp/media/plugins/remote-falcon/stop_remote_falcon.php", "/home/fpp/media/scripts/stop_remote_falcon.php");
 }
 
-$pluginVersion = "6.0.0";
+$pluginVersion = "6.0.1";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
@@ -381,13 +381,6 @@ if (isset($_POST['autoRestartPluginNo'])) {
         <div class="card-body"><div class="justify-content-md-center row" style="padding-bottom: 1em;">
           <div class="col-md-auto">
             <h1>Remote Falcon Plugin v<? echo $pluginVersion; ?></h1>
-          </div>
-        </div>
-        <div class="justify-content-md-center row" style="padding-bottom: 1em;">
-          <div class="col-md-auto">
-            <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url" target="_blank" rel="noopener noreferrer">
-              <img style="margin-left: 1em;" alt="RF_Donate" src="https://remotefalcon.com/support-button-v2.png">
-            </a>
           </div>
         </div>
         <div class="justify-content-md-center row" style="padding-bottom: 1em;">
