@@ -32,8 +32,11 @@ if (!file_exists("/home/fpp/media/scripts/restart_remote_falcon.php")){
 if (!file_exists("/home/fpp/media/scripts/stop_remote_falcon.php")){
   copy("/home/fpp/media/plugins/remote-falcon/stop_remote_falcon.php", "/home/fpp/media/scripts/stop_remote_falcon.php");
 }
+if (!file_exists("/home/fpp/media/scripts/update_remote_playlist.php")){
+  copy("/home/fpp/media/plugins/remote-falcon/update_remote_playlist.php", "/home/fpp/media/scripts/update_remote_playlist.php");
+}
 
-$pluginVersion = "6.0.2";
+$pluginVersion = "6.0.3";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
@@ -150,15 +153,15 @@ if (isset($_POST['updateRemotePlaylist'])) {
           WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
           WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
         }
-        echo "<script type=\"text/javascript\">$.jGrowl('Remote Playlist Synced!');</script>";
+        echo "<script type=\"text/javascript\">$.jGrowl('Remote Playlist Updated!',{themeState:'success'});</script>";
       }else {
-        echo "<script type=\"text/javascript\">$.jGrowl('Remote Playlist Sync Failed!');</script>";
+        echo "<script type=\"text/javascript\">$.jGrowl('Remote Playlist Update Failed!',{themeState:'danger'});</script>";
       }
     }else {
-      echo "<script type=\"text/javascript\">$.jGrowl('Remote Token Not Found!');</script>";
+      echo "<script type=\"text/javascript\">$.jGrowl('Remote Token Not Found!',{themeState:'danger'});</script>";
     }
   }else {
-    echo "<script type=\"text/javascript\">$.jGrowl('No Playlist was Selected!');</script>";
+    echo "<script type=\"text/javascript\">$.jGrowl('No Playlist was Selected!',{themeState:'danger'});</script>";
   }
 }
 
@@ -174,7 +177,7 @@ if (isset($_POST['updateRemoteToken'])) {
     WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
     WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
   }
-  echo "<script type=\"text/javascript\">$.jGrowl('Remote Token Updated');</script>";
+  echo "<script type=\"text/javascript\">$.jGrowl('Remote Token Updated',{themeState:'success'});</script>";
 }
 
 if (isset($_POST['updateRequestFetchTime'])) { 
@@ -184,7 +187,7 @@ if (isset($_POST['updateRequestFetchTime'])) {
     WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
     WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
   }
-  echo "<script type=\"text/javascript\">$.jGrowl('Request Fetch Time Updated');</script>";
+  echo "<script type=\"text/javascript\">$.jGrowl('Request Fetch Time Updated',{themeState:'success'});</script>";
 }
 
 $interruptSchedule = urldecode($pluginSettings['interrupt_schedule_enabled']);
@@ -205,7 +208,7 @@ if (isset($_POST['interruptScheduleYes'])) {
     WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
     WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
   }
-  echo "<script type=\"text/javascript\">$.jGrowl('Interrupt Schedule On');</script>";
+  echo "<script type=\"text/javascript\">$.jGrowl('Interrupt Schedule On',{themeState:'success'});</script>";
 }
 if (isset($_POST['interruptScheduleNo'])) {
   $interruptYes = "btn-secondary";
@@ -215,7 +218,7 @@ if (isset($_POST['interruptScheduleNo'])) {
     WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
     WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
   }
-  echo "<script type=\"text/javascript\">$.jGrowl('Interrupt Schedule Off');</script>";
+  echo "<script type=\"text/javascript\">$.jGrowl('Interrupt Schedule Off',{themeState:'success'});</script>";
 }
 
 if (isset($_POST['restartRemoteFalcon'])) {
@@ -242,14 +245,17 @@ if (isset($_POST['autoRestartPluginYes'])) {
   $autoRestartPluginYes = "btn-primary";
   $autoRestartPluginNo = "btn-secondary";
   WriteSettingToFile("autoRestartPlugin",urlencode("true"),$pluginName);
-  echo "<script type=\"text/javascript\">$.jGrowl('Auto Restart On');</script>";
+  echo "<script type=\"text/javascript\">$.jGrowl('Auto Restart On',{themeState:'success'});</script>";
 }
 if (isset($_POST['autoRestartPluginNo'])) {
   $autoRestartPluginYes = "btn-secondary";
   $autoRestartPluginNo = "btn-primary";
   WriteSettingToFile("autoRestartPlugin",urlencode("false"),$pluginName);
-  echo "<script type=\"text/javascript\">$.jGrowl('Auto Restart Off');</script>";
+  echo "<script type=\"text/javascript\">$.jGrowl('Auto Restart Off',{themeState:'success'});</script>";
 }
+
+$fppMainVersion = substr(getFPPVersion(),0,1);
+$version5SpecificStyling = $fppMainVersion == "5" ? "#bodyWrapper {background-color: #20222e;} .pageContent {background-color: #171720;}" : ""
 
 ?>
 
@@ -261,13 +267,14 @@ if (isset($_POST['autoRestartPluginNo'])) {
     integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1"
     crossorigin="anonymous">
   <style>
+    <? echo $version5SpecificStyling; ?>
     a {
       color: #D65A31;
     }
     .plugin-body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: rgb(238, 238, 238);
-      background-color: rgb(34, 40, 49);
+      background-color: rgb(0, 0, 0);
       font-size: 1rem;
       font-weight: 400;
       line-height: 1.5;
@@ -398,7 +405,7 @@ if (isset($_POST['autoRestartPluginNo'])) {
         <div style=<? echo "$showUpdateDiv"; ?>>
           <div id="update" class="justify-content-md-center row">
             <div class="col-md-auto">
-              <h4>An update is available!</h4>
+              <h4 style="font-weight: bold;">An update is available!</h4>
             </div>
           </div>
         </div>
