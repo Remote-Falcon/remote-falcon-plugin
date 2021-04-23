@@ -61,7 +61,7 @@ if(strlen($remoteToken)>1) {
   $response = json_decode( $result );
   if($response) {
     WriteSettingToFile("remotePlaylist",$remotePlaylist,$pluginName);
-    if($autoRestartPlugin == 1 && $remoteFppEnabled == 1) {
+    if($remoteFppEnabled == 1) {
       WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
       WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
     }
