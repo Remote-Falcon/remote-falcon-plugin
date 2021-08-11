@@ -66,6 +66,10 @@ while(true) {
     $statusName = $fppStatus->status_name;
     if($statusName != "idle") {
       $currentlyPlaying = pathinfo($fppStatus->current_sequence, PATHINFO_FILENAME);
+      if($currentlyPlaying == "") {
+        //Might be media only, so check for current song
+        $currentlyPlaying = pathinfo($fppStatus->current_song, PATHINFO_FILENAME);
+      }
       updateCurrentlyPlaying($currentlyPlaying, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
       updateNextScheduledSequence($fppStatus, $currentlyPlaying, $GLOBALS['nextScheduledInRF'], $remoteToken);
 
@@ -83,7 +87,7 @@ while(true) {
                 logEntry("Queuing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
                 insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $winningSequenceIndex);
                 sleep($requestFetchTime);
-                //updateCurrentlyPlaying($winningSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+                updateCurrentlyPlaying($winningSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
               }else {
                 logEntry($winningSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $winningSequenceIndex . ")");
               }
@@ -100,7 +104,7 @@ while(true) {
                 logEntry("Queuing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
                 insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $nextSequenceIndex);
                 sleep($requestFetchTime);
-                //updateCurrentlyPlaying($nextSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+                updateCurrentlyPlaying($nextSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
               }else {
                 logEntry($nextSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $nextSequenceIndex . ")");
               }
