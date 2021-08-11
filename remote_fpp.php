@@ -83,7 +83,7 @@ while(true) {
                 logEntry("Queuing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
                 insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $winningSequenceIndex);
                 sleep($requestFetchTime);
-                updateCurrentlyPlaying($winningSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+                //updateCurrentlyPlaying($winningSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
               }else {
                 logEntry($winningSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $winningSequenceIndex . ")");
               }
@@ -100,7 +100,7 @@ while(true) {
                 logEntry("Queuing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
                 insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $nextSequenceIndex);
                 sleep($requestFetchTime);
-                updateCurrentlyPlaying($nextSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+                //updateCurrentlyPlaying($nextSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
               }else {
                 logEntry($nextSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $nextSequenceIndex . ")");
               }
