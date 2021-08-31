@@ -9,9 +9,20 @@
 	"allowUpdates": 1,
 	"versions": [
 		{
-			"minFPPVersion": "4.0",
+			"minFPPVersion": "5.0",
 			"maxFPPVersion": "0",
 			"branch": "master",
+			"sha": "",
+			"dependencies": {
+				"plugins": [],
+				"packages": [],
+				"scripts": []
+			}
+		},
+		{
+			"minFPPVersion": "4.0",
+			"maxFPPVersion": "4.6.1",
+			"branch": "master-versions/4",
 			"sha": "",
 			"dependencies": {
 				"plugins": [],
