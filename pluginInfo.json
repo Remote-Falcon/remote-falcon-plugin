@@ -10,8 +10,8 @@
 	"versions": [
 		{
 			"minFPPVersion": "4.0",
-			"maxFPPVersion": "0",
-			"branch": "master",
+			"maxFPPVersion": "4.6.1",
+			"branch": "master-versions/4",
 			"sha": "",
 			"dependencies": {
 				"plugins": [],

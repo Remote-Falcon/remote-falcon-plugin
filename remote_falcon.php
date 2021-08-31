@@ -36,7 +36,7 @@ if (!file_exists("/home/fpp/media/scripts/update_remote_playlist.php")){
   copy("/home/fpp/media/plugins/remote-falcon/update_remote_playlist.php", "/home/fpp/media/scripts/update_remote_playlist.php");
 }
 
-$pluginVersion = "6.0.5";
+$pluginVersion = "6.1.0";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
@@ -254,9 +254,6 @@ if (isset($_POST['autoRestartPluginNo'])) {
   echo "<script type=\"text/javascript\">$.jGrowl('Auto Restart Off',{themeState:'success'});</script>";
 }
 
-$fppMainVersion = substr(getFPPVersion(),0,1);
-$version5SpecificStyling = $fppMainVersion == "5" ? "#bodyWrapper {background-color: #20222e;} .pageContent {background-color: #171720;}" : ""
-
 ?>
 
 <!DOCTYPE html>
@@ -267,7 +264,6 @@ $version5SpecificStyling = $fppMainVersion == "5" ? "#bodyWrapper {background-co
     integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1"
     crossorigin="anonymous">
   <style>
-    <? echo $version5SpecificStyling; ?>
     a {
       color: #D65A31;
     }
