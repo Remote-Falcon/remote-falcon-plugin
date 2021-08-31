@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Mark to reboot
-sed -i -e "s/^rebootFlag .*/rebootFlag = 1/" /home/fpp/media/settings
+. /opt/fpp/scripts/common
+setSetting restartFlag 1
 
 #fpp_install
