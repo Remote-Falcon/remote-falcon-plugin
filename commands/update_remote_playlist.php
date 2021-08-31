@@ -7,9 +7,9 @@ $pluginConfigFile = $settings['configDirectory'] . "/plugin.remote-falcon";
 $pluginSettings = parse_ini_file($pluginConfigFile);
 
 /**
- * CHANGE THE remotePlaylist VARIABLE TO THE PLAYLIST YOU WANT TO SYNC
+ * IF USING THIS SCRIPT AND NOT THE COMMAND, JUST CHANGE THE remotePlaylist VARIABLE FROM $argv[1] TO THE PLAYLIST YOU WANT TO SYNC
  */
-$remotePlaylist = "My Remote Playlist";
+$remotePlaylist = $argv[1];
 
 $remoteToken = urldecode($pluginSettings['remoteToken']);
 if(strlen($remoteToken)>1) {

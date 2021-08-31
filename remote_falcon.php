@@ -10,32 +10,6 @@ if (file_exists($pluginConfigFile)) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-//Copy RF Scripts
-if (!file_exists("/home/fpp/media/scripts/viewer_control_on.php")){
-  copy("/home/fpp/media/plugins/remote-falcon/viewer_control_on.php", "/home/fpp/media/scripts/viewer_control_on.php");
-}
-if (!file_exists("/home/fpp/media/scripts/viewer_control_off.php")){
-  copy("/home/fpp/media/plugins/remote-falcon/viewer_control_off.php", "/home/fpp/media/scripts/viewer_control_off.php");
-}
-if (!file_exists("/home/fpp/media/scripts/purge_queue.php")){
-  copy("/home/fpp/media/plugins/remote-falcon/purge_queue.php", "/home/fpp/media/scripts/purge_queue.php");
-}
-if (!file_exists("/home/fpp/media/scripts/interrupt_schedule_on.php")){
-  copy("/home/fpp/media/plugins/remote-falcon/interrupt_schedule_on.php", "/home/fpp/media/scripts/interrupt_schedule_on.php");
-}
-if (!file_exists("/home/fpp/media/scripts/interrupt_schedule_off.php")){
-  copy("/home/fpp/media/plugins/remote-falcon/interrupt_schedule_off.php", "/home/fpp/media/scripts/interrupt_schedule_off.php");
-}
-if (!file_exists("/home/fpp/media/scripts/restart_remote_falcon.php")){
-  copy("/home/fpp/media/plugins/remote-falcon/commands/restart_remote_falcon.php", "/home/fpp/media/scripts/restart_remote_falcon.php");
-}
-if (!file_exists("/home/fpp/media/scripts/stop_remote_falcon.php")){
-  copy("/home/fpp/media/plugins/remote-falcon/stop_remote_falcon.php", "/home/fpp/media/scripts/stop_remote_falcon.php");
-}
-if (!file_exists("/home/fpp/media/scripts/update_remote_playlist.php")){
-  copy("/home/fpp/media/plugins/remote-falcon/update_remote_playlist.php", "/home/fpp/media/scripts/update_remote_playlist.php");
-}
-
 $pluginVersion = "6.1.0";
 
 //set defaults if nothing saved

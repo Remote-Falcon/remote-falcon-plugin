@@ -1,7 +1,50 @@
 [
   {
-    "name": "Restart Remote Falcon",
+    "name": "Remote Falcon - Turn Interrupt Schedule Off",
+    "script": "interrupt_schedule_off.php",
+    "args": []
+  },
+  {
+    "name": "Remote Falcon - Turn Interrupt Schedule On",
+    "script": "interrupt_schedule_on.php",
+    "args": []
+  },
+  {
+    "name": "Remote Falcon - Purge Queue/Reset Votes",
+    "script": "purge_queue.php",
+    "args": []
+  },
+  {
+    "name": "Remote Falcon - Restart Plugin",
     "script": "restart_remote_falcon.php",
+    "args": []
+  },
+  {
+    "name": "Remote Falcon - Stop Plugin",
+    "script": "stop_remote_falcon.php",
+    "args": []
+  },
+  {
+    "name": "Remote Falcon - Update Remote Playlist",
+    "script": "update_remote_playlist.php",
+    "args": [
+      {
+        "name": "playlistName",
+        "type": "string",
+        "description": "Playlist Name",
+        "contentListUrl": "api/playlists",
+        "optional": false
+      }
+    ]
+  },
+  {
+    "name": "Remote Falcon - Turn Viewer Control Off",
+    "script": "viewer_control_off.php",
+    "args": []
+  },
+  {
+    "name": "Remote Falcon - Turn Viewer Control On",
+    "script": "viewer_control_on.php",
     "args": []
   }
 ]
