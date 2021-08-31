@@ -1,0 +1,7 @@
+[
+  {
+    "name": "Restart Remote Falcon",
+    "script": "restart_remote_falcon.php",
+    "args": []
+  }
+]

@@ -27,7 +27,7 @@ if (!file_exists("/home/fpp/media/scripts/interrupt_schedule_off.php")){
   copy("/home/fpp/media/plugins/remote-falcon/interrupt_schedule_off.php", "/home/fpp/media/scripts/interrupt_schedule_off.php");
 }
 if (!file_exists("/home/fpp/media/scripts/restart_remote_falcon.php")){
-  copy("/home/fpp/media/plugins/remote-falcon/restart_remote_falcon.php", "/home/fpp/media/scripts/restart_remote_falcon.php");
+  copy("/home/fpp/media/plugins/remote-falcon/commands/restart_remote_falcon.php", "/home/fpp/media/scripts/restart_remote_falcon.php");
 }
 if (!file_exists("/home/fpp/media/scripts/stop_remote_falcon.php")){
   copy("/home/fpp/media/plugins/remote-falcon/stop_remote_falcon.php", "/home/fpp/media/scripts/stop_remote_falcon.php");
@@ -36,7 +36,7 @@ if (!file_exists("/home/fpp/media/scripts/update_remote_playlist.php")){
   copy("/home/fpp/media/plugins/remote-falcon/update_remote_playlist.php", "/home/fpp/media/scripts/update_remote_playlist.php");
 }
 
-$pluginVersion = "6.0.5";
+$pluginVersion = "6.1.0";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
