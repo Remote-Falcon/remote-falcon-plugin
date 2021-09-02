@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Mark to reboot
-. /opt/fpp/scripts/common
-setSetting restartFlag 1
+sed -i -e "s/^restartFlag .*/restartFlag = 1/" ${FPPHOME}/media/settings
 
 #fpp_install
