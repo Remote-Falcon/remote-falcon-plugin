@@ -1,7 +1,10 @@
+#!/usr/bin/env php
 <?php
+$skipJSsettings=true;
+include_once "/opt/fpp/www/config.php";
 include_once "/opt/fpp/www/common.php";
-include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
 $pluginName = "remote-falcon";
+include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
 $baseUrl = getBaseUrl();
 $pluginConfigFile = $settings['configDirectory'] . "/plugin.remote-falcon";
 $pluginSettings = parse_ini_file($pluginConfigFile);
