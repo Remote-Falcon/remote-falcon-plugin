@@ -22,7 +22,7 @@
 		{
 			"minFPPVersion": "5.0",
 			"maxFPPVersion": "0",
-			"branch": "commands",
+			"branch": "master",
 			"sha": "",
 			"dependencies": {
 				"plugins": [],
