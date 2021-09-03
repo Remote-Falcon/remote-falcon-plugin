@@ -10,7 +10,7 @@ if (file_exists($pluginConfigFile)) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "6.1.1";
+$pluginVersion = "6.2.0";
 
 //Copy RF Scripts
 if (!file_exists("/home/fpp/media/scripts/viewer_control_on.php")){
