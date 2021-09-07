@@ -152,6 +152,7 @@ while(true) {
       }
     }else {
       updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+      clearNextScheduledSequence($remoteToken);
     }
   }
 
@@ -176,6 +177,10 @@ function updateNextScheduledSequence($fppStatus, $currentlyPlaying, $nextSchedul
     logEntry("Updated next scheduled sequence to " . $currentlyPlaying);
     $GLOBALS['nextScheduledInRF'] = $nextScheduled;
   }
+}
+
+function clearNextScheduledSequence($remoteToken) {
+  updateNextScheduledSequenceInRf(" ", $remoteToken);
 }
 
 function getNextSequence($mainPlaylist, $currentlyPlaying) {

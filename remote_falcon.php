@@ -10,33 +10,7 @@ if (file_exists($pluginConfigFile)) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "6.2.0";
-
-//Copy RF Scripts
-// if (!file_exists("/home/fpp/media/scripts/viewer_control_on.php")){
-//   copy("/home/fpp/media/plugins/remote-falcon/commands/viewer_control_on.php", "/home/fpp/media/scripts/viewer_control_on.php");
-// }
-// if (!file_exists("/home/fpp/media/scripts/viewer_control_off.php")){
-//   copy("/home/fpp/media/plugins/remote-falcon/commands/viewer_control_off.php", "/home/fpp/media/scripts/viewer_control_off.php");
-// }
-// if (!file_exists("/home/fpp/media/scripts/purge_queue.php")){
-//   copy("/home/fpp/media/plugins/remote-falcon/commands/purge_queue.php", "/home/fpp/media/scripts/purge_queue.php");
-// }
-// if (!file_exists("/home/fpp/media/scripts/interrupt_schedule_on.php")){
-//   copy("/home/fpp/media/plugins/remote-falcon/commands/interrupt_schedule_on.php", "/home/fpp/media/scripts/interrupt_schedule_on.php");
-// }
-// if (!file_exists("/home/fpp/media/scripts/interrupt_schedule_off.php")){
-//   copy("/home/fpp/media/plugins/remote-falcon/commands/interrupt_schedule_off.php", "/home/fpp/media/scripts/interrupt_schedule_off.php");
-// }
-// if (!file_exists("/home/fpp/media/scripts/restart_remote_falcon.php")){
-//   copy("/home/fpp/media/plugins/remote-falcon/commands/restart_remote_falcon.php", "/home/fpp/media/scripts/restart_remote_falcon.php");
-// }
-// if (!file_exists("/home/fpp/media/scripts/stop_remote_falcon.php")){
-//   copy("/home/fpp/media/plugins/remote-falcon/commands/stop_remote_falcon.php", "/home/fpp/media/scripts/stop_remote_falcon.php");
-// }
-// if (!file_exists("/home/fpp/media/scripts/update_remote_playlist.php")){
-//   copy("/home/fpp/media/plugins/remote-falcon/commands/update_remote_playlist.php", "/home/fpp/media/scripts/update_remote_playlist.php");
-// }
+$pluginVersion = "6.2.1";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
