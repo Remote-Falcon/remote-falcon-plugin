@@ -12,7 +12,7 @@ $pluginSettings = parse_ini_file($pluginConfigFile);
 $remoteToken = urldecode($pluginSettings['remoteToken']);
 
 if(strlen($remoteToken)>1) {
-	$url = $baseUrl . "/remotefalcon/api/updateViewerControl";
+	$url = $baseUrl . "/updateViewerControl";
 	$data = array(
 		'viewerControlEnabled' => 'N'
 	);

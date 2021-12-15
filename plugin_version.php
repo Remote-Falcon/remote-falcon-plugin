@@ -21,7 +21,7 @@ if(strlen($remoteToken)>1) {
 	$response = json_decode( $result );
 	$fppVersion = $response->version;
 	
-	$url = $baseUrl . "/remotefalcon/api/pluginVersion";
+	$url = $baseUrl . "/pluginVersion";
 	$data = array(
 		'pluginVersion' => $pluginVersion,
 		'fppVersion' => $fppVersion

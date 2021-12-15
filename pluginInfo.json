@@ -1,7 +1,7 @@
 {
 	"repoName": "remote-falcon",
 	"name": "Remote Falcon",
-	"author": "James Vance - Driftwood Light Show",
+	"author": "James Vance",
 	"description": "Allows remote control of FPP from the Remote Falcon web application (https://remotefalcon.com)",
 	"homeURL": "https://github.com/whitesoup12/remote-falcon-plugin",
 	"srcURL": "https://github.com/whitesoup12/remote-falcon-plugin.git",
