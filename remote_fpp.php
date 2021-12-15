@@ -65,6 +65,7 @@ while(true) {
     $fppStatus = getFppStatus();
     $statusName = $fppStatus->status_name;
     if($statusName != "idle") {
+      $rfSequencesCleared = false;
       $currentlyPlaying = pathinfo($fppStatus->current_sequence, PATHINFO_FILENAME);
       if($currentlyPlaying == "") {
         //Might be media only, so check for current song
@@ -151,7 +152,11 @@ while(true) {
         }
       }
     }else {
-      updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+      if($rfSequencesCleared == 0) {
+        updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+        clearNextScheduledSequence($remoteToken);
+        $rfSequencesCleared = true;
+      }
     }
   }
 
@@ -176,6 +181,10 @@ function updateNextScheduledSequence($fppStatus, $currentlyPlaying, $nextSchedul
     logEntry("Updated next scheduled sequence to " . $currentlyPlaying);
     $GLOBALS['nextScheduledInRF'] = $nextScheduled;
   }
+}
+
+function clearNextScheduledSequence($remoteToken) {
+  updateNextScheduledSequenceInRf(" ", $remoteToken);
 }
 
 function getNextSequence($mainPlaylist, $currentlyPlaying) {
