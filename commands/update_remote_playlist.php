@@ -46,7 +46,7 @@ if(strlen($remoteToken)>1) {
     }
     $index++;
   }
-  $url = $baseUrl . "/remotefalcon/api/syncPlaylists";
+  $url = $baseUrl . "/syncPlaylists";
   $data = array(
     'playlists' => $playlists
   );

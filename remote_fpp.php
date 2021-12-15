@@ -22,6 +22,7 @@ $interruptSchedule = "";
 $currentlyPlayingInRF = "";
 $nextScheduledInRF= "";
 $requestFetchTime = "";
+$rfSequencesCleared = false;
 
 $remoteToken = urldecode($pluginSettings['remoteToken']);
 $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
@@ -65,6 +66,7 @@ while(true) {
     $fppStatus = getFppStatus();
     $statusName = $fppStatus->status_name;
     if($statusName != "idle") {
+      $rfSequencesCleared = false;
       $currentlyPlaying = pathinfo($fppStatus->current_sequence, PATHINFO_FILENAME);
       if($currentlyPlaying == "") {
         //Might be media only, so check for current song
@@ -151,8 +153,11 @@ while(true) {
         }
       }
     }else {
-      updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
-      clearNextScheduledSequence($remoteToken);
+      if($rfSequencesCleared == 0) {
+        updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+        clearNextScheduledSequence($remoteToken);
+        $rfSequencesCleared = true;
+      }
     }
   }
 
@@ -210,7 +215,7 @@ function holdForImmediatePlay() {
 }
 
 function remotePreferences($remoteToken) {
-  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/remotePreferences";
+  $url = $GLOBALS['baseUrl'] . "/remotePreferences";
   $options = array(
     'http' => array(
       'method'  => 'GET',
@@ -228,7 +233,7 @@ function getFppStatus() {
 }
 
 function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
-  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/updateWhatsPlaying";
+  $url = $GLOBALS['baseUrl'] . "/updateWhatsPlaying";
   $data = array(
     'playlist' => trim($currentlyPlaying)
   );
@@ -246,7 +251,7 @@ function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
 }
 
 function updateNextScheduledSequenceInRf($nextScheduled, $remoteToken) {
-  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/updateNextScheduledSequence";
+  $url = $GLOBALS['baseUrl'] . "/updateNextScheduledSequence";
   $data = array(
     'sequence' => trim($nextScheduled)
   );
@@ -309,7 +314,7 @@ function getPlaylistDetails($remotePlaylistEncoded) {
 }
 
 function highestVotedSequence($remoteToken) {
-  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/highestVotedPlaylist";
+  $url = $GLOBALS['baseUrl'] . "/highestVotedPlaylist";
   $options = array(
     'http' => array(
       'method'  => 'GET',
@@ -322,7 +327,7 @@ function highestVotedSequence($remoteToken) {
 }
 
 function nextPlaylistInQueue($remoteToken) {
-  $url = $GLOBALS['baseUrl'] . "/remotefalcon/api/nextPlaylistInQueue?updateQueue=true";
+  $url = $GLOBALS['baseUrl'] . "/nextPlaylistInQueue?updateQueue=true";
   $options = array(
     'http' => array(
       'method'  => 'GET',

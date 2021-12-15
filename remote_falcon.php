@@ -10,7 +10,7 @@ if (file_exists($pluginConfigFile)) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "6.2.1";
+$pluginVersion = "6.2.2";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
@@ -105,7 +105,7 @@ if (isset($_POST['updateRemotePlaylist'])) {
         }
         $index++;
       }
-      $url = $baseUrl . "/remotefalcon/api/syncPlaylists";
+      $url = $baseUrl . "/syncPlaylists";
       $data = array(
         'playlists' => $playlists
       );
