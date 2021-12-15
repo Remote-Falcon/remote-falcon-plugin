@@ -36,7 +36,7 @@ if (!file_exists("/home/fpp/media/scripts/update_remote_playlist.php")){
   copy("/home/fpp/media/plugins/remote-falcon/update_remote_playlist.php", "/home/fpp/media/scripts/update_remote_playlist.php");
 }
 
-$pluginVersion = "6.1.0";
+$pluginVersion = "6.1.1";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
