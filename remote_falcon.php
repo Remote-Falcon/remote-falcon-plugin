@@ -1,6 +1,7 @@
 <?php
 include_once "/opt/fpp/www/common.php";
 include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
+include("/home/fpp/media/plugins/remote-falcon/plugin_version.php");
 $baseUrl = getBaseUrl();
 $rfSequencesUrl = $baseUrl . "/controlPanel/sequences";
 $pluginName = basename(dirname(__FILE__));
@@ -10,7 +11,7 @@ if (file_exists($pluginConfigFile)) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "6.2.2";
+$pluginVersion = "6.3.0";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
@@ -228,6 +229,104 @@ if (isset($_POST['autoRestartPluginNo'])) {
   echo "<script type=\"text/javascript\">$.jGrowl('Auto Restart Off',{themeState:'success'});</script>";
 }
 
+$pluginCheckResults = "";
+$pluginCheckResultsId = "warning";
+if (isset($_POST['checkPlugin'])) {
+
+  //Check internet connection to RF using health endpoint
+  $hasInternet = 0;
+  $url = $baseUrl . "/actuator/health";
+  $options = array(
+    'http' => array(
+      'method'  => 'GET',
+      'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+                  "Accept: application/json\r\n"
+      )
+  );
+  $context = stream_context_create( $options );
+  $result = file_get_contents( $url, false, $context );
+  $response = json_decode( $result );
+  if($response) {
+    $hasInternet = 1;
+  }
+
+  //Check if playlist is synced
+  $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
+
+  //Check if playlist has lead ins or lead outs
+  $hasLeadInsOuts = 0;
+  if (strlen($remotePlaylist) >= 2) {
+    $playlists = array();
+    $remotePlaylistEncoded = rawurlencode($remotePlaylist);
+    $url = "http://127.0.0.1/api/playlist/${remotePlaylistEncoded}";
+    $options = array(
+      'http' => array(
+        'method'  => 'GET'
+        )
+    );
+    $context = stream_context_create( $options );
+    $result = file_get_contents( $url, false, $context );
+    $response = json_decode( $result, true );
+    $leadIn = $response['leadIn'];
+    $leadOut = $response['leadOut'];
+    if(count($leadIn) > 0 || count($leadOut) > 0) {
+      $hasLeadInsOuts = 1;
+    }
+
+    //Check if playlist has special characters in sequence names
+    $hasSpecialCharacters = 0;
+    $mainPlaylist = $response['mainPlaylist'];
+    foreach($mainPlaylist as $item) {
+      if($item['type'] == 'both' || $item['type'] == 'sequence' || $item['type'] == 'media') {
+        $playlistName = pathinfo($item['sequenceName'], PATHINFO_FILENAME);
+        if (!preg_match('/^[a-z0-9 ]+$/i', $playlistName)) {
+          $hasSpecialCharacters = 1;
+        }
+      }
+    }
+
+    //Check if synced playlist is scheduled
+    $isScheduled = 0;
+    $url = "http://127.0.0.1/api/fppd/schedule";
+    $options = array(
+      'http' => array(
+        'method'  => 'GET'
+        )
+    );
+    $context = stream_context_create( $options );
+    $result = file_get_contents( $url, false, $context );
+    $response = json_decode( $result, true );
+    $schedule = $response['schedule'];
+    $entries = $schedule['entries'];
+    foreach($entries as $item) {
+      if($item['playlist'] === $remotePlaylist) {
+        $isScheduled = 1;
+      }
+    }
+  }
+
+  if($hasInternet === 0) {
+    $pluginCheckResults = $pluginCheckResults . "* Unable to reach Remote Falcon. Check that FPP has access to the internet.</br>";
+  }
+  if($remotePlaylist === "") {
+    $pluginCheckResults = $pluginCheckResults . "* No playlist has been synced with Remote Falcon.</br>";
+  }
+  if($hasLeadInsOuts === 1) {
+    $pluginCheckResults = $pluginCheckResults . "* Remote playlist should not contain Lead Ins or Lead Outs.</br>";
+  }
+  if($hasSpecialCharacters === 1) {
+    $pluginCheckResults = $pluginCheckResults . "* One or more sequences contains special characters. This could cause problems and is best to remove them.</br>";
+  }
+  if($isScheduled === 1) {
+    $pluginCheckResults = $pluginCheckResults . "* Remote playlist should not be part of any schedules.</br>";
+  }
+
+  if($pluginCheckResults === "") {
+    $pluginCheckResultsId = "good";
+    $pluginCheckResults = "No issues found!";
+  }
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -350,6 +449,10 @@ if (isset($_POST['autoRestartPluginNo'])) {
       font-weight: bold;
       color: #A72525;
     }
+    #good {
+      font-weight: bold;
+      color: #60F779;
+    }
 		#restartNotice {
 			font-weight: bold;
       color: #D65A31;
@@ -387,7 +490,7 @@ if (isset($_POST['autoRestartPluginNo'])) {
         </div>
         <div class="justify-content-md-center row">
           <div class="col-md-auto">
-            <h4 id="env"><? echo $baseUrl == "https://remotefalcon.me" ? "TEST" : "" ?></h4>
+            <h4 id="env"><? echo $baseUrl == "http://host.docker.internal:8080/remotefalcon/api" ? "TEST" : "" ?></h4>
           </div>
         </div>
       </div>
@@ -517,6 +620,33 @@ if (isset($_POST['autoRestartPluginNo'])) {
                   No
                 </button>
               </form>
+            </div>
+          </div>
+          <!-- Debug Remote Falcon -->
+          <div class="justify-content-md-center row setting-item">
+            <div class="col-md-6">
+              <div class="card-title h5">
+                Check Plugin
+              </div>
+              <div class="mb-2 text-muted card-subtitle h6">
+                This will run a check on the plugin configuration and report any issues. Results will display below.
+              </div>
+            </div>
+            <div class="col-md-6">
+              <form method="post">
+                <button class="btn mr-md-3 hvr-underline-from-center btn-primary" id="checkPlugin" name="checkPlugin" type="submit">
+                  Check Plugin
+                </button>
+              </form>
+            </div>
+          </div>
+          <div class="justify-content-md-center row setting-item">
+            <div class="col-md-6">
+            </div>
+            <div class="col-md-6">
+              <p id=<? echo $pluginCheckResultsId; ?>>
+                <? echo $pluginCheckResults; ?>
+              </p>
             </div>
           </div>
           <!-- Restart Remote Falcon -->
