@@ -91,25 +91,25 @@ if (isset($_POST['updateRemotePlaylist'])) {
       $mainPlaylist = $response['mainPlaylist'];
       $index = 1;
       foreach($mainPlaylist as $item) {
-        if($item['type'] == 'both' || $item['type'] == 'sequence') {
+        if($item['type'] === 'both' || $item['type'] === 'sequence') {
           $playlist = null;
           $playlist->playlistName = pathinfo($item['sequenceName'], PATHINFO_FILENAME);
           $playlist->playlistDuration = $item['duration'];
           $playlist->playlistType = 'SEQUENCE';
           $playlist->playlistIndex = $index;
           array_push($playlists, $playlist);
-        }else if($item['type'] == 'media') {
+        }else if($item['type'] === 'media') {
           $playlist = null;
           $playlist->playlistName = pathinfo($item['mediaName'], PATHINFO_FILENAME);
           $playlist->playlistDuration = $item['duration'];
           $playlist->playlistType = 'SEQUENCE';
           $playlist->playlistIndex = $index;
           array_push($playlists, $playlist);
-        }else if($item['type'] == 'script') {
+        }else if($item['type'] === 'command' && $item['note'] != null && $item['note'] != "") {
           $playlist = null;
-          $playlist->playlistName = pathinfo($item['scriptName'], PATHINFO_FILENAME);
+          $playlist->playlistName = $item['note'];
           $playlist->playlistDuration = 0;
-          $playlist->playlistType = 'SCRIPT';
+          $playlist->playlistType = 'COMMAND';
           $playlist->playlistIndex = $index;
           array_push($playlists, $playlist);
         }
@@ -351,8 +351,8 @@ if (strlen($remotePlaylist) >= 2) {
   $response = json_decode( $result, true );
   $mainPlaylist = $response['mainPlaylist'];
   foreach($mainPlaylist as $item) {
-    if($item['type'] == 'script') {
-      $scriptWarning = "This playlist contains scripts! Scripts should be used with caution!";
+    if($item['type'] == 'command') {
+      $scriptWarning = "This playlist contains commands! Commands should be used with caution!";
     }
   }
 }
