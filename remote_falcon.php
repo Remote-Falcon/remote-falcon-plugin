@@ -3,7 +3,7 @@ include_once "/opt/fpp/www/common.php";
 include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
 include("/home/fpp/media/plugins/remote-falcon/plugin_version.php");
 $baseUrl = getBaseUrl();
-$rfSequencesUrl = $baseUrl . "/controlPanel/sequences";
+$rfSequencesUrl = $getBaseUrlDomain . "/controlPanel/sequences";
 $pluginName = basename(dirname(__FILE__));
 $pluginConfigFile = $settings['configDirectory'] ."/plugin." .$pluginName;
     
@@ -95,12 +95,21 @@ if (isset($_POST['updateRemotePlaylist'])) {
           $playlist = null;
           $playlist->playlistName = pathinfo($item['sequenceName'], PATHINFO_FILENAME);
           $playlist->playlistDuration = $item['duration'];
+          $playlist->playlistType = 'SEQUENCE';
           $playlist->playlistIndex = $index;
           array_push($playlists, $playlist);
         }else if($item['type'] == 'media') {
           $playlist = null;
           $playlist->playlistName = pathinfo($item['mediaName'], PATHINFO_FILENAME);
           $playlist->playlistDuration = $item['duration'];
+          $playlist->playlistType = 'SEQUENCE';
+          $playlist->playlistIndex = $index;
+          array_push($playlists, $playlist);
+        }else if($item['type'] == 'script') {
+          $playlist = null;
+          $playlist->playlistName = pathinfo($item['scriptName'], PATHINFO_FILENAME);
+          $playlist->playlistDuration = 0;
+          $playlist->playlistType = 'SCRIPT';
           $playlist->playlistIndex = $index;
           array_push($playlists, $playlist);
         }
@@ -324,6 +333,27 @@ if (isset($_POST['checkPlugin'])) {
   if($pluginCheckResults === "") {
     $pluginCheckResultsId = "good";
     $pluginCheckResults = "No issues found!";
+  }
+}
+
+$scriptWarning = "";
+if (strlen($remotePlaylist) >= 2) {
+  $playlists = array();
+  $remotePlaylistEncoded = rawurlencode($remotePlaylist);
+  $url = "http://127.0.0.1/api/playlist/${remotePlaylistEncoded}";
+  $options = array(
+    'http' => array(
+      'method'  => 'GET'
+      )
+  );
+  $context = stream_context_create( $options );
+  $result = file_get_contents( $url, false, $context );
+  $response = json_decode( $result, true );
+  $mainPlaylist = $response['mainPlaylist'];
+  foreach($mainPlaylist as $item) {
+    if($item['type'] == 'script') {
+      $scriptWarning = "This playlist contains scripts! Scripts should be used with caution!";
+    }
   }
 }
 
@@ -555,6 +585,7 @@ if (isset($_POST['checkPlugin'])) {
             </div>
             <div class="col-md-6">
               <h5><a href=<? echo "$rfSequencesUrl"; ?> target="_blank" rel="noopener noreferrer"><? echo "$remotePlaylist"; ?></a></h5>
+              <p id="warning"><? echo "$scriptWarning"; ?></p>
             </div>
           </div>
           <!-- Request Fetch Time -->
