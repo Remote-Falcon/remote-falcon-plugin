@@ -3,7 +3,7 @@ include_once "/opt/fpp/www/common.php";
 include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
 include("/home/fpp/media/plugins/remote-falcon/plugin_version.php");
 $baseUrl = getBaseUrl();
-$rfSequencesUrl = $getBaseUrlDomain . "/controlPanel/sequences";
+$rfSequencesUrl = getBaseUrlDomain() . "/controlPanel/sequences";
 $pluginName = basename(dirname(__FILE__));
 $pluginConfigFile = $settings['configDirectory'] ."/plugin." .$pluginName;
     
