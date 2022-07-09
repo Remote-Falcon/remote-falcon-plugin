@@ -12,6 +12,6 @@ function getBaseUrlDomain() {
   if($host == "fpplocal") {
     return "http://host.docker.internal:8080/";
   }
-  return "https://remotefalcon.com/";
+  return "https://remotefalcon.com";
 }
 ?>
