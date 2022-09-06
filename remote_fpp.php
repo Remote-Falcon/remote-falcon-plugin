@@ -127,7 +127,9 @@ while(true) {
             if($winningSequence != null) {
               insertPlaylistImmediate(rawurlencode($remotePlaylist), $winningSequenceIndex);
               logEntry("Playing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
-              sleep($requestFetchTime);
+              $fppWaitTime = $requestFetchTime + 3;
+              logEntry("Sleeping for " . $fppWaitTime . " seconds.");
+              sleep($fppWaitTime);
             }else {
               $fppWaitTime = $requestFetchTime + 3;
               sleep($fppWaitTime);
@@ -139,7 +141,9 @@ while(true) {
             if($nextSequence != null) {
               insertPlaylistImmediate(rawurlencode($remotePlaylist), $nextSequenceIndex);
               logEntry("Playing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
-              sleep($requestFetchTime);
+              $fppWaitTime = $requestFetchTime + 3;
+              logEntry("Sleeping for " . $fppWaitTime . " seconds.");
+              sleep($fppWaitTime);
             }else {
               $fppWaitTime = $requestFetchTime + 3;
               sleep($fppWaitTime);
