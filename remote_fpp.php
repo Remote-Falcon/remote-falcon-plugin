@@ -118,37 +118,43 @@ while(true) {
         }
       //Do interrupt schedule
       }else {
-        if($viewerControlMode == "voting") {
-          $highestVotedSequence = highestVotedSequence($remoteToken);
-          $winningSequence = $highestVotedSequence->winningPlaylist;
-          $winningSequenceIndex = $highestVotedSequence->playlistIndex;
-          if($winningSequence != null) {
-            if($winningSequenceIndex != 0 && $winningSequenceIndex != -1) {
-              insertPlaylistImmediate(rawurlencode($remotePlaylist), $winningSequenceIndex);
-              logEntry("Playing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
-              updateCurrentlyPlaying($winningSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
-              holdForImmediatePlay();
+        $fppStatus = getFppStatus();
+        $currentPlaylist = $fppStatus->current_playlist->playlist;
+        if($currentPlaylist != $GLOBALS['remotePlaylist']) {
+          if($viewerControlMode == "voting") {
+            $highestVotedSequence = highestVotedSequence($remoteToken);
+            $winningSequence = $highestVotedSequence->winningPlaylist;
+            $winningSequenceIndex = $highestVotedSequence->playlistIndex;
+            if($winningSequence != null) {
+              if($winningSequenceIndex != 0 && $winningSequenceIndex != -1 && $currentPlaylist != $GLOBALS['remotePlaylist']) {
+                insertPlaylistImmediate(rawurlencode($remotePlaylist), $winningSequenceIndex);
+                logEntry("Playing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
+                sleep($requestFetchTime);
+                updateCurrentlyPlaying($winningSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+                //holdForImmediatePlay();
+              }else {
+                logEntry($winningSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $winningSequenceIndex . ")");
+              }
             }else {
-              logEntry($winningSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $winningSequenceIndex . ")");
+              sleep(5);
             }
           }else {
-            sleep(5);
-          }
-        }else {
-          $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
-          $nextSequence = $nextPlaylistInQueue->nextPlaylist;
-          $nextSequenceIndex = $nextPlaylistInQueue->playlistIndex;
-          if($nextSequence != null) {
-            if($nextSequenceIndex != 0 && $nextSequenceIndex != -1) {
-              insertPlaylistImmediate(rawurlencode($remotePlaylist), $nextSequenceIndex);
-              logEntry("Playing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
-              updateCurrentlyPlaying($nextSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
-              holdForImmediatePlay();
+            $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
+            $nextSequence = $nextPlaylistInQueue->nextPlaylist;
+            $nextSequenceIndex = $nextPlaylistInQueue->playlistIndex;
+            if($nextSequence != null) {
+              if($nextSequenceIndex != 0 && $nextSequenceIndex != -1) {
+                insertPlaylistImmediate(rawurlencode($remotePlaylist), $nextSequenceIndex);
+                logEntry("Playing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
+                sleep($requestFetchTime);
+                updateCurrentlyPlaying($nextSequence, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+                //holdForImmediatePlay();
+              }else {
+                logEntry($nextSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $nextSequenceIndex . ")");
+              }
             }else {
-              logEntry($nextSequence . " was not found in " . $remotePlaylist . " or has invalid index (" . $nextSequenceIndex . ")");
+              sleep(5);
             }
-          }else {
-            sleep(5);
           }
         }
       }
