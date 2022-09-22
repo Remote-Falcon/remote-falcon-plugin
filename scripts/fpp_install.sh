@@ -8,6 +8,6 @@ make "SRCDIR=${SRCDIR}"
 
 
 . ${FPPDIR}/scripts/common
-setSetting restartFlag 1
+setSetting rebootFlag 1
 
 #fpp_install
