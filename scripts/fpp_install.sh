@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # Mark to reboot
-sed -i -e "s/^restartFlag .*/restartFlag = 1/" ${FPPHOME}/media/settings
+BASEDIR=$(dirname $0)
+cd $BASEDIR
+cd ..
+make "SRCDIR=${SRCDIR}"
+
+
+. ${FPPDIR}/scripts/common
+setSetting restartFlag 1
 
 #fpp_install
