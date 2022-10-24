@@ -175,11 +175,13 @@ function updateNextScheduledSequence($fppStatus, $currentlyPlaying, $nextSchedul
   $currentPlaylist = $fppStatus->current_playlist->playlist;
   $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
   $mainPlaylist = $playlistDetails->mainPlaylist;
-  $nextScheduled = getNextSequence($mainPlaylist, $currentlyPlaying);
-  if($nextScheduled != $nextScheduledInRF && $currentPlaylist != $GLOBALS['remotePlaylist']) {
-    updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
-    logEntry("Updated next scheduled sequence to " . $nextScheduled);
-    $GLOBALS['nextScheduledInRF'] = $nextScheduled;
+  if($mainPlaylist != null && $mainPlaylist != "" && count($mainPlaylist) > 0) {
+    $nextScheduled = getNextSequence($mainPlaylist, $currentlyPlaying);
+    if($nextScheduled != $nextScheduledInRF && $currentPlaylist != $GLOBALS['remotePlaylist']) {
+      updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
+      logEntry("Updated next scheduled sequence to " . $nextScheduled);
+      $GLOBALS['nextScheduledInRF'] = $nextScheduled;
+    }
   }
 }
 
