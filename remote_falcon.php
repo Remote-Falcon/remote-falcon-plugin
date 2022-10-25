@@ -11,7 +11,7 @@ if (file_exists($pluginConfigFile)) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "6.3.5";
+$pluginVersion = "6.3.6";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
@@ -24,7 +24,10 @@ if (strlen(urldecode($pluginSettings['remoteToken']))<1){
   WriteSettingToFile("remoteToken",urlencode(""),$pluginName);
 }
 if (strlen(urldecode($pluginSettings['requestFetchTime']))<1){
-  WriteSettingToFile("requestFetchTime",urlencode("10"),$pluginName);
+  WriteSettingToFile("requestFetchTime",urlencode("3"),$pluginName);
+}
+if (strlen(urldecode($pluginSettings['additionalWaitTime']))<1){
+  WriteSettingToFile("additionalWaitTime",urlencode("0"),$pluginName);
 }
 if (strlen(urldecode($pluginSettings['autoRestartPlugin']))<1){
   WriteSettingToFile("autoRestartPlugin",urlencode("false"),$pluginName);
@@ -154,6 +157,7 @@ if (isset($_POST['updateRemotePlaylist'])) {
 
 $pluginScriptVersion = urldecode($pluginSettings['pluginScriptVersion']);
 $pluginScriptVersionOptions = $pluginScriptVersion == "master" ? "<option value=\"master\" selected>master</option>" : "<option value=\"master\">master</option>";
+$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.5" ? "<option value=\"6.3.5\" selected>6.3.5</option>" : "<option value=\"6.3.5\" >6.3.5</option>";
 $pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.4" ? "<option value=\"6.3.4\" selected>6.3.4</option>" : "<option value=\"6.3.4\" >6.3.4</option>";
 $pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.3" ? "<option value=\"6.3.3\" selected>6.3.3</option>" : "<option value=\"6.3.3\" >6.3.3</option>";
 $pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.2" ? "<option value=\"6.3.2\" selected>6.3.2</option>" : "<option value=\"6.3.2\" >6.3.2</option>";
@@ -199,12 +203,30 @@ if (isset($_POST['updateRemoteToken'])) {
 
 if (isset($_POST['updateRequestFetchTime'])) { 
   $requestFetchTime = trim($_POST['requestFetchTime']);
-  WriteSettingToFile("requestFetchTime",$requestFetchTime,$pluginName);
-  if($autoRestartPlugin == 1 && $remoteFppEnabled == 1) {
-    WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
-    WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+  if($requestFetchTime >= 1 && $requestFetchTime <= 5) {
+    WriteSettingToFile("requestFetchTime",$requestFetchTime,$pluginName);
+    if($autoRestartPlugin == 1 && $remoteFppEnabled == 1) {
+      WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+      WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+    }
+    echo "<script type=\"text/javascript\">$.jGrowl('Request Fetch Time Updated',{themeState:'success'});</script>";
+  }else {
+    echo "<script type=\"text/javascript\">$.jGrowl('Must be between 1 and 5',{themeState:'danger'});</script>";
   }
-  echo "<script type=\"text/javascript\">$.jGrowl('Request Fetch Time Updated',{themeState:'success'});</script>";
+}
+
+if (isset($_POST['updateAdditionalWaitTime'])) { 
+  $additionalWaitTime = trim($_POST['additionalWaitTime']);
+  if($additionalWaitTime <= 5) {
+    WriteSettingToFile("additionalWaitTime",$additionalWaitTime,$pluginName);
+    if($autoRestartPlugin == 1 && $remoteFppEnabled == 1) {
+      WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+      WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+    }
+    echo "<script type=\"text/javascript\">$.jGrowl('Additional Wait Time Updated',{themeState:'success'});</script>";
+  }else {
+    echo "<script type=\"text/javascript\">$.jGrowl('Must be less than 5',{themeState:'danger'});</script>";
+  }
 }
 
 $interruptSchedule = urldecode($pluginSettings['interrupt_schedule_enabled']);
@@ -534,7 +556,7 @@ if (strlen($remotePlaylist) >= 2) {
         </div>
         <div class="card-body"><div class="justify-content-md-center row" style="padding-bottom: 1em;">
           <div class="col-md-auto">
-            <h3>Remote Falcon Script <? echo $pluginScriptVersion; ?></h3>
+            <h3>Remote Falcon Script <? echo $pluginScriptVersion == "master" ? $pluginVersion : $pluginScriptVersion; ?></h3>
           </div>
         </div>
         <div class="justify-content-md-center row" style="padding-bottom: 1em;">
@@ -633,7 +655,8 @@ if (strlen($remotePlaylist) >= 2) {
 								Request/Vote Fetch Time <span id="restartNotice"> *</span>
 							</div>
 							<div class="mb-2 text-muted card-subtitle h6">
-								This sets when the plugin checks for the next request/vote (default is 10 seconds)
+								This sets when the plugin checks for the next request/vote. </br>
+                Recommended is 3 seconds and must be between 1 and 5 seconds.
 							</div>
 						</div>
             <div class="col-md-3">
@@ -642,6 +665,31 @@ if (strlen($remotePlaylist) >= 2) {
                   <input type="number" class="form-control" name="requestFetchTime" id="requestFetchTime" value=<? echo "$requestFetchTime "; ?>>
                   <span class="input-group-btn">
                     <button id="updateRequestFetchTime" name="updateRequestFetchTime" class="btn mr-md-3 hvr-underline-from-center btn-primary" type="submit">Update</button>
+                  </span>
+                </div>
+              </form>
+            </div>
+            <div class="col-md-3">
+            </div>
+          </div>
+          <!-- Additional Wait Time -->
+          <div class="justify-content-md-center row setting-item">
+            <div class="col-md-6">
+							<div class="card-title h5">
+								Additional Wait Time <span id="restartNotice"> *</span>
+							</div>
+							<div class="mb-2 text-muted card-subtitle h6">
+								This adds extra time after fetching the next request or vote. </br>
+                It's recommended to leave this at 0, but if you experience requests </br>
+                getting skipped or falling off, you can set this to 5 seconds or less.
+							</div>
+						</div>
+            <div class="col-md-3">
+              <form method="post">
+                <div class="input-group">
+                  <input type="number" class="form-control" name="additionalWaitTime" id="additionalWaitTime" value=<? echo "$additionalWaitTime "; ?>>
+                  <span class="input-group-btn">
+                    <button id="updateAdditionalWaitTime" name="updateAdditionalWaitTime" class="btn mr-md-3 hvr-underline-from-center btn-primary" type="submit">Update</button>
                   </span>
                 </div>
               </form>

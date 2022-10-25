@@ -23,6 +23,7 @@ $currentlyPlayingInRF = "";
 $nextScheduledInRF= "";
 $requestFetchTime = "";
 $rfSequencesCleared = false;
+$additionalWaitTime = "";
 
 $remoteToken = urldecode($pluginSettings['remoteToken']);
 $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
@@ -35,6 +36,8 @@ logEntry("Interrupt Schedule: " . $interruptSchedule);
 $interruptSchedule = $interruptSchedule == "true" ? true : false;
 $requestFetchTime = intVal(urldecode($pluginSettings['requestFetchTime']));
 logEntry("Request Fetch Time: " . $requestFetchTime);
+$additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
+logEntry("Additional Wait Time: " . $additionalWaitTime);
 
 while(true) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
@@ -60,6 +63,8 @@ while(true) {
     $interruptSchedule = $interruptSchedule == "true" ? true : false;
     $requestFetchTime = intVal(urldecode($pluginSettings['requestFetchTime']));
     logEntry("Request Fetch Time: " . $requestFetchTime);
+    $additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
+    logEntry("Additional Wait Time: " . $additionalWaitTime);
   }
 
   if($remoteFppEnabled == 1) {
@@ -88,12 +93,12 @@ while(true) {
               if($winningSequence != null) {
                 logEntry("Queuing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
                 insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $winningSequenceIndex);
-                $fppWaitTime = $requestFetchTime + 3;
+                $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                 logEntry("Sleeping for " . $fppWaitTime . " seconds.");
                 sleep($fppWaitTime);
               }else {
                 logEntry("No votes");
-                $fppWaitTime = $requestFetchTime + 3;
+                $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                 logEntry("Sleeping for " . $fppWaitTime . " seconds.");
                 sleep($fppWaitTime);
               }
@@ -105,12 +110,12 @@ while(true) {
               if($nextSequence != null) {
                 logEntry("Queuing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
                 insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $nextSequenceIndex);
-                $fppWaitTime = $requestFetchTime + 3;
+                $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                 logEntry("Sleeping for " . $fppWaitTime . " seconds.");
                 sleep($fppWaitTime);
               }else {
                 logEntry("No requests");
-                $fppWaitTime = $requestFetchTime + 3;
+                $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                 logEntry("Sleeping for " . $fppWaitTime . " seconds.");
                 sleep($fppWaitTime);
               }
@@ -128,11 +133,11 @@ while(true) {
                 if($winningSequence != null) {
                   insertPlaylistImmediate(rawurlencode($remotePlaylist), $winningSequenceIndex);
                   logEntry("Playing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
-                  $fppWaitTime = $requestFetchTime + 3;
+                  $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                   logEntry("Sleeping for " . $fppWaitTime . " seconds.");
                   sleep($fppWaitTime);
                 }else {
-                  $fppWaitTime = $requestFetchTime + 3;
+                  $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                   sleep($fppWaitTime);
                 }
               }else {
@@ -142,11 +147,11 @@ while(true) {
                 if($nextSequence != null) {
                   insertPlaylistImmediate(rawurlencode($remotePlaylist), $nextSequenceIndex);
                   logEntry("Playing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
-                  $fppWaitTime = $requestFetchTime + 3;
+                  $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                   logEntry("Sleeping for " . $fppWaitTime . " seconds.");
                   sleep($fppWaitTime);
                 }else {
-                  $fppWaitTime = $requestFetchTime + 3;
+                  $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                   sleep($fppWaitTime);
                 }
               }
