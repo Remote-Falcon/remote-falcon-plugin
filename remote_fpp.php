@@ -11,9 +11,9 @@ $pluginSettings = parse_ini_file($pluginConfigFile);
 WriteSettingToFile("remote_fpp_enabled",urlencode("true"),$pluginName);
 WriteSettingToFile("remote_fpp_restarting",urlencode("false"),$pluginName);
 
-$pluginVersion = urldecode($pluginSettings['pluginVersion']);
-echo "Starting Remote Falcon Plugin v" . $pluginVersion . "\n";
-logEntry("Starting Remote Falcon Plugin v" . $pluginVersion);
+$pluginScriptVersion = urldecode($pluginSettings['pluginScriptVersion']);
+echo "Starting Remote Falcon Plugin v" . $pluginScriptVersion . "\n";
+logEntry("Starting Remote Falcon Plugin v" . $pluginScriptVersion);
 
 $remoteToken = "";
 $remotePlaylist = "";
@@ -47,8 +47,8 @@ while(true) {
     WriteSettingToFile("remote_fpp_enabled",urlencode("true"),$pluginName);
     WriteSettingToFile("remote_fpp_restarting",urlencode("false"),$pluginName);
 
-    echo "Restarting Remote Falcon Plugin v" . $pluginVersion . "\n";
-    logEntry("Restarting Remote Falcon Plugin v" . $pluginVersion);
+    echo "Restarting Remote Falcon Plugin v" . $pluginScriptVersion . "\n";
+    logEntry("Restarting Remote Falcon Plugin v" . $pluginScriptVersion);
     $remoteToken = urldecode($pluginSettings['remoteToken']);
     $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
     logEntry("Remote Playlist: ".$remotePlaylist);
