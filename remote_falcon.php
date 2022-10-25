@@ -153,7 +153,7 @@ if (isset($_POST['updateRemotePlaylist'])) {
 }
 
 $pluginScriptVersion = urldecode($pluginSettings['pluginScriptVersion']);
-$pluginScriptVersionOptions = $pluginScriptVersion == $pluginVersion ? "<option value=\"master\" selected>" . $pluginVersion . "</option>" : "<option value=\"master\">" . $pluginVersion . "</option>";
+$pluginScriptVersionOptions = $pluginScriptVersion == "master" ? "<option value=\"master\" selected>master</option>" : "<option value=\"master\">master</option>";
 $pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.4" ? "<option value=\"6.3.4\" selected>6.3.4</option>" : "<option value=\"6.3.4\" >6.3.4</option>";
 $pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.3" ? "<option value=\"6.3.3\" selected>6.3.3</option>" : "<option value=\"6.3.3\" >6.3.3</option>";
 $pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.2" ? "<option value=\"6.3.2\" selected>6.3.2</option>" : "<option value=\"6.3.2\" >6.3.2</option>";
@@ -658,8 +658,9 @@ if (strlen($remotePlaylist) >= 2) {
               <div class="mb-2 text-muted card-subtitle h6">
                 Choose which version of the plugin script to run. </br>
                 <span id="warning">WARNING! </span>Only change this if you know what you are
-                doing! It is recommended to use the latest version, but if you are 
-                experiencing issues, this allows you to downgrade.
+                doing!</br>It is recommended to use the latest version (master),</br> but if you are 
+                experiencing issues, this allows you to downgrade. </br>
+                Be sure to check out the <a href="https://github.com/whitesoup12/remote-falcon-plugin/wiki/Changelog" target="_blank">Plugin Changelog</a> so you know what changed in each version.
               </div>
             </div>
             <div class="col-md-6">
