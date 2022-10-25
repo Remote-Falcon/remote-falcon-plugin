@@ -653,7 +653,7 @@ if (strlen($remotePlaylist) >= 2) {
           <div class="justify-content-md-center row setting-item">
             <div class="col-md-6">
               <div class="card-title h5">
-                Plusing Script Version <span id="restartNotice"> (Requires Reboot)</span>
+                Plugin Script Version <span id="restartNotice"> (Requires Reboot)</span>
               </div>
               <div class="mb-2 text-muted card-subtitle h6">
                 Choose which version of the plugin script to run. </br>
