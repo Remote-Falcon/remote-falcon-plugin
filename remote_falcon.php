@@ -11,7 +11,7 @@ if (file_exists($pluginConfigFile)) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "6.3.4";
+$pluginVersion = "6.3.5";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
@@ -28,6 +28,9 @@ if (strlen(urldecode($pluginSettings['requestFetchTime']))<1){
 }
 if (strlen(urldecode($pluginSettings['autoRestartPlugin']))<1){
   WriteSettingToFile("autoRestartPlugin",urlencode("false"),$pluginName);
+}
+if (strlen(urldecode($pluginSettings['pluginScriptVersion']))<1){
+  WriteSettingToFile("pluginScriptVersion",urlencode($pluginVersion),$pluginName);
 }
 WriteSettingToFile("pluginVersion",urlencode($pluginVersion),$pluginName);
 
@@ -147,6 +150,36 @@ if (isset($_POST['updateRemotePlaylist'])) {
   }else {
     echo "<script type=\"text/javascript\">$.jGrowl('No Playlist was Selected!',{themeState:'danger'});</script>";
   }
+}
+
+$pluginScriptVersion = urldecode($pluginSettings['pluginScriptVersion']);
+$pluginScriptVersionOptions = $pluginScriptVersion == $pluginVersion ? "<option value=\"master\" selected>" . $pluginVersion . "</option>" : "<option value=\"master\">" . $pluginVersion . "</option>";
+$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.4" ? "<option value=\"6.3.4\" selected>6.3.4</option>" : "<option value=\"6.3.4\" >6.3.4</option>";
+$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.3" ? "<option value=\"6.3.3\" selected>6.3.3</option>" : "<option value=\"6.3.3\" >6.3.3</option>";
+$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.2" ? "<option value=\"6.3.2\" selected>6.3.2</option>" : "<option value=\"6.3.2\" >6.3.2</option>";
+$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.1" ? "<option value=\"6.3.1\" selected>6.3.1</option>" : "<option value=\"6.3.1\" >6.3.1</option>";
+$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.0" ? "<option value=\"6.3.0\" selected>6.3.0</option>" : "<option value=\"6.3.0\" >6.3.0</option>";
+
+if (isset($_POST['updatePluginScriptVersion'])) { 
+  $newPluginScriptVersion = trim($_POST['pluginScriptVersion']);
+  WriteSettingToFile("pluginScriptVersion",urlencode($newPluginScriptVersion),$pluginName);
+  
+  $pluginScriptContents = 0;
+  $url = "https://raw.githubusercontent.com/whitesoup12/remote-falcon-plugin/" . $newPluginScriptVersion . "/remote_fpp.php";
+  $options = array(
+    'http' => array(
+      'method'  => 'GET',
+      'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+                  "Accept: application/json\r\n"
+      )
+  );
+  $context = stream_context_create( $options );
+  $result = file_get_contents( $url, false, $context );
+
+  $file = "/home/fpp/media/plugins/remote-falcon/remote_fpp.php";
+  file_put_contents($file, $result);
+  
+  WriteSettingToFile('rebootFlag', 1);
 }
 
 $remoteFalconState = "<h4 id=\"remoteFalconRunning\">Remote Falcon is currently running</h4>";
@@ -499,6 +532,11 @@ if (strlen($remotePlaylist) >= 2) {
             <h1>Remote Falcon Plugin v<? echo $pluginVersion; ?></h1>
           </div>
         </div>
+        <div class="card-body"><div class="justify-content-md-center row" style="padding-bottom: 1em;">
+          <div class="col-md-auto">
+            <h3>Remote Falcon Script <? echo $pluginScriptVersion; ?></h3>
+          </div>
+        </div>
         <div class="justify-content-md-center row" style="padding-bottom: 1em;">
           <div class="col-md-auto">
             <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url" target="_blank" rel="noopener noreferrer">
@@ -609,6 +647,32 @@ if (strlen($remotePlaylist) >= 2) {
               </form>
             </div>
             <div class="col-md-3">
+            </div>
+          </div>
+          <!-- Plugin Script Version -->
+          <div class="justify-content-md-center row setting-item">
+            <div class="col-md-6">
+              <div class="card-title h5">
+                Plusing Script Version <span id="restartNotice"> (Requires Reboot)</span>
+              </div>
+              <div class="mb-2 text-muted card-subtitle h6">
+                Choose which version of the plugin script to run. </br>
+                <span id="warning">WARNING! </span>Only change this if you know what you are
+                doing! It is recommended to use the latest version, but if you are 
+                experiencing issues, this allows you to downgrade.
+              </div>
+            </div>
+            <div class="col-md-6">
+              <form method="post">
+                <div class="input-group">
+                  <select class="form-select" id="pluginScriptVersion" name="pluginScriptVersion">
+                    <? echo "$pluginScriptVersionOptions "; ?>
+                  </select>
+                  <span class="input-group-btn">
+                    <button id="updatePluginScriptVersion" name="updatePluginScriptVersion" class="btn mr-md-3 hvr-underline-from-center btn-primary" type="submit">Update</button>
+                  </span>
+                </div>
+              </form>
             </div>
           </div>
           <!-- Interrupt Schedule -->
