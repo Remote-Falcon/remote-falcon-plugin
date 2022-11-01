@@ -11,7 +11,7 @@ if (file_exists($pluginConfigFile)) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "6.3.6";
+$pluginVersion = "6.4.0";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
@@ -45,6 +45,10 @@ $remoteFppEnabled = urldecode($pluginSettings['remote_fpp_enabled']);
 $remoteFppEnabled = $remoteFppEnabled == "true" ? true : false;
 $autoRestartPlugin = urldecode($pluginSettings['autoRestartPlugin']);
 $autoRestartPlugin = $autoRestartPlugin == "true" ? true : false;
+
+if($requestFetchTime > 5) {
+  WriteSettingToFile("requestFetchTime",urlencode("3"),$pluginName);
+}
 
 $url = "http://127.0.0.1/api/plugin/remote-falcon/updates";
 $options = array(
@@ -156,7 +160,8 @@ if (isset($_POST['updateRemotePlaylist'])) {
 }
 
 $pluginScriptVersion = urldecode($pluginSettings['pluginScriptVersion']);
-$pluginScriptVersionOptions = $pluginScriptVersion == "master" ? "<option value=\"master\" selected>master</option>" : "<option value=\"master\">master</option>";
+$pluginScriptVersionOptions = $pluginScriptVersion == "master" ? "<option value=\"master\" selected>6.4.0</option>" : "<option value=\"master\">6.4.0</option>";
+$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.6" ? "<option value=\"6.3.6\" selected>6.3.6</option>" : "<option value=\"6.3.6\" >6.3.6</option>";
 $pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.5" ? "<option value=\"6.3.5\" selected>6.3.5</option>" : "<option value=\"6.3.5\" >6.3.5</option>";
 $pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.4" ? "<option value=\"6.3.4\" selected>6.3.4</option>" : "<option value=\"6.3.4\" >6.3.4</option>";
 $pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.3" ? "<option value=\"6.3.3\" selected>6.3.3</option>" : "<option value=\"6.3.3\" >6.3.3</option>";
@@ -428,9 +433,6 @@ if (strlen($remotePlaylist) >= 2) {
     #bodyWrapper {
       background-color: #20222e;
     }
-    .pageContent {
-      background-color: #171720;
-    }
     .plugin-body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: rgb(238, 238, 238);
@@ -546,8 +548,8 @@ if (strlen($remotePlaylist) >= 2) {
   </style>
 </head>
 <body>
-  <div class="container-fluid plugin-body">
-    <div class="container-fluid" style="padding-top: 2em;">
+  <div class="settings plugin-body">
+    <div style="padding-top: 2em;">
       <div class="card">
         <div class="card-body"><div class="justify-content-md-center row" style="padding-bottom: 1em;">
           <div class="col-md-auto">
@@ -656,7 +658,7 @@ if (strlen($remotePlaylist) >= 2) {
 							</div>
 							<div class="mb-2 text-muted card-subtitle h6">
 								This sets when the plugin checks for the next request/vote. </br>
-                Recommended is 3 seconds and must be between 1 and 5 seconds.
+                Recommended is 3 seconds but must be between 1 and 5 seconds.
 							</div>
 						</div>
             <div class="col-md-3">
@@ -681,7 +683,7 @@ if (strlen($remotePlaylist) >= 2) {
 							<div class="mb-2 text-muted card-subtitle h6">
 								This adds extra time after fetching the next request or vote. </br>
                 It's recommended to leave this at 0, but if you experience requests </br>
-                getting skipped or falling off, you can set this to 5 seconds or less.
+                getting skipped or falling off, you can set this between 1 and 5 seconds.
 							</div>
 						</div>
             <div class="col-md-3">
@@ -698,7 +700,7 @@ if (strlen($remotePlaylist) >= 2) {
             </div>
           </div>
           <!-- Plugin Script Version -->
-          <div class="justify-content-md-center row setting-item">
+          <!-- <div class="justify-content-md-center row setting-item">
             <div class="col-md-6">
               <div class="card-title h5">
                 Plugin Script Version <span id="restartNotice"> (Requires Reboot)</span>
@@ -723,7 +725,7 @@ if (strlen($remotePlaylist) >= 2) {
                 </div>
               </form>
             </div>
-          </div>
+          </div> -->
           <!-- Interrupt Schedule -->
           <div class="justify-content-md-center row setting-item">
             <div class="col-md-6">

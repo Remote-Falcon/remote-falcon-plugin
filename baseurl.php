@@ -2,7 +2,8 @@
 function getBaseUrl() {
   $host = gethostname();
   if($host == "fpplocal") {
-    return "http://host.docker.internal:8080/remotefalcon/api";
+    #return "http://host.docker.internal:8080/remotefalcon/api";
+    return "http://localhost:8080/remotefalcon/api";
   }else if($host == "FPP-TEST") {
     return "http://192.168.68.78:8080/remotefalcon/api";
   }
