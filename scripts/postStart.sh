@@ -1,3 +1,3 @@
 #!/bin/bash
-node /home/fpp/media/plugins/remote-falcon/request-listener.js &
+node /home/fpp/media/plugins/remote-falcon/js/requestListener.js &
 #post_start

@@ -56,7 +56,7 @@ async function getRemotePreferences() {
     if(res.status === 200) {
       pluginSettings.viewerControlMode = res.data.viewerControlMode;
     }else {
-      log.error('Erring getting remote preferences');
+      log.error('Error getting remote preferences');
     }
   })
   .catch(err => {
@@ -75,7 +75,7 @@ async function getFppStatus() {
     if(res.status === 200) {
       return res.data;
     }else {
-      log.error('Erring getting FPP status');
+      log.error('Error getting FPP status');
       return null;
     }
   })

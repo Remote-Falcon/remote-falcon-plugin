@@ -1,0 +1,16 @@
+.setting-item {
+  padding-top: 1em;
+}
+
+#remoteFalconRunning {
+  color: #60F779;
+}
+#update {
+  padding-bottom: 1em;
+  font-weight: bold;
+  color: #A72525;
+}
+#restartNotice {
+  font-weight: bold;
+  color: #D65A31;
+}
