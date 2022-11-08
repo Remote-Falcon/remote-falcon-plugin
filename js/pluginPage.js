@@ -3,7 +3,7 @@ $(document).ready(function() {
 });
 
 async function getPluginConfig() {
-  const response = await fetch('http://localhost:8090/api/configfile/remote-falcon.json');
+  const response = await fetch('http://localhost:8090/api/configfile/remote-falcon.json', {method: 'GET'});
   var pluginConfig = await response.json();
   document.getElementById("pluginVersion").innerHTML = pluginConfig.pluginVersion;
   document.getElementById("remoteToken").value = pluginConfig.remoteToken;
@@ -23,8 +23,4 @@ function saveRemotePlaylist() {
 function saveRequestFetchTime() {
   var requestFetchTime = document.getElementById('requestFetchTime').value;
   $.jGrowl('Request Fetch Time Updated', {themeState:'success'});
-}
-
-function doAThing() {
-  alert("Did A Thing");
 }

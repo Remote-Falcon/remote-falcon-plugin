@@ -3,11 +3,11 @@ const fs = require('fs');
 const pluginConfigFile = '/home/fpp/media/config/remote-falcon.json';
 const defaultPluginConfig = {
   requestListenerEnabled: true,
-  remotePlaylist: "",
+  remotePlaylist: '',
   interruptSchedule: false,
-  remoteToken: "",
+  remoteToken: '',
   requestFetchTime: 3,
-  pluginVersion: "7.0.0",
+  pluginVersion: '7.0.0',
   additionalWaitTime: 0
 };
 

@@ -1,9 +1,10 @@
 const axios = require('axios');
 const winston = require('winston');
-const {  format } = require('winston');
+const { format } = require('winston');
 const { combine, timestamp, printf } = format;
 const fs = require('fs');
 const readline = require('readline');
+const urlUtils = require('./urlUtils');
 
 //Init the logging stuff:
 const logFormat = printf(({ level, message, timestamp }) => {
@@ -20,11 +21,15 @@ const log = winston.createLogger({
 
 //Globals
 var pluginSettings = {};
+const url = (async () => {
+  return await urlUtils.getUrl();
+});
 
 //Start the main poller:
 mainPoller();
 
 async function mainPoller() {
+  log.info('Starting Request Listener');
   //One time things are first:
   //Get the settings from plain text config and put them in the pluginSettings global:
   await fetchSettingsFromConfig();
@@ -51,7 +56,7 @@ async function getRemotePreferences() {
     headers: { remotetoken: pluginSettings.remoteToken }
   };
   await axios
-  .get('http://host.docker.internal:8080/remotefalcon/api/remotePreferences', config)
+  .get(`${url.api}/remotePreferences`, config)
   .then(res => {
     if(res.status === 200) {
       pluginSettings.viewerControlMode = res.data.viewerControlMode;
@@ -70,7 +75,7 @@ async function getFppStatus() {
     headers: { 'Content-Type': 'application/json' }
   };
   await axios
-  .get('http://127.0.0.1/api/fppd/status', config)
+  .get(`${url.fpp}/api/fppd/status`, config)
   .then(res => {
     if(res.status === 200) {
       return res.data;
