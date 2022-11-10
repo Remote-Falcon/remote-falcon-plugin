@@ -11,7 +11,7 @@ if (file_exists($pluginConfigFile)) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 }
 
-$pluginVersion = "6.3.6";
+$pluginVersion = "6.4.0";
 
 //set defaults if nothing saved
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
@@ -32,8 +32,8 @@ if (strlen(urldecode($pluginSettings['additionalWaitTime']))<1){
 if (strlen(urldecode($pluginSettings['autoRestartPlugin']))<1){
   WriteSettingToFile("autoRestartPlugin",urlencode("false"),$pluginName);
 }
-if (strlen(urldecode($pluginSettings['pluginScriptVersion']))<1){
-  WriteSettingToFile("pluginScriptVersion",urlencode($pluginVersion),$pluginName);
+if (strlen(urldecode($pluginSettings['fppStatusCheckTime']))<1){
+  WriteSettingToFile("fppStatusCheckTime",urlencode("1"),$pluginName);
 }
 WriteSettingToFile("pluginVersion",urlencode($pluginVersion),$pluginName);
 
@@ -155,37 +155,6 @@ if (isset($_POST['updateRemotePlaylist'])) {
   }
 }
 
-$pluginScriptVersion = urldecode($pluginSettings['pluginScriptVersion']);
-$pluginScriptVersionOptions = $pluginScriptVersion == "master" ? "<option value=\"master\" selected>master</option>" : "<option value=\"master\">master</option>";
-$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.5" ? "<option value=\"6.3.5\" selected>6.3.5</option>" : "<option value=\"6.3.5\" >6.3.5</option>";
-$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.4" ? "<option value=\"6.3.4\" selected>6.3.4</option>" : "<option value=\"6.3.4\" >6.3.4</option>";
-$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.3" ? "<option value=\"6.3.3\" selected>6.3.3</option>" : "<option value=\"6.3.3\" >6.3.3</option>";
-$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.2" ? "<option value=\"6.3.2\" selected>6.3.2</option>" : "<option value=\"6.3.2\" >6.3.2</option>";
-$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.1" ? "<option value=\"6.3.1\" selected>6.3.1</option>" : "<option value=\"6.3.1\" >6.3.1</option>";
-$pluginScriptVersionOptions .= $pluginScriptVersion == "6.3.0" ? "<option value=\"6.3.0\" selected>6.3.0</option>" : "<option value=\"6.3.0\" >6.3.0</option>";
-
-if (isset($_POST['updatePluginScriptVersion'])) { 
-  $newPluginScriptVersion = trim($_POST['pluginScriptVersion']);
-  WriteSettingToFile("pluginScriptVersion",urlencode($newPluginScriptVersion),$pluginName);
-  
-  $pluginScriptContents = 0;
-  $url = "https://raw.githubusercontent.com/whitesoup12/remote-falcon-plugin/" . $newPluginScriptVersion . "/remote_fpp.php";
-  $options = array(
-    'http' => array(
-      'method'  => 'GET',
-      'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
-                  "Accept: application/json\r\n"
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
-
-  $file = "/home/fpp/media/plugins/remote-falcon/remote_fpp.php";
-  file_put_contents($file, $result);
-  
-  WriteSettingToFile('rebootFlag', 1);
-}
-
 $remoteFalconState = "<h4 id=\"remoteFalconRunning\">Remote Falcon is currently running</h4>";
 if($remoteFppEnabled == 0) {
   $remoteFalconState = "<h4 id=\"remoteFalconStopped\">Remote Falcon is currently stopped</h4>";
@@ -226,6 +195,21 @@ if (isset($_POST['updateAdditionalWaitTime'])) {
     echo "<script type=\"text/javascript\">$.jGrowl('Additional Wait Time Updated',{themeState:'success'});</script>";
   }else {
     echo "<script type=\"text/javascript\">$.jGrowl('Must be less than 5',{themeState:'danger'});</script>";
+  }
+}
+
+if (isset($_POST['updateFppStatusCheckTime'])) { 
+  $requestFetchTime = urldecode($pluginSettings['requestFetchTime']);
+  $fppStatusCheckTime = trim($_POST['fppStatusCheckTime']);
+  if($fppStatusCheckTime > 0 && $fppStatusCheckTime < $requestFetchTime) {
+    WriteSettingToFile("fppStatusCheckTime",$fppStatusCheckTime,$pluginName);
+    if($autoRestartPlugin == 1 && $remoteFppEnabled == 1) {
+      WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
+      WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+    }
+    echo "<script type=\"text/javascript\">$.jGrowl('FPP Status Check Time Updated',{themeState:'success'});</script>";
+  }else {
+    echo "<script type=\"text/javascript\">$.jGrowl('Must be between 1 and Request Fetch Time',{themeState:'danger'});</script>";
   }
 }
 
@@ -554,11 +538,6 @@ if (strlen($remotePlaylist) >= 2) {
             <h1>Remote Falcon Plugin v<? echo $pluginVersion; ?></h1>
           </div>
         </div>
-        <div class="card-body"><div class="justify-content-md-center row" style="padding-bottom: 1em;">
-          <div class="col-md-auto">
-            <h3>Remote Falcon Script <? echo $pluginScriptVersion == "master" ? $pluginVersion : $pluginScriptVersion; ?></h3>
-          </div>
-        </div>
         <div class="justify-content-md-center row" style="padding-bottom: 1em;">
           <div class="col-md-auto">
             <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url" target="_blank" rel="noopener noreferrer">
@@ -648,6 +627,79 @@ if (strlen($remotePlaylist) >= 2) {
               <p id="warning"><? echo "$scriptWarning"; ?></p>
             </div>
           </div>
+          <!-- Interrupt Schedule -->
+          <div class="justify-content-md-center row setting-item">
+            <div class="col-md-6">
+              <div class="card-title h5">
+                Interrupt Schedule <span id="restartNotice"> *</span>
+              </div>
+              <div class="mb-2 text-muted card-subtitle h6">
+                Determines if a request or vote will interrupt the normal schedule
+              </div>
+            </div>
+            <div class="col-md-6">
+              <form method="post">
+                <button class="btn mr-md-3 hvr-underline-from-center <? echo $interruptYes; ?>" id="interruptScheduleYes" name="interruptScheduleYes" type="submit">
+                  Yes
+                </button>
+                <button class="btn mr-md-3 hvr-underline-from-center <? echo $interruptNo; ?>" id="interruptScheduleNo" name="interruptScheduleNo" type="submit">
+                  No
+                </button>
+              </form>
+            </div>
+          </div>
+          <!-- Debug Remote Falcon -->
+          <div class="justify-content-md-center row setting-item">
+            <div class="col-md-6">
+              <div class="card-title h5">
+                Check Plugin
+              </div>
+              <div class="mb-2 text-muted card-subtitle h6">
+                This will run a check on the plugin configuration and report any issues. Results will display below.
+              </div>
+            </div>
+            <div class="col-md-6">
+              <form method="post">
+                <button class="btn mr-md-3 hvr-underline-from-center btn-primary" id="checkPlugin" name="checkPlugin" type="submit">
+                  Check Plugin
+                </button>
+              </form>
+            </div>
+          </div>
+          <!-- Debug Remote Falcon Results -->
+          <div class="justify-content-md-center row setting-item">
+            <div class="col-md-6">
+            </div>
+            <div class="col-md-6">
+              <p id=<? echo $pluginCheckResultsId; ?>>
+                <? echo $pluginCheckResults; ?>
+              </p>
+            </div>
+          </div>
+          <!-- Restart Remote Falcon -->
+          <div class="justify-content-md-center row setting-item">
+            <div class="col-md-6">
+              <div class="card-title h5">
+                Restart Remote Falcon
+              </div>
+              <div class="mb-2 text-muted card-subtitle h6">
+                This will restart the Remote Falcon plugin
+              </div>
+            </div>
+            <div class="col-md-6">
+              <form method="post">
+                <button class="btn mr-md-3 hvr-underline-from-center btn-primary" id="restartRemoteFalcon" name="restartRemoteFalcon" type="submit">
+                  Restart Remote Falcon
+                </button>
+              </form>
+            </div>
+          </div>
+          <div class="justify-content-md-center row" style="padding-bottom: 1em;">
+            <div class="col-md-auto">
+              <h4 id="restartNotice">Advanced Settings</h4>
+            </div>
+          </div>
+          <hr />
           <!-- Request Fetch Time -->
           <div class="justify-content-md-center row setting-item">
             <div class="col-md-6">
@@ -697,52 +749,30 @@ if (strlen($remotePlaylist) >= 2) {
             <div class="col-md-3">
             </div>
           </div>
-          <!-- Plugin Script Version -->
+          <!-- FPP Status Check Time -->
           <div class="justify-content-md-center row setting-item">
             <div class="col-md-6">
-              <div class="card-title h5">
-                Plugin Script Version <span id="restartNotice"> (Requires Reboot)</span>
-              </div>
-              <div class="mb-2 text-muted card-subtitle h6">
-                Choose which version of the plugin script to run. </br>
-                <span id="warning">WARNING! </span>Only change this if you know what you are
-                doing!</br>It is recommended to use the latest version (master),</br> but if you are 
-                experiencing issues, this allows you to downgrade. </br>
-                Be sure to check out the <a href="https://github.com/whitesoup12/remote-falcon-plugin/wiki/Changelog" target="_blank">Plugin Changelog</a> so you know what changed in each version.
-              </div>
-            </div>
-            <div class="col-md-6">
+							<div class="card-title h5">
+								FPP Status Check Time <span id="restartNotice"> *</span>
+							</div>
+							<div class="mb-2 text-muted card-subtitle h6">
+								This determines how often the plugin calls to the the status of FPP. </br>
+                It's recommended to leave this at 1, but if you experience issues with high CPU </br>
+                or FPP freezing, you can set this to a higher value. The value must be between 1 and </br>
+                the value of your request fetch time.
+							</div>
+						</div>
+            <div class="col-md-3">
               <form method="post">
                 <div class="input-group">
-                  <select class="form-select" id="pluginScriptVersion" name="pluginScriptVersion">
-                    <? echo "$pluginScriptVersionOptions "; ?>
-                  </select>
+                  <input type="number" class="form-control" name="fppStatusCheckTime" id="fppStatusCheckTime" value=<? echo "$fppStatusCheckTime "; ?>>
                   <span class="input-group-btn">
-                    <button id="updatePluginScriptVersion" name="updatePluginScriptVersion" class="btn mr-md-3 hvr-underline-from-center btn-primary" type="submit">Update</button>
+                    <button id="updateFppStatusCheckTime" name="updateFppStatusCheckTime" class="btn mr-md-3 hvr-underline-from-center btn-primary" type="submit">Update</button>
                   </span>
                 </div>
               </form>
             </div>
-          </div>
-          <!-- Interrupt Schedule -->
-          <div class="justify-content-md-center row setting-item">
-            <div class="col-md-6">
-              <div class="card-title h5">
-                Interrupt Schedule <span id="restartNotice"> *</span>
-              </div>
-              <div class="mb-2 text-muted card-subtitle h6">
-                Determines if a request or vote will interrupt the normal schedule
-              </div>
-            </div>
-            <div class="col-md-6">
-              <form method="post">
-                <button class="btn mr-md-3 hvr-underline-from-center <? echo $interruptYes; ?>" id="interruptScheduleYes" name="interruptScheduleYes" type="submit">
-                  Yes
-                </button>
-                <button class="btn mr-md-3 hvr-underline-from-center <? echo $interruptNo; ?>" id="interruptScheduleNo" name="interruptScheduleNo" type="submit">
-                  No
-                </button>
-              </form>
+            <div class="col-md-3">
             </div>
           </div>
           <!-- Auto Restart Plugin -->
@@ -762,51 +792,6 @@ if (strlen($remotePlaylist) >= 2) {
                 </button>
                 <button class="btn mr-md-3 hvr-underline-from-center <? echo $autoRestartPluginNo; ?>" id="autoRestartPluginNo" name="autoRestartPluginNo" type="submit">
                   No
-                </button>
-              </form>
-            </div>
-          </div>
-          <!-- Debug Remote Falcon -->
-          <div class="justify-content-md-center row setting-item">
-            <div class="col-md-6">
-              <div class="card-title h5">
-                Check Plugin
-              </div>
-              <div class="mb-2 text-muted card-subtitle h6">
-                This will run a check on the plugin configuration and report any issues. Results will display below.
-              </div>
-            </div>
-            <div class="col-md-6">
-              <form method="post">
-                <button class="btn mr-md-3 hvr-underline-from-center btn-primary" id="checkPlugin" name="checkPlugin" type="submit">
-                  Check Plugin
-                </button>
-              </form>
-            </div>
-          </div>
-          <div class="justify-content-md-center row setting-item">
-            <div class="col-md-6">
-            </div>
-            <div class="col-md-6">
-              <p id=<? echo $pluginCheckResultsId; ?>>
-                <? echo $pluginCheckResults; ?>
-              </p>
-            </div>
-          </div>
-          <!-- Restart Remote Falcon -->
-          <div class="justify-content-md-center row setting-item">
-            <div class="col-md-6">
-              <div class="card-title h5">
-                Restart Remote Falcon
-              </div>
-              <div class="mb-2 text-muted card-subtitle h6">
-                This will restart the Remote Falcon plugin
-              </div>
-            </div>
-            <div class="col-md-6">
-              <form method="post">
-                <button class="btn mr-md-3 hvr-underline-from-center btn-primary" id="restartRemoteFalcon" name="restartRemoteFalcon" type="submit">
-                  Restart Remote Falcon
                 </button>
               </form>
             </div>

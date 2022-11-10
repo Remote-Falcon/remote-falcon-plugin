@@ -11,9 +11,8 @@ $pluginSettings = parse_ini_file($pluginConfigFile);
 WriteSettingToFile("remote_fpp_enabled",urlencode("true"),$pluginName);
 WriteSettingToFile("remote_fpp_restarting",urlencode("false"),$pluginName);
 
-$pluginScriptVersion = urldecode($pluginSettings['pluginScriptVersion']);
-echo "Starting Remote Falcon Plugin v" . $pluginScriptVersion . "\n";
-logEntry("Starting Remote Falcon Plugin v" . $pluginScriptVersion);
+$pluginVersion = urldecode($pluginSettings['pluginVersion']);
+logEntry("Starting Remote Falcon Plugin v" . $pluginVersion);
 
 $remoteToken = "";
 $remotePlaylist = "";
@@ -38,6 +37,8 @@ $requestFetchTime = intVal(urldecode($pluginSettings['requestFetchTime']));
 logEntry("Request Fetch Time: " . $requestFetchTime);
 $additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
 logEntry("Additional Wait Time: " . $additionalWaitTime);
+$fppStatusCheckTime = intVal(urldecode($pluginSettings['fppStatusCheckTime']));
+logEntry("FPP Status Check Time: " . $fppStatusCheckTime);
 
 while(true) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
@@ -50,8 +51,8 @@ while(true) {
     WriteSettingToFile("remote_fpp_enabled",urlencode("true"),$pluginName);
     WriteSettingToFile("remote_fpp_restarting",urlencode("false"),$pluginName);
 
-    echo "Restarting Remote Falcon Plugin v" . $pluginScriptVersion . "\n";
-    logEntry("Restarting Remote Falcon Plugin v" . $pluginScriptVersion);
+    echo "Restarting Remote Falcon Plugin v" . $pluginVersion . "\n";
+    logEntry("Restarting Remote Falcon Plugin v" . $pluginVersion);
     $remoteToken = urldecode($pluginSettings['remoteToken']);
     $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
     logEntry("Remote Playlist: ".$remotePlaylist);
@@ -65,6 +66,8 @@ while(true) {
     logEntry("Request Fetch Time: " . $requestFetchTime);
     $additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
     logEntry("Additional Wait Time: " . $additionalWaitTime);
+    $fppStatusCheckTime = intVal(urldecode($pluginSettings['fppStatusCheckTime']));
+    logEntry("FPP Status Check Time: " . $fppStatusCheckTime);
   }
 
   if($remoteFppEnabled == 1) {
@@ -136,9 +139,6 @@ while(true) {
                   $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                   logEntry("Sleeping for " . $fppWaitTime . " seconds.");
                   sleep($fppWaitTime);
-                }else {
-                  $fppWaitTime = $requestFetchTime + $additionalWaitTime;
-                  sleep($fppWaitTime);
                 }
               }else {
                 $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
@@ -149,9 +149,6 @@ while(true) {
                   logEntry("Playing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
                   $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                   logEntry("Sleeping for " . $fppWaitTime . " seconds.");
-                  sleep($fppWaitTime);
-                }else {
-                  $fppWaitTime = $requestFetchTime + $additionalWaitTime;
                   sleep($fppWaitTime);
                 }
               }
@@ -171,7 +168,7 @@ while(true) {
     }
   }
 
-  usleep(250000);
+  sleep($fppStatusCheckTime);
 }
 
 function updateCurrentlyPlaying($currentlyPlaying, $currentlyPlayingInRF, $remoteToken) {
@@ -348,6 +345,8 @@ function logEntry($data) {
 	$logWrite= fopen($logFile, "a") or die("Unable to open file!");
 	fwrite($logWrite, date('Y-m-d h:i:s A',time()).": ".$data."\n");
 	fclose($logWrite);
+
+  echo(date('Y-m-d h:i:s A',time()).": ".$data."\n");
 }
 
 ?>
