@@ -8,10 +8,32 @@ $logFile = $settings['logDirectory']."/".$pluginName.".log";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
 $pluginSettings = parse_ini_file($pluginConfigFile);
 
+$pluginVersion = "6.4.1";
+
+WriteSettingToFile("pluginVersion",urlencode($pluginVersion),$pluginName);
 WriteSettingToFile("remote_fpp_enabled",urlencode("true"),$pluginName);
 WriteSettingToFile("remote_fpp_restarting",urlencode("false"),$pluginName);
 
-$pluginVersion = urldecode($pluginSettings['pluginVersion']);
+//Set defaults here since this runs before the plugin page is visited
+if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
+  WriteSettingToFile("remotePlaylist",urlencode(""),$pluginName);
+}
+if (strlen(urldecode($pluginSettings['interrupt_schedule_enabled']))<1){
+  WriteSettingToFile("interrupt_schedule_enabled",urlencode("false"),$pluginName);
+}
+if (strlen(urldecode($pluginSettings['remoteToken']))<1){
+  WriteSettingToFile("remoteToken",urlencode(""),$pluginName);
+}
+if (strlen(urldecode($pluginSettings['requestFetchTime']))<1){
+  WriteSettingToFile("requestFetchTime",urlencode("3"),$pluginName);
+}
+if (strlen(urldecode($pluginSettings['additionalWaitTime']))<1){
+  WriteSettingToFile("additionalWaitTime",urlencode("0"),$pluginName);
+}
+if (strlen(urldecode($pluginSettings['fppStatusCheckTime']))<1){
+  WriteSettingToFile("fppStatusCheckTime",urlencode("1"),$pluginName);
+}
+
 logEntry("Starting Remote Falcon Plugin v" . $pluginVersion);
 
 $remoteToken = "";
@@ -51,7 +73,6 @@ while(true) {
     WriteSettingToFile("remote_fpp_enabled",urlencode("true"),$pluginName);
     WriteSettingToFile("remote_fpp_restarting",urlencode("false"),$pluginName);
 
-    echo "Restarting Remote Falcon Plugin v" . $pluginVersion . "\n";
     logEntry("Restarting Remote Falcon Plugin v" . $pluginVersion);
     $remoteToken = urldecode($pluginSettings['remoteToken']);
     $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
