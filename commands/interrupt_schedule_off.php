@@ -5,7 +5,7 @@ include_once "/opt/fpp/www/config.php";
 include_once "/opt/fpp/www/common.php";
 $pluginName = "remote-falcon";
 
-WriteSettingToFile("interrupt_schedule_enabled",urlencode("false"),$pluginName);
-WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
-WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+WriteSettingToFile("interruptSchedule",urlencode("false"),$pluginName);
+WriteSettingToFile("remoteFalconListenerEnabled",urlencode("false"),$pluginName);
+WriteSettingToFile("remoteFalconListenerRestarting",urlencode("true"),$pluginName);
 ?>

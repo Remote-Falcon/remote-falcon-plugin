@@ -1,4 +1,6 @@
 <?php
+$PLUGIN_VERSION = "1.0.0";
+
 include_once "/opt/fpp/www/common.php";
 include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
 $baseUrl = getBaseUrl();
@@ -8,18 +10,16 @@ $logFile = $settings['logDirectory']."/".$pluginName.".log";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
 $pluginSettings = parse_ini_file($pluginConfigFile);
 
-$pluginVersion = "6.4.1";
-
-WriteSettingToFile("pluginVersion",urlencode($pluginVersion),$pluginName);
-WriteSettingToFile("remote_fpp_enabled",urlencode("true"),$pluginName);
-WriteSettingToFile("remote_fpp_restarting",urlencode("false"),$pluginName);
+WriteSettingToFile("pluginVersion",urlencode($PLUGIN_VERSION),$pluginName);
+WriteSettingToFile("remoteFalconListenerEnabled",urlencode("true"),$pluginName);
+WriteSettingToFile("remoteFalconListenerRestarting",urlencode("false"),$pluginName);
 
 //Set defaults here since this runs before the plugin page is visited
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
   WriteSettingToFile("remotePlaylist",urlencode(""),$pluginName);
 }
-if (strlen(urldecode($pluginSettings['interrupt_schedule_enabled']))<1){
-  WriteSettingToFile("interrupt_schedule_enabled",urlencode("false"),$pluginName);
+if (strlen(urldecode($pluginSettings['interruptSchedule']))<1){
+  WriteSettingToFile("interruptSchedule",urlencode("false"),$pluginName);
 }
 if (strlen(urldecode($pluginSettings['remoteToken']))<1){
   WriteSettingToFile("remoteToken",urlencode(""),$pluginName);
@@ -34,7 +34,7 @@ if (strlen(urldecode($pluginSettings['fppStatusCheckTime']))<1){
   WriteSettingToFile("fppStatusCheckTime",urlencode("1"),$pluginName);
 }
 
-logEntry("Starting Remote Falcon Plugin v" . $pluginVersion);
+logEntry("Starting Remote Falcon Plugin v" . $PLUGIN_VERSION);
 
 $remoteToken = "";
 $remotePlaylist = "";
@@ -52,7 +52,7 @@ logEntry("Remote Playlist: ".$remotePlaylist);
 $remotePreferences = remotePreferences($remoteToken);
 $viewerControlMode = $remotePreferences->viewerControlMode;
 logEntry("Viewer Control Mode: " . $viewerControlMode);
-$interruptSchedule = urldecode($pluginSettings['interrupt_schedule_enabled']);
+$interruptSchedule = urldecode($pluginSettings['interruptSchedule']);
 logEntry("Interrupt Schedule: " . $interruptSchedule);
 $interruptSchedule = $interruptSchedule == "true" ? true : false;
 $requestFetchTime = intVal(urldecode($pluginSettings['requestFetchTime']));
@@ -64,23 +64,23 @@ logEntry("FPP Status Check Time: " . $fppStatusCheckTime);
 
 while(true) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
-  $remoteFppEnabled = urldecode($pluginSettings['remote_fpp_enabled']);
+  $remoteFppEnabled = urldecode($pluginSettings['remoteFalconListenerEnabled']);
   $remoteFppEnabled = $remoteFppEnabled == "true" ? true : false;
-  $remoteFppRestarting = urldecode($pluginSettings['remote_fpp_restarting']);
+  $remoteFppRestarting = urldecode($pluginSettings['remoteFalconListenerRestarting']);
   $remoteFppRestarting = $remoteFppRestarting == "true" ? true : false;
 
   if($remoteFppRestarting == 1) {
-    WriteSettingToFile("remote_fpp_enabled",urlencode("true"),$pluginName);
-    WriteSettingToFile("remote_fpp_restarting",urlencode("false"),$pluginName);
+    WriteSettingToFile("remoteFalconListenerEnabled",urlencode("true"),$pluginName);
+    WriteSettingToFile("remoteFalconListenerRestarting",urlencode("false"),$pluginName);
 
-    logEntry("Restarting Remote Falcon Plugin v" . $pluginVersion);
+    logEntry("Restarting Remote Falcon Plugin v" . $PLUGIN_VERSION);
     $remoteToken = urldecode($pluginSettings['remoteToken']);
     $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
     logEntry("Remote Playlist: ".$remotePlaylist);
     $remotePreferences = remotePreferences($remoteToken);
     $viewerControlMode = $remotePreferences->viewerControlMode;
     logEntry("Viewer Control Mode: " . $viewerControlMode);
-    $interruptSchedule = urldecode($pluginSettings['interrupt_schedule_enabled']);
+    $interruptSchedule = urldecode($pluginSettings['interruptSchedule']);
     logEntry("Interrupt Schedule: " . $interruptSchedule);
     $interruptSchedule = $interruptSchedule == "true" ? true : false;
     $requestFetchTime = intVal(urldecode($pluginSettings['requestFetchTime']));
@@ -221,11 +221,13 @@ function clearNextScheduledSequence($remoteToken) {
 function getNextSequence($mainPlaylist, $currentlyPlaying) {
   $nextScheduled = "";
   for ($i = 0; $i < count($mainPlaylist); $i++) {
-    if(pathinfo($mainPlaylist[$i]->sequenceName, PATHINFO_FILENAME) == $currentlyPlaying) {
+    if(isset($mainPlaylist[$i]->sequenceName) && pathinfo($mainPlaylist[$i]->sequenceName, PATHINFO_FILENAME) == $currentlyPlaying) {
       if($i+1 == count($mainPlaylist)) {
         $nextScheduled = $mainPlaylist[0]->sequenceName;
       }else {
-        $nextScheduled = $mainPlaylist[$i+1]->sequenceName;
+        if(isset($mainPlaylist[$i+1]->sequenceName)) {
+          $nextScheduled = $mainPlaylist[$i+1]->sequenceName;
+        }
       }
     }
   }

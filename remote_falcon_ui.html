@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" type="text/css" href="./css/remote_falcon_ui.css">
+	<script src="./js/remote_falcon_ui.js"></script>
+</head>
+<body>
+
+  <div id="loader" style="height: 55%;">
+    <div class="cssload-dots">
+      <div class="cssload-dot"></div>
+      <div class="cssload-dot"></div>
+      <div class="cssload-dot"></div>
+      <div class="cssload-dot"></div>
+      <div class="cssload-dot"></div>
+    </div>
+    <svg version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="goo">
+          <feGaussianBlur in="SourceGraphic" result="blur" stdDeviation="12" ></feGaussianBlur>
+          <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0	0 1 0 0 0	0 0 1 0 0	0 0 0 18 -7" result="goo" ></feColorMatrix>
+        </filter>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="plugin-body">
+    <div class="card">
+      <div class="justify-content-md-center row" style="padding-bottom: 1em;">
+        <div class="col-md-auto">
+          <h1>Remote Falcon Plugin v<span id="pluginVersion"></span></h1>
+        </div>
+      </div>
+      <div class="justify-content-md-center row" style="padding-bottom: 2em;">
+        <div class="col-md-auto">
+          <a class="support-button" href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=FFKWA2CFP6JC6&currency_code=USD&source=url" target="_blank" rel="noopener noreferrer">
+            Support Remote Falcon
+          </a>
+        </div>
+      </div>
+      <div class="justify-content-md-center row" style="padding-bottom: 1em;">
+        <div class="col-md-auto">
+          <span id="remoteFalconStatus"></span>
+        </div>
+      </div>
+      <div>
+        <div class="justify-content-md-center row">
+          <div class="col-md-auto">
+            <span id="updatesAvailable"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <!-- Remote Token -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Remote Token
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            Your Remote Token, which can be found on the Remote Falcon Control Panel under Account.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group">
+            <input type="text" class="form-control" name="remoteTokenInput" id="remoteTokenInput" placeholder="Remote Token" value="">
+          </div>
+        </div>
+      </div>
+      <!-- Remote Playlist -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Remote Playlist
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            This is the playlist that contains all the sequences to be controlled by your viewers.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group">
+            <select class="form-control" id="remotePlaylistSelect" name="remotePlaylistSelect"></select>
+            <button id="resyncRemotePlaylistButton" class="buttons btn-outline-success btn-rounded button-margin" type="button">Resync</button>
+          </div>
+        </div>
+      </div>
+      <!-- Interrupt Schedule -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Interrupt Schedule
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            Determines if a request or vote will interrupt the normal schedule.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <input type="checkbox" class="form-control" name="interruptScheduleCheckbox" id="interruptScheduleCheckbox">
+        </div>
+      </div>
+      <!-- Check Plugin -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Check Plugin
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            This will run a check on the plugin configuration and report any issues. Results will display below.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group">
+            <button id="checkPluginButton" class="buttons btn-outline-success btn-rounded" type="button">Check Plugin</button>
+          </div>
+          <div id="checkPluginResults">
+            
+          </div>
+        </div>
+      </div>
+      <hr />
+      <div class="justify-content-md-center row" style="padding-bottom: 2em; padding-top: 2em;">
+        <div class="col-md-auto">
+          <h4 class="h5 restart-notice">Advanced Settings</h4>
+        </div>
+      </div>
+      <!-- Request/Vote Fetch Time -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Request/Vote Fetch Time
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            This sets when the plugin checks for the next request/vote. <br />
+            Recommended is 3 seconds and must be between 1 and 5 seconds.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group">
+            <input type="number" class="form-control" name="requestFetchTimeInput" id="requestFetchTimeInput">
+          </div>
+        </div>
+      </div>
+      <!-- Additional Wait Time -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Additional Wait Time
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            This adds extra time after fetching the next request or vote. </br>
+            It's recommended to leave this at 0, but if you experience requests </br>
+            getting skipped or falling off, you can set this to 5 seconds or less.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group">
+            <input type="number" class="form-control" name="additionalWaitTimeInput" id="additionalWaitTimeInput">
+          </div>
+        </div>
+      </div>
+      <!-- FPP Status Check Time -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            FPP Status Check Time
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            This determines how often the plugin calls to get the status of FPP. </br>
+            It's recommended to leave this at 1, but if you experience issues with </br>
+            high CPU usage or FPP freezing, you can set this to a higher value. </br>
+            The value must be between 1 and <span id="requestFetchTime"></span> (your current Request/Vote Fetch Time value).
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group">
+            <input type="number" class="form-control" name="fppStatusCheckTimeInput" id="fppStatusCheckTimeInput">
+          </div>
+        </div>
+      </div>
+      <!-- Restart Remote Falcon -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Restart Listener
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            This will restart the Remote Falcon Listener.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group">
+            <button id="restartListenerButton" class="buttons btn-outline-danger btn-rounded" type="button">Restart Listener</button>
+          </div>
+        </div>
+      </div>
+      <!-- Stop Remote Falcon Listener -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Stop Listener
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            <span class="warning">WARNING!</span> <br />
+            This will immediately stop the Remote Falcon Listener and no requests/votes will be fetched.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group">
+            <button id="stopListenerButton" class="buttons btn-outline-danger btn-rounded" type="button">Stop Listener</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
