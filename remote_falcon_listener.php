@@ -6,7 +6,7 @@ include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
 $baseUrl = getBaseUrl();
 $pluginName = basename(dirname(__FILE__));
 $pluginPath = $settings['pluginDirectory']."/".$pluginName."/"; 
-$logFile = $settings['logDirectory']."/".$pluginName.".log";
+$logFile = $settings['logDirectory']."/".$pluginName."-listener.log";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
 $pluginSettings = parse_ini_file($pluginConfigFile);
 
