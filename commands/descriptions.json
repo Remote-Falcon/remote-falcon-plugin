@@ -15,12 +15,12 @@
     "args": []
   },
   {
-    "name": "Remote Falcon - Restart Plugin",
+    "name": "Remote Falcon - Restart Listener",
     "script": "restart_remote_falcon.php",
     "args": []
   },
   {
-    "name": "Remote Falcon - Stop Plugin",
+    "name": "Remote Falcon - Stop Listener",
     "script": "stop_remote_falcon.php",
     "args": []
   },
