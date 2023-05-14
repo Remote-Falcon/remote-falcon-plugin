@@ -65,8 +65,8 @@ if(strlen($remoteToken)>1) {
   if($response) {
     WriteSettingToFile("remotePlaylist",$remotePlaylist,$pluginName);
     if($remoteFppEnabled == 1) {
-      WriteSettingToFile("remote_fpp_enabled",urlencode("false"),$pluginName);
-      WriteSettingToFile("remote_fpp_restarting",urlencode("true"),$pluginName);
+      WriteSettingToFile("remoteFalconListenerEnabled",urlencode("false"),$pluginName);
+      WriteSettingToFile("remoteFalconListenerRestarting",urlencode("true"),$pluginName);
     }
   }
   echo "Done!";
