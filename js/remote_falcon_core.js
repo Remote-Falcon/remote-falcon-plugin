@@ -16,7 +16,7 @@ var REMOTE_PLAYLIST = null;
 function setApiUrl() {
   var hostname = $(location).attr('hostname');
   if(hostname === 'localhost') {
-    API_URL = 'http://host.docker.internal:8080/remotefalcon/api'
+    API_URL = 'http://localhost:8080/remotefalcon/api'
   }
 }
 
