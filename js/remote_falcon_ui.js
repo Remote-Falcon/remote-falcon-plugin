@@ -24,10 +24,6 @@ $(document).ready(async () => {
     await syncPlaylistToRF();
   });
 
-  $('#resyncRemotePlaylistButton').click(async () => {
-    await syncPlaylistToRF(true);
-  });
-
   $('#interruptScheduleCheckbox').change(async () => {
     const isChecked = $('#interruptScheduleCheckbox').is(':checked');
     await FPPPost('/api/plugin/remote-falcon/settings/interruptSchedule', isChecked.toString(), async () => {
@@ -92,12 +88,9 @@ async function init() {
   hideLoader();
 }
 
-async function syncPlaylistToRF(isResync) {
+async function syncPlaylistToRF() {
   if(REMOTE_TOKEN) {
     var selectedPlaylist = $('#remotePlaylistSelect').val();
-    if(selectedPlaylist === REMOTE_PLAYLIST && !isResync) {
-      return;
-    }
     await FPPGet('/api/playlist/' + encodeURIComponent(selectedPlaylist), async (data) => {
       var sequences = [];
       if(data?.mainPlaylist) {
