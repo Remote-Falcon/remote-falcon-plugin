@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "1.0.2";
+$PLUGIN_VERSION = "1.0.3";
 
 include_once "/opt/fpp/www/common.php";
 include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
@@ -59,8 +59,8 @@ $requestFetchTime = intVal(urldecode($pluginSettings['requestFetchTime']));
 logEntry("Request Fetch Time: " . $requestFetchTime);
 $additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
 logEntry("Additional Wait Time: " . $additionalWaitTime);
-$fppStatusCheckTime = intVal(urldecode($pluginSettings['fppStatusCheckTime']));
-logEntry("FPP Status Check Time: " . $fppStatusCheckTime);
+$fppStatusCheckTime = floatval(urldecode($pluginSettings['fppStatusCheckTime']));
+logEntry("FPP Status Check Time: " . $fppStatusCheckTime . " (" . $fppStatusCheckTime * 1000000 . " microseconds)");
 
 while(true) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
@@ -87,8 +87,8 @@ while(true) {
     logEntry("Request Fetch Time: " . $requestFetchTime);
     $additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
     logEntry("Additional Wait Time: " . $additionalWaitTime);
-    $fppStatusCheckTime = intVal(urldecode($pluginSettings['fppStatusCheckTime']));
-    logEntry("FPP Status Check Time: " . $fppStatusCheckTime);
+    $fppStatusCheckTime = floatval(urldecode($pluginSettings['fppStatusCheckTime']));
+    logEntry("FPP Status Check Time: " . $fppStatusCheckTime . " (" . $fppStatusCheckTime * 1000000 . " microseconds)");
   }
 
   if($remoteFppEnabled == 1) {
@@ -189,7 +189,7 @@ while(true) {
     }
   }
 
-  sleep($fppStatusCheckTime);
+  usleep($fppStatusCheckTime * 1000000);
 }
 
 function updateCurrentlyPlaying($currentlyPlaying, $currentlyPlayingInRF, $remoteToken) {

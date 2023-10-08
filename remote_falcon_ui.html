@@ -168,12 +168,14 @@
             This determines how often the plugin calls to get the status of FPP. </br>
             It's recommended to leave this at 1, but if you experience issues with </br>
             high CPU usage or FPP freezing, you can set this to a higher value. </br>
-            The value must be between 1 and <span id="requestFetchTime"></span> (your current Request/Vote Fetch Time value).
+            The value must be between 1 and <span id="requestFetchTime"></span> (your current Request/Vote Fetch Time value).</br>
+            Note: If you have Interrupt Schedule on and are having issues with the schedule starting for a second </br>
+            then going to the next request, you can try setting this value to 0.5.
           </div>
         </div>
         <div class="col-md-6">
           <div class="input-group">
-            <input type="number" class="form-control" name="fppStatusCheckTimeInput" id="fppStatusCheckTimeInput">
+            <input type="number" min="0" step="0.1" class="form-control" name="fppStatusCheckTimeInput" id="fppStatusCheckTimeInput">
           </div>
         </div>
       </div>

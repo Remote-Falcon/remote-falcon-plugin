@@ -69,7 +69,7 @@ async function getPluginConfig() {
     ADDITIONAL_WAIT_TIME = parseInt(data?.additionalWaitTime);
   });
   await FPPGet('/api/plugin/remote-falcon/settings/fppStatusCheckTime', (data) => {
-    FPP_STATUS_CHECK_TIME = parseInt(data?.fppStatusCheckTime);
+    FPP_STATUS_CHECK_TIME = parseFloat(data?.fppStatusCheckTime);
   });
   await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylist', (data) => {
     REMOTE_PLAYLIST = data?.remotePlaylist;
