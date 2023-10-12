@@ -20,8 +20,8 @@ $(document).ready(async () => {
     });
   });
 
-  $('#remotePlaylistSelect').blur(async () => {
-    await syncPlaylistToRF();
+  $('#syncRemotePlaylistButton').click(async () => {
+    await syncPlaylistToRF(true);
   });
 
   $('#interruptScheduleCheckbox').change(async () => {
@@ -126,10 +126,13 @@ async function syncPlaylistToRF() {
       }else {
         await RFAPIPost('/syncPlaylists', {playlists: sequences}, async (data, statusText, xhr) => {
           if(xhr?.status === 200) {
-            await FPPPost('/api/plugin/remote-falcon/settings/remotePlaylist', $('#remotePlaylistSelect').val(), async () => {
-              REMOTE_PLAYLIST = $('#remotePlaylistSelect').val();
-              $.jGrowl("Remote Playlist Saved", { themeState: 'success' });
-              await restartListener();
+            REMOTE_PLAYLIST_TRIMMED = $('#remotePlaylistSelect').val().replace(/\s/g, '');
+            REMOTE_PLAYLIST = $('#remotePlaylistSelect').val();
+            await FPPPost('/api/plugin/remote-falcon/settings/remotePlaylist', REMOTE_PLAYLIST, async () => {
+              await FPPPost('/api/plugin/remote-falcon/settings/remotePlaylistTrimmed', REMOTE_PLAYLIST_TRIMMED, async () => {
+                $.jGrowl("Remote Playlist Saved", { themeState: 'success' });
+                await restartListener();
+              });
             });
           }
         })
