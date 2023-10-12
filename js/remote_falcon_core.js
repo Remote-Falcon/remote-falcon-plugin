@@ -11,6 +11,7 @@ var REQUEST_FETCH_TIME = null;
 var ADDITIONAL_WAIT_TIME = null;
 var FPP_STATUS_CHECK_TIME = null;
 var REMOTE_PLAYLIST = null;
+var REMOTE_PLAYLIST_TRIMMED = null;
 
 
 function setApiUrl() {
@@ -74,6 +75,9 @@ async function getPluginConfig() {
   await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylist', (data) => {
     REMOTE_PLAYLIST = data?.remotePlaylist;
   });
+  await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylistTrimmed', (data) => {
+    REMOTE_PLAYLIST_TRIMMED = data?.remotePlaylistTrimmed;
+  });
 }
 
 function getRemoteFalconListenerEnabledStatus(remoteFalconListenerEnabled) {
@@ -95,7 +99,8 @@ async function getPlaylists() {
   await FPPGet('/api/playlists', (data) => {
     var playlistOptions = '';
     data.forEach(playlist => {
-      if(playlist === REMOTE_PLAYLIST) {
+      var playlistTrimmed = playlist.replace(/\s/g, '');
+      if(playlistTrimmed === REMOTE_PLAYLIST_TRIMMED) {
         playlistOptions += '<option selected value="' + playlist + '">' + playlist + '</option>';
       }else {
         playlistOptions += '<option value="' + playlist + '">' + playlist + '</option>';
