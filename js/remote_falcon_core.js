@@ -11,7 +11,6 @@ var REQUEST_FETCH_TIME = null;
 var ADDITIONAL_WAIT_TIME = null;
 var FPP_STATUS_CHECK_TIME = null;
 var REMOTE_PLAYLIST = null;
-var REMOTE_PLAYLIST_TRIMMED = null;
 
 
 function setApiUrl() {
@@ -72,11 +71,17 @@ async function getPluginConfig() {
   await FPPGet('/api/plugin/remote-falcon/settings/fppStatusCheckTime', (data) => {
     FPP_STATUS_CHECK_TIME = parseFloat(data?.fppStatusCheckTime);
   });
-  await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylist', (data) => {
-    REMOTE_PLAYLIST = data?.remotePlaylist;
-  });
-  await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylistTrimmed', (data) => {
-    REMOTE_PLAYLIST_TRIMMED = data?.remotePlaylistTrimmed;
+  // await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylist', (data) => {
+  //   REMOTE_PLAYLIST = data?.remotePlaylist;
+  // });
+  getRemotePlaylistFromConfig();
+}
+
+async function getRemotePlaylistFromConfig() {
+  await FPPGet('/api/configfile/plugin.remote-falcon', (data) => {
+    var remotePlaylistSplit = data?.split('remotePlaylist = "');
+    var remotePlaylistValueSplit = remotePlaylistSplit[1]?.split('"');
+    REMOTE_PLAYLIST = remotePlaylistValueSplit[0]
   });
 }
 
@@ -99,8 +104,7 @@ async function getPlaylists() {
   await FPPGet('/api/playlists', (data) => {
     var playlistOptions = '';
     data.forEach(playlist => {
-      var playlistTrimmed = playlist.replace(/\s/g, '');
-      if(playlistTrimmed === REMOTE_PLAYLIST_TRIMMED) {
+      if(playlist === REMOTE_PLAYLIST) {
         playlistOptions += '<option selected value="' + playlist + '">' + playlist + '</option>';
       }else {
         playlistOptions += '<option value="' + playlist + '">' + playlist + '</option>';
@@ -115,6 +119,9 @@ async function restartListener() {
   await FPPPut('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'false', () => {});
   await FPPPut('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', 'true', () => {});
   await getPluginConfig();
+
+  await checkPlugin();
+
   $('#remoteFalconStatus').html(getRemoteFalconListenerEnabledStatus(REMOTE_FALCON_LISTENER_ENABLED));
 
   var checkListenerStatus = setInterval(async () => {

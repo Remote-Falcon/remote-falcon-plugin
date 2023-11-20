@@ -21,7 +21,7 @@ $(document).ready(async () => {
   });
 
   $('#syncRemotePlaylistButton').click(async () => {
-    await syncPlaylistToRF(true);
+    await syncPlaylistToRF();
   });
 
   $('#interruptScheduleCheckbox').change(async () => {
@@ -85,6 +85,8 @@ async function init() {
   await checkPluginUpdates();
   await getPlaylists();
   
+  await checkPlugin();
+  
   hideLoader();
 }
 
@@ -126,13 +128,10 @@ async function syncPlaylistToRF() {
       }else {
         await RFAPIPost('/syncPlaylists', {playlists: sequences}, async (data, statusText, xhr) => {
           if(xhr?.status === 200) {
-            REMOTE_PLAYLIST_TRIMMED = $('#remotePlaylistSelect').val().replace(/\s/g, '');
             REMOTE_PLAYLIST = $('#remotePlaylistSelect').val();
             await FPPPost('/api/plugin/remote-falcon/settings/remotePlaylist', REMOTE_PLAYLIST, async () => {
-              await FPPPost('/api/plugin/remote-falcon/settings/remotePlaylistTrimmed', REMOTE_PLAYLIST_TRIMMED, async () => {
-                $.jGrowl("Remote Playlist Saved", { themeState: 'success' });
-                await restartListener();
-              });
+              $.jGrowl("Remote Playlist Saved", { themeState: 'success' });
+              await restartListener();
             });
           }
         })

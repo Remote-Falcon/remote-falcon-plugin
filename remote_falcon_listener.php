@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "1.0.5";
+$PLUGIN_VERSION = "1.0.6";
 
 include_once "/opt/fpp/www/common.php";
 include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";

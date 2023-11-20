@@ -46,5 +46,15 @@
     "name": "Remote Falcon - Turn Viewer Control On",
     "script": "viewer_control_on.php",
     "args": []
+  },
+  {
+    "name": "Remote Falcon - Turn Managed PSA Off",
+    "script": "managed_psa_off.php",
+    "args": []
+  },
+  {
+    "name": "Remote Falcon - Turn Managed PSA On",
+    "script": "managed_psa_on.php",
+    "args": []
   }
 ]
