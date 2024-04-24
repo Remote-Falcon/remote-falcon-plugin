@@ -1,5 +1,6 @@
 #!/bin/bash
 
-rm -f /home/fpp/media/plugins/remote-falcon/remote_falcon_listener.php
+rm -rf /home/fpp/media/plugins/remote-falcon
+rm -f /home/fpp/media/config/plugin.remote-falcon
 
 #fpp_uninstall
