@@ -4,8 +4,6 @@ $skipJSsettings=true;
 include_once "/opt/fpp/www/config.php";
 include_once "/opt/fpp/www/common.php";
 $pluginName = "remote-falcon";
-include_once "/home/fpp/media/plugins/remote-falcon/baseurl.php";
-$baseUrl = getBaseUrl();
 $pluginConfigFile = $settings['configDirectory'] . "/plugin.remote-falcon";
 $pluginSettings = parse_ini_file($pluginConfigFile);
 
@@ -15,6 +13,8 @@ $pluginSettings = parse_ini_file($pluginConfigFile);
 $remotePlaylist = $argv[1];
 
 $remoteToken = urldecode($pluginSettings['remoteToken']);
+$pluginsApiPath = urldecode($pluginSettings['pluginsApiPath']);
+
 if(strlen($remoteToken)>1) {
   echo "Updating\n";
 	$playlists = array();
@@ -46,7 +46,7 @@ if(strlen($remoteToken)>1) {
     }
     $index++;
   }
-  $url = $baseUrl . "/syncPlaylists";
+  $url = $pluginsApiPath . "/syncPlaylists";
   $data = array(
     'playlists' => $playlists
   );

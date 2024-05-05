@@ -1,6 +1,3 @@
-//Globals
-var API_URL = 'https://remotefalcon.com/remotefalcon/api';
-
 //Config Globals
 var PLUGIN_VERSION = null;
 var REMOTE_TOKEN = null;
@@ -11,14 +8,7 @@ var REQUEST_FETCH_TIME = null;
 var ADDITIONAL_WAIT_TIME = null;
 var FPP_STATUS_CHECK_TIME = null;
 var REMOTE_PLAYLIST = null;
-
-
-function setApiUrl() {
-  var hostname = $(location).attr('hostname');
-  if(hostname === 'localhost') {
-    API_URL = 'http://localhost:8080/remotefalcon/api'
-  }
-}
+var PLUGINS_API_PATH = 'https://remotefalcon.com/remotefalcon/api';
 
 async function saveDefaultPluginConfig() {
   await FPPGet('/api/plugin/remote-falcon/settings/init', async (data) => {
@@ -31,6 +21,7 @@ async function saveDefaultPluginConfig() {
       await FPPPut('/api/plugin/remote-falcon/settings/requestFetchTime', '3', () => {});
       await FPPPut('/api/plugin/remote-falcon/settings/additionalWaitTime', '0', () => {});
       await FPPPut('/api/plugin/remote-falcon/settings/fppStatusCheckTime', '1', () => {});
+      await FPPPut('/api/plugin/remote-falcon/settings/pluginsApiPath', PLUGINS_API_PATH, () => {});
       $.jGrowl("Default Config Saved", { themeState: 'success' });
     }
   })
@@ -70,6 +61,9 @@ async function getPluginConfig() {
   });
   await FPPGet('/api/plugin/remote-falcon/settings/fppStatusCheckTime', (data) => {
     FPP_STATUS_CHECK_TIME = parseFloat(data?.fppStatusCheckTime);
+  });
+  await FPPGet('/api/plugin/remote-falcon/settings/pluginsApiPath', (data) => {
+    PLUGINS_API_PATH = decodeURIComponent(data?.pluginsApiPath);
   });
   // await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylist', (data) => {
   //   REMOTE_PLAYLIST = data?.remotePlaylist;
@@ -190,7 +184,7 @@ async function FPPPost(url, data, successCallback) {
 
 async function RFAPIGet(url, successCallback) {
   await $.ajax({
-    url: API_URL + url,
+    url: PLUGINS_API_PATH + url,
     type: 'GET',
     async: true,
     headers: { 'remotetoken': REMOTE_TOKEN },
@@ -202,7 +196,7 @@ async function RFAPIGet(url, successCallback) {
 
 async function RFAPIPost(url, data, successCallback) {
   await $.ajax({
-    url: API_URL + url,
+    url: PLUGINS_API_PATH + url,
     type: 'POST',
     contentType: 'application/json',
     dataType: 'json',
