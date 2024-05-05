@@ -10,6 +10,7 @@ $(document).ready(async () => {
   $('#requestFetchTime').html(REQUEST_FETCH_TIME);
   $('#additionalWaitTimeInput').val(ADDITIONAL_WAIT_TIME);
   $('#fppStatusCheckTimeInput').val(FPP_STATUS_CHECK_TIME);
+  $('#pluginsApiPathInput').val(PLUGINS_API_PATH);
 
   //Component Handlers
   $('#remoteTokenInput').blur(async () => {
@@ -65,6 +66,14 @@ $(document).ready(async () => {
     });
   });
 
+  $('#pluginsApiPathInput').blur(async () => {
+    await FPPPost('/api/plugin/remote-falcon/settings/pluginsApiPath', $('#pluginsApiPathInput').val().toString(), async () => {
+      await getPluginConfig();
+      $.jGrowl("Plugins API Path Saved", { themeState: 'success' });
+      await restartListener();
+    });
+  });
+
   $('#stopListenerButton').click(async () => {
     await stopListener();
   });
@@ -72,8 +81,6 @@ $(document).ready(async () => {
 
 async function init() {
   showLoader();
-
-  setApiUrl();
 
   //This only happens one time
   await saveDefaultPluginConfig();
