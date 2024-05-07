@@ -14,14 +14,14 @@ async function saveDefaultPluginConfig() {
   await FPPGet('/api/plugin/remote-falcon/settings/init', async (data) => {
     var init = data?.init;
     if(!init) {
-      await FPPPut('/api/plugin/remote-falcon/settings/init', 'true', () => {});
-      await FPPPut('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'true', () => {});
-      await FPPPut('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', 'false', () => {});
-      await FPPPut('/api/plugin/remote-falcon/settings/interruptSchedule', 'false', () => {});
-      await FPPPut('/api/plugin/remote-falcon/settings/requestFetchTime', '3', () => {});
-      await FPPPut('/api/plugin/remote-falcon/settings/additionalWaitTime', '0', () => {});
-      await FPPPut('/api/plugin/remote-falcon/settings/fppStatusCheckTime', '1', () => {});
-      await FPPPut('/api/plugin/remote-falcon/settings/pluginsApiPath', PLUGINS_API_PATH, () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/init', 'true', () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'true', () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', 'false', () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/interruptSchedule', 'false', () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/requestFetchTime', '3', () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/additionalWaitTime', '0', () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/fppStatusCheckTime', '1', () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/pluginsApiPath', PLUGINS_API_PATH, () => {});
       $.jGrowl("Default Config Saved", { themeState: 'success' });
     }
   })
@@ -110,8 +110,8 @@ async function getPlaylists() {
 
 async function restartListener() {
   $.jGrowl("Restarting Listener", { themeState: 'success' });
-  await FPPPut('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'false', () => {});
-  await FPPPut('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', 'true', () => {});
+  await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'false', () => {});
+  await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', 'true', () => {});
   await getPluginConfig();
 
   await checkPlugin();
@@ -172,8 +172,8 @@ async function FPPPost(url, data, successCallback) {
   await $.ajax({
     url,
     type: 'POST',
-    contentType: 'application/json',
-    dataType: 'json',
+    contentType: 'application/text',
+    dataType: 'text',
     data,
     async: true,
     success: (data, statusText, xhr) => {
