@@ -2,6 +2,6 @@
 
 # Mark to reboot
 . ${FPPDIR}/scripts/common
-setSetting rebootFlag 1
+setSetting restartFlag 1
 
 #fpp_install
