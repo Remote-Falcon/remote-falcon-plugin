@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2024.08.26.1";
+$PLUGIN_VERSION = "2024.09.26.1";
 
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
@@ -9,8 +9,6 @@ $pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
 $pluginSettings = parse_ini_file($pluginConfigFile);
 
 WriteSettingToFile("pluginVersion",urlencode($PLUGIN_VERSION),$pluginName);
-WriteSettingToFile("remoteFalconListenerEnabled",urlencode("true"),$pluginName);
-WriteSettingToFile("remoteFalconListenerRestarting",urlencode("false"),$pluginName);
 
 //Set defaults here since this runs before the plugin page is visited
 if (strlen(urldecode($pluginSettings['remotePlaylist']))<1){
@@ -33,6 +31,12 @@ if (strlen(urldecode($pluginSettings['fppStatusCheckTime']))<1){
 }
 if (strlen(urldecode($pluginSettings['pluginsApiPath']))<1){
   WriteSettingToFile("pluginsApiPath",urlencode("https://remotefalcon.com/remotefalcon/api"),$pluginName);
+}
+if (strlen(urldecode($pluginSettings['remoteFalconListenerEnabled']))<1){
+  WriteSettingToFile("remoteFalconListenerEnabled",urlencode("true"),$pluginName);
+}
+if (strlen(urldecode($pluginSettings['remoteFalconListenerRestarting']))<1){
+  WriteSettingToFile("remoteFalconListenerRestarting",urlencode("false"),$pluginName);
 }
 
 logEntry("Starting Remote Falcon Plugin v" . $PLUGIN_VERSION);
@@ -262,7 +266,7 @@ function remotePreferences($remoteToken) {
 }
 
 function getFppStatus() {
-  $result=file_get_contents("http://127.0.0.1/api/fppd/status");
+  $result=file_get_contents("http://127.0.0.1/api/system/status");
   return json_decode( $result );
 }
 
