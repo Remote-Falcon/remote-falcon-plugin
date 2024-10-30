@@ -14,12 +14,13 @@ $remotePlaylist = $argv[1];
 
 $remoteToken = urldecode($pluginSettings['remoteToken']);
 $pluginsApiPath = urldecode($pluginSettings['pluginsApiPath']);
+$remoteFppEnabled = urldecode($pluginSettings['remoteFppEnabled']);
 
 if(strlen($remoteToken)>1) {
   echo "Updating\n";
-	$playlists = array();
+  $playlists = array();
   $remotePlaylistEncoded = rawurlencode($remotePlaylist);
-  $url = "http://127.0.0.1/api/playlist/${remotePlaylistEncoded}";
+  $url = "http://127.0.0.1/api/playlist/" . $remotePlaylistEncoded;
   $options = array(
     'http' => array(
       'method'  => 'GET'
@@ -33,16 +34,16 @@ if(strlen($remoteToken)>1) {
   foreach($mainPlaylist as $item) {
     if($item['type'] == 'both' || $item['type'] == 'sequence') {
       $playlist = null;
-      $playlist->playlistName = pathinfo($item['sequenceName'], PATHINFO_FILENAME);
-      $playlist->playlistDuration = $item['duration'];
-      $playlist->playlistIndex = $index;
-      array_push($playlists, $playlist);
+      $playlist['playlistName'] = pathinfo($item['sequenceName'], PATHINFO_FILENAME);
+      $playlist['playlistDuration'] = $item['duration'];
+      $playlist['playlistIndex'] = $index;
+      $playlists[] = $playlist;
     }else if($item['type'] == 'media') {
       $playlist = null;
-      $playlist->playlistName = pathinfo($item['mediaName'], PATHINFO_FILENAME);
-      $playlist->playlistDuration = $item['duration'];
-      $playlist->playlistIndex = $index;
-      array_push($playlists, $playlist);
+      $playlist['playlistName'] = pathinfo($item['mediaName'], PATHINFO_FILENAME);
+      $playlist['playlistDuration'] = $item['duration'];
+      $playlist['playlistIndex'] = $index;
+      $playlists[] = $playlist;
     }
     $index++;
   }
