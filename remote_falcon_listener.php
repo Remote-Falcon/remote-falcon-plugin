@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2024.10.30.1";
+$PLUGIN_VERSION = "2024.10.30.2";
 
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
@@ -58,7 +58,7 @@ $remoteToken = urldecode($pluginSettings['remoteToken']);
 $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
 logEntry("Remote Playlist: ".$remotePlaylist);
 $remotePreferences = remotePreferences($remoteToken);
-$viewerControlMode = $remotePreferences->viewerControlMode;
+$viewerControlMode = $remotePreferences['viewerControlMode'];
 logEntry("Viewer Control Mode: " . $viewerControlMode);
 $interruptSchedule = urldecode($pluginSettings['interruptSchedule']);
 logEntry("Interrupt Schedule: " . $interruptSchedule);
@@ -88,7 +88,7 @@ while(true) {
     $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
     logEntry("Remote Playlist: ".$remotePlaylist);
     $remotePreferences = remotePreferences($remoteToken);
-    $viewerControlMode = $remotePreferences->viewerControlMode;
+    $viewerControlMode = $remotePreferences['viewerControlMode'];
     logEntry("Viewer Control Mode: " . $viewerControlMode);
     $interruptSchedule = urldecode($pluginSettings['interruptSchedule']);
     logEntry("Interrupt Schedule: " . $interruptSchedule);
@@ -104,13 +104,13 @@ while(true) {
   if($remoteFppEnabled == 1) {
     $fppStatus = getFppStatus();
     if($fppStatus != null && $fppStatus != false) {
-      $statusName = $fppStatus->status_name;
+      $statusName = $fppStatus['status_name'];
       if($statusName != "idle") {
         $rfSequencesCleared = false;
-        $currentlyPlaying = pathinfo($fppStatus->current_sequence, PATHINFO_FILENAME);
+        $currentlyPlaying = pathinfo($fppStatus['current_sequence'], PATHINFO_FILENAME);
         if($currentlyPlaying == "") {
           //Might be media only, so check for current song
-          $currentlyPlaying = pathinfo($fppStatus->current_song, PATHINFO_FILENAME);
+          $currentlyPlaying = pathinfo($fppStatus['current_song'], PATHINFO_FILENAME);
         }
         updateCurrentlyPlaying($currentlyPlaying, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
         updateNextScheduledSequence($fppStatus, $currentlyPlaying, $GLOBALS['nextScheduledInRF'], $remoteToken);
@@ -137,13 +137,13 @@ while(true) {
 }
 
 function doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $additionalWaitTime, $remotePlaylist, $remoteToken) {
-  $secondsRemaining = intVal($fppStatus->seconds_remaining);
+  $secondsRemaining = intVal($fppStatus['seconds_remaining']);
   if($secondsRemaining < $requestFetchTime) {
     if($viewerControlMode == "voting") {
       logEntry($requestFetchTime . " seconds remaining. Getting highest voted sequence.");
       $highestVotedSequence = highestVotedSequence($remoteToken);
-      $winningSequence = $highestVotedSequence->winningPlaylist;
-      $winningSequenceIndex = $highestVotedSequence->playlistIndex;
+      $winningSequence = $highestVotedSequence['winningPlaylist'];
+      $winningSequenceIndex = $highestVotedSequence['playlistIndex'];
       if($winningSequence != null) {
         logEntry("Queuing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
         insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $winningSequenceIndex);
@@ -159,8 +159,8 @@ function doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, 
     }else {
       logEntry($requestFetchTime . " seconds remaining. Getting next request.");
       $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
-      $nextSequence = $nextPlaylistInQueue->nextPlaylist;
-      $nextSequenceIndex = $nextPlaylistInQueue->playlistIndex;
+      $nextSequence = $nextPlaylistInQueue['nextPlaylist'];
+      $nextSequenceIndex = $nextPlaylistInQueue['playlistIndex'];
       if($nextSequence != null) {
         logEntry("Queuing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
         insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $nextSequenceIndex);
@@ -178,13 +178,13 @@ function doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, 
 }
 
 function doInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $additionalWaitTime, $remotePlaylist, $remoteToken) {
-  if($fppStatus->current_playlist != null) {
-    $currentPlaylist = $fppStatus->current_playlist->playlist;
+  if($fppStatus['current_playlist'] != null) {
+    $currentPlaylist = $fppStatus['current_playlist']['playlist'];
     if($currentPlaylist != $GLOBALS['remotePlaylist']) {
       if($viewerControlMode == "voting") {
         $highestVotedSequence = highestVotedSequence($remoteToken);
-        $winningSequence = $highestVotedSequence->winningPlaylist;
-        $winningSequenceIndex = $highestVotedSequence->playlistIndex;
+        $winningSequence = $highestVotedSequence['winningPlaylist'];
+        $winningSequenceIndex = $highestVotedSequence['playlistIndex'];
         if($winningSequence != null) {
           insertPlaylistImmediate(rawurlencode($remotePlaylist), $winningSequenceIndex);
           logEntry("Playing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
@@ -194,8 +194,8 @@ function doInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $ad
         }
       }else {
         $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
-        $nextSequence = $nextPlaylistInQueue->nextPlaylist;
-        $nextSequenceIndex = $nextPlaylistInQueue->playlistIndex;
+        $nextSequence = $nextPlaylistInQueue['nextPlaylist'];
+        $nextSequenceIndex = $nextPlaylistInQueue['playlistIndex'];
         if($nextSequence != null) {
           insertPlaylistImmediate(rawurlencode($remotePlaylist), $nextSequenceIndex);
           logEntry("Playing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
@@ -219,9 +219,9 @@ function updateCurrentlyPlaying($currentlyPlaying, $currentlyPlayingInRF, $remot
 }
 
 function updateNextScheduledSequence($fppStatus, $currentlyPlaying, $nextScheduledInRF, $remoteToken) {
-  $currentPlaylist = $fppStatus->current_playlist->playlist;
+  $currentPlaylist = $fppStatus['current_playlist']['playlist'];
   $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
-  $mainPlaylist = $playlistDetails->mainPlaylist;
+  $mainPlaylist = $playlistDetails['mainPlaylist'];
   if($mainPlaylist != null && $mainPlaylist != "" && count($mainPlaylist) > 0) {
     $nextScheduled = getNextSequence($mainPlaylist, $currentlyPlaying);
     if($nextScheduled != $nextScheduledInRF && $currentPlaylist != $GLOBALS['remotePlaylist']) {
@@ -239,12 +239,12 @@ function clearNextScheduledSequence($remoteToken) {
 function getNextSequence($mainPlaylist, $currentlyPlaying) {
   $nextScheduled = "";
   for ($i = 0; $i < count($mainPlaylist); $i++) {
-    if(isset($mainPlaylist[$i]->sequenceName) && pathinfo($mainPlaylist[$i]->sequenceName, PATHINFO_FILENAME) == $currentlyPlaying) {
+    if(isset($mainPlaylist[$i]['sequenceName']) && pathinfo($mainPlaylist[$i]['sequenceName'], PATHINFO_FILENAME) == $currentlyPlaying) {
       if($i+1 == count($mainPlaylist)) {
-        $nextScheduled = $mainPlaylist[0]->sequenceName;
+        $nextScheduled = $mainPlaylist[0]['sequenceName'];
       }else {
-        if(isset($mainPlaylist[$i+1]->sequenceName)) {
-          $nextScheduled = $mainPlaylist[$i+1]->sequenceName;
+        if(isset($mainPlaylist[$i+1]['sequenceName'])) {
+          $nextScheduled = $mainPlaylist[$i+1]['sequenceName'];
         }
       }
     }
