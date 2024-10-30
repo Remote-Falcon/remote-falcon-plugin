@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2024.10.30.1";
+$PLUGIN_VERSION = "2024.10.30.2";
 
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
@@ -221,13 +221,15 @@ function updateCurrentlyPlaying($currentlyPlaying, $currentlyPlayingInRF, $remot
 function updateNextScheduledSequence($fppStatus, $currentlyPlaying, $nextScheduledInRF, $remoteToken) {
   $currentPlaylist = $fppStatus->current_playlist->playlist;
   $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
-  $mainPlaylist = $playlistDetails->mainPlaylist;
-  if($mainPlaylist != null && $mainPlaylist != "" && count($mainPlaylist) > 0) {
-    $nextScheduled = getNextSequence($mainPlaylist, $currentlyPlaying);
-    if($nextScheduled != $nextScheduledInRF && $currentPlaylist != $GLOBALS['remotePlaylist']) {
-      updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
-      logEntry("Updated next scheduled sequence to " . $nextScheduled);
-      $GLOBALS['nextScheduledInRF'] = $nextScheduled;
+  if($playlistDetails != null && $playlistDetails != '') {
+    $mainPlaylist = $playlistDetails->mainPlaylist;
+    if($mainPlaylist != null && $mainPlaylist != "" && count($mainPlaylist) > 0) {
+      $nextScheduled = getNextSequence($mainPlaylist, $currentlyPlaying);
+      if($nextScheduled != $nextScheduledInRF && $currentPlaylist != $GLOBALS['remotePlaylist']) {
+        updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
+        logEntry("Updated next scheduled sequence to " . $nextScheduled);
+        $GLOBALS['nextScheduledInRF'] = $nextScheduled;
+      }
     }
   }
 }
