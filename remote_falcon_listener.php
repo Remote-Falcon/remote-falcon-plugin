@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2024.10.30.2";
+$PLUGIN_VERSION = "2024.11.29.1";
 
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
@@ -32,6 +32,9 @@ if (strlen(urldecode($pluginSettings['fppStatusCheckTime']))<1){
 if (strlen(urldecode($pluginSettings['pluginsApiPath']))<1){
   WriteSettingToFile("pluginsApiPath",urlencode("https://remotefalcon.com/remotefalcon/api"),$pluginName);
 }
+if (strlen(urldecode($pluginSettings['verboseLogging']))<1){
+  WriteSettingToFile("verboseLogging",urlencode("false"),$pluginName);
+}
 if (strlen(urldecode($pluginSettings['remoteFalconListenerEnabled']))<1){
   WriteSettingToFile("remoteFalconListenerEnabled",urlencode("true"),$pluginName);
 }
@@ -51,6 +54,7 @@ $requestFetchTime = "";
 $rfSequencesCleared = false;
 $additionalWaitTime = "";
 $pluginsApiPath = "";
+$verboseLogging = false;
 
 $pluginsApiPath = urldecode($pluginSettings['pluginsApiPath']);
 logEntry("Plugins API Path: " . $pluginsApiPath);
@@ -69,6 +73,9 @@ $additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
 logEntry("Additional Wait Time: " . $additionalWaitTime);
 $fppStatusCheckTime = floatval(urldecode($pluginSettings['fppStatusCheckTime']));
 logEntry("FPP Status Check Time: " . $fppStatusCheckTime . " (" . $fppStatusCheckTime * 1000000 . " microseconds)");
+$verboseLogging = urldecode($pluginSettings['verboseLogging']);
+logEntry("Verbose Logging: " . $verboseLogging);
+$GLOBALS['verboseLogging'] = $verboseLogging == "true" ? true : false;
 
 while(true) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
@@ -99,9 +106,13 @@ while(true) {
     logEntry("Additional Wait Time: " . $additionalWaitTime);
     $fppStatusCheckTime = floatval(urldecode($pluginSettings['fppStatusCheckTime']));
     logEntry("FPP Status Check Time: " . $fppStatusCheckTime . " (" . $fppStatusCheckTime * 1000000 . " microseconds)");
+    $verboseLogging = urldecode($pluginSettings['verboseLogging']);
+    logEntry("Verbose Logging: " . $verboseLogging);
+    $GLOBALS['verboseLogging'] = $verboseLogging == "true" ? true : false;
   }
 
   if($remoteFppEnabled == 1) {
+    logEntry_verbose("Getting FPP Status");
     $fppStatus = getFppStatus();
     if($fppStatus != null && $fppStatus != false) {
       $statusName = $fppStatus->status_name;
@@ -139,6 +150,8 @@ while(true) {
 function doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $additionalWaitTime, $remotePlaylist, $remoteToken) {
   $secondsRemaining = intVal($fppStatus->seconds_remaining);
   if($secondsRemaining < $requestFetchTime) {
+  $start_time = microtime(true);
+  logEntry_verbose("Starting Non Interrupt Function");
     if($viewerControlMode == "voting") {
       logEntry($requestFetchTime . " seconds remaining. Getting highest voted sequence.");
       $highestVotedSequence = highestVotedSequence($remoteToken);
@@ -174,6 +187,9 @@ function doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, 
         sleep($fppWaitTime);
       }
     }
+    $end_time = microtime(true);
+    $execution_time = ($end_time - $start_time);
+    logEntry_verbose("Completed Non Interrupt Function. Execution time: " . $execution_time * 1000 . " ms");
   }
 }
 
@@ -181,6 +197,8 @@ function doInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $ad
   if($fppStatus->current_playlist != null) {
     $currentPlaylist = $fppStatus->current_playlist->playlist;
     if($currentPlaylist != $GLOBALS['remotePlaylist']) {
+      $start_time = microtime(true);
+      logEntry_verbose("Starting Interrupt Function");
       if($viewerControlMode == "voting") {
         $highestVotedSequence = highestVotedSequence($remoteToken);
         $winningSequence = $highestVotedSequence->winningPlaylist;
@@ -204,6 +222,9 @@ function doInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $ad
           sleep($fppWaitTime);
         }
       }
+      $end_time = microtime(true);
+      $execution_time = ($end_time - $start_time);
+      logEntry_verbose("Completed Interrupt Function. Execution time: " . $execution_time * 1000 . " ms");
     }else {
       doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $additionalWaitTime, $remotePlaylist, $remoteToken);
     }
@@ -273,6 +294,8 @@ function getFppStatus() {
 }
 
 function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
+  $start_time = microtime(true);
+  logEntry_verbose("Calling Plugins API to update what's playing");
   $url = $GLOBALS['pluginsApiPath'] . "/updateWhatsPlaying";
   $data = array(
     'playlist' => trim($currentlyPlaying)
@@ -288,9 +311,14 @@ function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
   );
   $context = stream_context_create( $options );
   $result = file_get_contents( $url, false, $context );
+  $end_time = microtime(true);
+  $execution_time = ($end_time - $start_time);
+  logEntry_verbose("SUCCESS - Calling Plugins API to update what's playing. Execution time: " . $execution_time * 1000 . " ms");
 }
 
 function updateNextScheduledSequenceInRf($nextScheduled, $remoteToken) {
+  $start_time = microtime(true);
+  logEntry_verbose("Calling Plugins API to update next scheduled");
   $url = $GLOBALS['pluginsApiPath'] . "/updateNextScheduledSequence";
   $data = array(
     'sequence' => trim($nextScheduled)
@@ -306,6 +334,9 @@ function updateNextScheduledSequenceInRf($nextScheduled, $remoteToken) {
   );
   $context = stream_context_create( $options );
   $result = file_get_contents( $url, false, $context );
+  $end_time = microtime(true);
+  $execution_time = ($end_time - $start_time);
+  logEntry_verbose("SUCCESS - Calling Plugins API to update next scheduled. Execution time: " . $execution_time * 1000 . " ms");
 }
 
 function insertPlaylistImmediate($remotePlaylistEncoded, $index) { 
@@ -354,6 +385,8 @@ function getPlaylistDetails($remotePlaylistEncoded) {
 }
 
 function highestVotedSequence($remoteToken) {
+  $start_time = microtime(true);
+  logEntry_verbose("Calling Plugins API to fetch highest voted sequence");
   $url = $GLOBALS['pluginsApiPath'] . "/highestVotedPlaylist";
   $options = array(
     'http' => array(
@@ -363,10 +396,15 @@ function highestVotedSequence($remoteToken) {
   );
   $context = stream_context_create( $options );
   $result = file_get_contents( $url, false, $context );
+  $end_time = microtime(true);
+  $execution_time = ($end_time - $start_time);
+  logEntry_verbose("SUCCESS - Calling Plugins API to fetch highest voted sequence. Execution time: " . $execution_time * 1000 . " ms");
   return json_decode( $result );
 }
 
 function nextPlaylistInQueue($remoteToken) {
+  $start_time = microtime(true);
+  logEntry_verbose("Calling Plugins API to fetch next requested sequence");
   $url = $GLOBALS['pluginsApiPath'] . "/nextPlaylistInQueue?updateQueue=true";
   $options = array(
     'http' => array(
@@ -376,6 +414,9 @@ function nextPlaylistInQueue($remoteToken) {
   );
   $context = stream_context_create( $options );
   $result = file_get_contents( $url, false, $context );
+  $execution_time = ($end_time - $start_time);
+  logEntry_verbose("SUCCESS - Calling Plugins API to fetch next requested sequence. Execution time: " . $execution_time * 1000 . " ms");
+  return json_decode( $result );
   return json_decode( $result );
 }
 
@@ -388,6 +429,18 @@ function logEntry($data) {
 	$logWrite= fopen($logFile, "a") or die("Unable to open file!");
 	fwrite($logWrite, date('Y-m-d h:i:s A',time()).": ".$data."\n");
 	fclose($logWrite);
+}
+
+function logEntry_verbose($data) {
+  if($GLOBALS['verboseLogging'] == 1) {
+    global $logFile,$myPid;
+  
+    $data = $_SERVER['PHP_SELF']." : [".$myPid."] ".$data;
+    
+    $logWrite= fopen($logFile, "a") or die("Unable to open file!");
+    fwrite($logWrite, date('Y-m-d h:i:s A',time()).": ".$data."\n");
+    fclose($logWrite);
+  }
 }
 
 ?>
