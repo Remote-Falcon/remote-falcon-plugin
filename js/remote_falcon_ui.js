@@ -11,6 +11,7 @@ $(document).ready(async () => {
   $('#additionalWaitTimeInput').val(ADDITIONAL_WAIT_TIME);
   $('#fppStatusCheckTimeInput').val(FPP_STATUS_CHECK_TIME);
   $('#pluginsApiPathInput').val(PLUGINS_API_PATH);
+  $('#verboseLoggingCheckbox').prop('checked', VERBOSE_LOGGING);
 
   //Component Handlers
   $('#remoteTokenInput').blur(async () => {
@@ -70,6 +71,15 @@ $(document).ready(async () => {
     await FPPPost('/api/plugin/remote-falcon/settings/pluginsApiPath', $('#pluginsApiPathInput').val().toString(), async () => {
       await getPluginConfig();
       $.jGrowl("Plugins API Path Saved", { themeState: 'success' });
+      await restartListener();
+    });
+  });
+
+  $('#verboseLoggingCheckbox').change(async () => {
+    const isChecked = $('#verboseLoggingCheckbox').is(':checked');
+    await FPPPost('/api/plugin/remote-falcon/settings/verboseLogging', isChecked.toString(), async () => {
+      await getPluginConfig();
+      $.jGrowl(isChecked ? "Verbose Logging Enabled" : "Verbose Logging Disabled", { themeState: 'success' });
       await restartListener();
     });
   });

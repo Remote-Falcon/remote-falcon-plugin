@@ -9,6 +9,7 @@ var ADDITIONAL_WAIT_TIME = null;
 var FPP_STATUS_CHECK_TIME = null;
 var REMOTE_PLAYLIST = null;
 var PLUGINS_API_PATH = 'https://remotefalcon.com/remotefalcon/api';
+var VERBOSE_LOGGING = null;
 
 async function saveDefaultPluginConfig() {
   await FPPGet('/api/plugin/remote-falcon/settings/init', async (data) => {
@@ -22,6 +23,7 @@ async function saveDefaultPluginConfig() {
       await FPPPost('/api/plugin/remote-falcon/settings/additionalWaitTime', '0', () => {});
       await FPPPost('/api/plugin/remote-falcon/settings/fppStatusCheckTime', '1', () => {});
       await FPPPost('/api/plugin/remote-falcon/settings/pluginsApiPath', PLUGINS_API_PATH, () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/verboseLogging', 'false', () => {});
       $.jGrowl("Default Config Saved", { themeState: 'success' });
     }
   })
@@ -64,6 +66,9 @@ async function getPluginConfig() {
   });
   await FPPGet('/api/plugin/remote-falcon/settings/pluginsApiPath', (data) => {
     PLUGINS_API_PATH = decodeURIComponent(data?.pluginsApiPath);
+  });
+  await FPPGet('/api/plugin/remote-falcon/settings/verboseLogging', (data) => {
+    VERBOSE_LOGGING = data?.verboseLogging == 'true';
   });
   // await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylist', (data) => {
   //   REMOTE_PLAYLIST = data?.remotePlaylist;
