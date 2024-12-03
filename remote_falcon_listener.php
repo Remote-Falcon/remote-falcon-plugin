@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2024.12.02.1";
+$PLUGIN_VERSION = "2024.12.03.1";
 
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));

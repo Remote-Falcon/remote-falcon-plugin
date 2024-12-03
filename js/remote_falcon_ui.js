@@ -111,47 +111,52 @@ async function syncPlaylistToRF() {
   if(REMOTE_TOKEN) {
     var selectedPlaylist = $('#remotePlaylistSelect').val();
     await FPPGet('/api/playlist/' + encodeURIComponent(selectedPlaylist), async (data) => {
-      var sequences = [];
-      if(data?.mainPlaylist) {
-        var playlistIndex = 1;
-        data?.mainPlaylist.forEach(playlist => {
-          if(playlist?.type === 'sequence' || playlist?.type === 'both') {
-            sequences.push({
-              playlistName: playlist?.sequenceName?.split('.')[0],
-              playlistDuration: playlist?.duration,
-              playlistIndex: playlistIndex,
-              playlistType: 'SEQUENCE',
-            });
-          }else if(playlist?.type === 'media') {
-            sequences.push({
-              playlistName: playlist?.mediaName?.split('.')[0],
-              playlistDuration: 0,
-              playlistIndex: playlistIndex,
-              playlistType: 'MEDIA',
-            });
-          }else if(playlist?.type === 'command' && playlist?.note != null) {
-            sequences.push({
-              playlistName: playlist?.note,
-              playlistDuration: 0,
-              playlistIndex: playlistIndex,
-              playlistType: 'COMMAND',
-            });
-          }
-          playlistIndex++;
-        })
-      }
-      if(sequences.length === 0) {
-        $.jGrowl("Playlist is Empty", { themeState: 'danger' });
+      var totalItems = data?.playlistInfo?.total_items;
+      if(totalItems > 200) {
+        $.jGrowl("Cannot sync more than 200 items", { themeState: 'danger' });
       }else {
-        await RFAPIPost('/syncPlaylists', {playlists: sequences}, async (data, statusText, xhr) => {
-          if(xhr?.status === 200) {
-            REMOTE_PLAYLIST = $('#remotePlaylistSelect').val();
-            await FPPPost('/api/plugin/remote-falcon/settings/remotePlaylist', REMOTE_PLAYLIST, async () => {
-              $.jGrowl("Remote Playlist Saved", { themeState: 'success' });
-              await restartListener();
-            });
-          }
-        })
+        var sequences = [];
+        if(data?.mainPlaylist) {
+          var playlistIndex = 1;
+          data?.mainPlaylist.forEach(playlist => {
+            if(playlist?.type === 'sequence' || playlist?.type === 'both') {
+              sequences.push({
+                playlistName: playlist?.sequenceName?.split('.')[0],
+                playlistDuration: playlist?.duration,
+                playlistIndex: playlistIndex,
+                playlistType: 'SEQUENCE',
+              });
+            }else if(playlist?.type === 'media') {
+              sequences.push({
+                playlistName: playlist?.mediaName?.split('.')[0],
+                playlistDuration: 0,
+                playlistIndex: playlistIndex,
+                playlistType: 'MEDIA',
+              });
+            }else if(playlist?.type === 'command' && playlist?.note != null) {
+              sequences.push({
+                playlistName: playlist?.note,
+                playlistDuration: 0,
+                playlistIndex: playlistIndex,
+                playlistType: 'COMMAND',
+              });
+            }
+            playlistIndex++;
+          })
+        }
+        if(sequences.length === 0) {
+          $.jGrowl("Playlist is Empty", { themeState: 'danger' });
+        }else {
+          await RFAPIPost('/syncPlaylists', {playlists: sequences}, async (data, statusText, xhr) => {
+            if(xhr?.status === 200) {
+              REMOTE_PLAYLIST = $('#remotePlaylistSelect').val();
+              await FPPPost('/api/plugin/remote-falcon/settings/remotePlaylist', REMOTE_PLAYLIST, async () => {
+                $.jGrowl("Remote Playlist Saved", { themeState: 'success' });
+                await restartListener();
+              });
+            }
+          })
+        }
       }
     });
   }else {
