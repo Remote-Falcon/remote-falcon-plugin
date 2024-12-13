@@ -1,4 +1,6 @@
 //Config Globals
+const DEFAULT_PLUGINS_API_PATH = 'https://remotefalcon.com/remotefalcon/api';
+
 var PLUGIN_VERSION = null;
 var REMOTE_TOKEN = null;
 var REMOTE_FALCON_LISTENER_ENABLED = null;
@@ -8,7 +10,7 @@ var REQUEST_FETCH_TIME = null;
 var ADDITIONAL_WAIT_TIME = null;
 var FPP_STATUS_CHECK_TIME = null;
 var REMOTE_PLAYLIST = null;
-var PLUGINS_API_PATH = 'https://remotefalcon.com/remotefalcon/api';
+var PLUGINS_API_PATH = DEFAULT_PLUGINS_API_PATH;
 var VERBOSE_LOGGING = null;
 
 async function saveDefaultPluginConfig() {
