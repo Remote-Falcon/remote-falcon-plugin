@@ -112,7 +112,7 @@ async function syncPlaylistToRF() {
     var selectedPlaylist = $('#remotePlaylistSelect').val();
     await FPPGet('/api/playlist/' + encodeURIComponent(selectedPlaylist), async (data) => {
       var totalItems = data?.playlistInfo?.total_items;
-      if(totalItems > 200) {
+      if(PLUGINS_API_PATH.includes("remotefalcon.com") && totalItems > 200) {
         $.jGrowl("Cannot sync more than 200 items", { themeState: 'danger' });
       }else {
         var sequences = [];
