@@ -103,6 +103,8 @@ async function init() {
   await getPlaylists();
   
   await checkPlugin();
+
+  startHearbeat();
   
   hideLoader();
 }
