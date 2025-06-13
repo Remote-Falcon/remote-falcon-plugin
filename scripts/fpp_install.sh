@@ -4,7 +4,7 @@
 . ${FPPDIR}/scripts/common
 
 # Add required Apache CSP (Content-Security-Policy allowed domains
-${FPPDIR}/scripts/ManageApacheContentPolicy.sh add default-src https://remotefalcon.com
+${FPPDIR}/scripts/ManageApacheContentPolicy.sh add connect-src https://remotefalcon.com
 
 setSetting restartFlag 1
 
