@@ -1,5 +1,5 @@
 //Config Globals
-const DEFAULT_PLUGINS_API_PATH = 'https://remotefalcon.com/remotefalcon/api';
+const DEFAULT_PLUGINS_API_PATH = 'https://remotefalcon.com/remote-falcon-plugins-api';
 
 var PLUGIN_VERSION = null;
 var REMOTE_TOKEN = null;
