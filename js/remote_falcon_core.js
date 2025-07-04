@@ -37,7 +37,11 @@ async function savePluginVersionAndFPPVersionToRF() {
       pluginVersion: PLUGIN_VERSION,
       fppVersion: data?.version
     }
-    await RFAPIPost('/pluginVersion', request, () => {});
+    await RFAPIPost('/pluginVersion', request, () => {},
+      (xhr, status, error) => {
+      console.error('RFAPIPost Error:', status, error);
+      hideLoader();
+    });
   });
 }
 
@@ -149,7 +153,7 @@ function hideLoader() {
   $(".plugin-body").css({ 'display' : 'block'});
 }
 
-function startHearbeat() {
+function startHeartbeat() {
   sendHeartbeat();
   setInterval(async () => {
     sendHeartbeat();
@@ -208,19 +212,26 @@ async function FPPPost(url, data, successCallback) {
   });
 }
 
-async function RFAPIGet(url, successCallback) {
+async function RFAPIGet(url, successCallback, errorCallback = null) {
   await $.ajax({
     url: PLUGINS_API_PATH + url,
     type: 'GET',
     async: true,
-    headers: { 'remotetoken': REMOTE_TOKEN },
+    headers: {'remotetoken': REMOTE_TOKEN},
     success: (data, statusText, xhr) => {
       successCallback(data, statusText, xhr);
+    },
+    error: (xhr, status, error) => {
+      if (errorCallback) {
+        errorCallback(xhr, status, error);
+      } else {
+        console.error('RFAPIGet Error:', status, error);
+      }
     }
   });
 }
 
-async function RFAPIPost(url, data, successCallback) {
+async function RFAPIPost(url, data, successCallback, errorCallback = null) {
   await $.ajax({
     url: PLUGINS_API_PATH + url,
     type: 'POST',
@@ -231,6 +242,13 @@ async function RFAPIPost(url, data, successCallback) {
     headers: { 'remotetoken': REMOTE_TOKEN },
     success: (data, statusText, xhr) => {
       successCallback(data, statusText, xhr);
+    },
+    error: (xhr, status, error) => {
+      if (errorCallback) {
+        errorCallback(xhr, status, error);
+      } else {
+        console.error('RFAPIGet Error:', status, error);
+      }
     }
   });
 }

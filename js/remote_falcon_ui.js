@@ -97,14 +97,14 @@ async function init() {
 
   //Set the config globals
   await getPluginConfig();
-
-  await savePluginVersionAndFPPVersionToRF();
-  await checkPluginUpdates();
   await getPlaylists();
-  
-  await checkPlugin();
+  await checkPluginUpdates();
 
-  startHearbeat();
+  if(REMOTE_TOKEN) {
+    await savePluginVersionAndFPPVersionToRF();
+    await checkPlugin();
+    startHeartbeat();
+  }
   
   hideLoader();
 }
@@ -175,6 +175,9 @@ async function checkPlugin() {
     if(xhr?.status !== 200 || data?.status !== 'UP') {
       checkPluginResults.push('Plugin is unable to reach the Remote Falcon API.');
     }
+  }, (xhr, status, error) => {
+    console.error('RFAPIGet Error:', status, error);
+    hideLoader();
   });
 
   if(REMOTE_TOKEN == null || REMOTE_TOKEN === '') {
