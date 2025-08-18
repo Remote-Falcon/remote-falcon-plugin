@@ -178,6 +178,10 @@ async function FPPGet(url, successCallback) {
     url,
     type: 'GET',
     async: true,
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    },
     success: (data, statusText, xhr) => {
       successCallback(data, statusText, xhr);
     }

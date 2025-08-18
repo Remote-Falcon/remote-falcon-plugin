@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2025.07.04.1";
+$PLUGIN_VERSION = "2025.08.18.1";
 
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
@@ -414,9 +414,9 @@ function nextPlaylistInQueue($remoteToken) {
   );
   $context = stream_context_create( $options );
   $result = file_get_contents( $url, false, $context );
+  $end_time = microtime(true);
   $execution_time = ($end_time - $start_time);
   logEntry_verbose("SUCCESS - Calling Plugins API to fetch next requested sequence. Execution time: " . $execution_time * 1000 . " ms");
-  return json_decode( $result );
   return json_decode( $result );
 }
 
