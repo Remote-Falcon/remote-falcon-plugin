@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2025.08.18.1";
+$PLUGIN_VERSION = "2025.09.05.1";
 
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
@@ -56,6 +56,10 @@ $additionalWaitTime = "";
 $pluginsApiPath = "";
 $verboseLogging = false;
 
+// Heartbeat tracking
+$lastHeartbeatTime = 0;
+$heartbeatIntervalSeconds = 15;
+
 $pluginsApiPath = urldecode($pluginSettings['pluginsApiPath']);
 logEntry("Plugins API Path: " . $pluginsApiPath);
 $remoteToken = urldecode($pluginSettings['remoteToken']);
@@ -83,6 +87,14 @@ while(true) {
   $remoteFppEnabled = $remoteFppEnabled == "true" ? true : false;
   $remoteFppRestarting = urldecode($pluginSettings['remoteFalconListenerRestarting']);
   $remoteFppRestarting = $remoteFppRestarting == "true" ? true : false;
+
+  // Send periodic heartbeat from the listener so it continues even when UI is closed
+  if ($remoteFppEnabled) {
+    if ((time() - $lastHeartbeatTime) >= $heartbeatIntervalSeconds) {
+      sendFppHeartbeat($remoteToken);
+      $lastHeartbeatTime = time();
+    }
+  }
 
   if($remoteFppRestarting == 1) {
     WriteSettingToFile("remoteFalconListenerEnabled",urlencode("true"),$pluginName);
@@ -418,6 +430,30 @@ function nextPlaylistInQueue($remoteToken) {
   $execution_time = ($end_time - $start_time);
   logEntry_verbose("SUCCESS - Calling Plugins API to fetch next requested sequence. Execution time: " . $execution_time * 1000 . " ms");
   return json_decode( $result );
+}
+
+function sendFppHeartbeat($remoteToken) {
+  $start_time = microtime(true);
+  logEntry_verbose("Calling Plugins API to send heartbeat");
+  $url = $GLOBALS['pluginsApiPath'] . "/fppHeartbeat";
+  $options = array(
+    'http' => array(
+      'method'  => 'POST',
+      'content' => json_encode((object)[]),
+      'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
+                  "Accept: application/json\r\n" .
+                  "remotetoken: $remoteToken\r\n"
+      )
+  );
+  $context = stream_context_create( $options );
+  $result = @file_get_contents( $url, false, $context );
+  if ($result === FALSE) {
+    logEntry("ERROR - Heartbeat POST failed to: " . $url);
+  } else {
+    $end_time = microtime(true);
+    $execution_time = ($end_time - $start_time);
+    logEntry_verbose("SUCCESS - Heartbeat sent. Execution time: " . $execution_time * 1000 . " ms");
+  }
 }
 
 function logEntry($data) {
