@@ -153,25 +153,6 @@ function hideLoader() {
   $(".plugin-body").css({ 'display' : 'block'});
 }
 
-function startHeartbeat() {
-  sendHeartbeat();
-  setInterval(async () => {
-    sendHeartbeat();
-  }, 15000);
-}
-
-function sendHeartbeat() {
-  if(REMOTE_FALCON_LISTENER_ENABLED) {
-    $.ajax({
-      url: PLUGINS_API_PATH + '/fppHeartbeat',
-      type: 'POST',
-      contentType: 'application/json',
-      async: true,
-      headers: { 'remotetoken': REMOTE_TOKEN }
-    });
-  }
-}
-
 //AJAX Helper Functions
 async function FPPGet(url, successCallback) {
   await $.ajax({

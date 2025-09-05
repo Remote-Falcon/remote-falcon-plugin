@@ -103,7 +103,6 @@ async function init() {
   if(REMOTE_TOKEN) {
     await savePluginVersionAndFPPVersionToRF();
     await checkPlugin();
-    startHeartbeat();
   }
   
   hideLoader();
