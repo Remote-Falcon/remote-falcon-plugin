@@ -18,6 +18,7 @@ async function saveDefaultPluginConfig() {
     var init = data?.init;
     if(!init) {
       await FPPPost('/api/plugin/remote-falcon/settings/init', 'true', () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/remoteToken', '', () => {});
       await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'true', () => {});
       await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', 'false', () => {});
       await FPPPost('/api/plugin/remote-falcon/settings/interruptSchedule', 'false', () => {});
