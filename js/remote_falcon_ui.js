@@ -100,7 +100,7 @@ async function init() {
   await getPlaylists();
   await checkPluginUpdates();
 
-  if(REMOTE_TOKEN) {
+  if(REMOTE_TOKEN && REMOTE_TOKEN !== '') {
     await savePluginVersionAndFPPVersionToRF();
     await checkPlugin();
   }
