@@ -15,10 +15,26 @@ $(document).ready(async () => {
 
   //Component Handlers
   $('#remoteTokenInput').blur(async () => {
-    await FPPPost('/api/plugin/remote-falcon/settings/remoteToken', $('#remoteTokenInput').val(), async () => {
-      await getPluginConfig();
-      $.jGrowl("Remote Token Saved", { themeState: 'success' });
-      await restartListener();
+    const tokenValue = $('#remoteTokenInput').val();
+    await FPPPost('/api/plugin/remote-falcon/settings/remoteToken', tokenValue, async () => {
+      // Add delay to ensure file system writes complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Verify the setting was actually saved
+      const verified = await verifySetting('remoteToken', tokenValue);
+
+      if (verified) {
+        await getPluginConfig();
+        $.jGrowl("Remote Token Saved", { themeState: 'success' });
+
+        // Add delay before restart to ensure all writes are flushed
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await restartListener();
+      } else {
+        $.jGrowl("Error: Remote Token failed to save. Please try again or restart FPP.", { themeState: 'danger' });
+      }
+    }, (xhr, status, error) => {
+      $.jGrowl("Error saving Remote Token: " + error, { themeState: 'danger' });
     });
   });
 

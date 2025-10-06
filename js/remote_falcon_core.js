@@ -154,6 +154,23 @@ function hideLoader() {
   $(".plugin-body").css({ 'display' : 'block'});
 }
 
+// Verify a setting was saved by reading it back
+async function verifySetting(settingKey, expectedValue, maxRetries = 3, delayMs = 200) {
+  for (let i = 0; i < maxRetries; i++) {
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+
+    let actualValue = null;
+    await FPPGet('/api/plugin/remote-falcon/settings/' + settingKey, (data) => {
+      actualValue = data?.[settingKey];
+    });
+
+    if (actualValue === expectedValue) {
+      return true;
+    }
+  }
+  return false;
+}
+
 //AJAX Helper Functions
 async function FPPGet(url, successCallback) {
   await $.ajax({
@@ -184,7 +201,7 @@ async function FPPPut(url, data, successCallback) {
   });
 }
 
-async function FPPPost(url, data, successCallback) {
+async function FPPPost(url, data, successCallback, errorCallback = null) {
   await $.ajax({
     url,
     type: 'POST',
@@ -194,6 +211,14 @@ async function FPPPost(url, data, successCallback) {
     async: true,
     success: (data, statusText, xhr) => {
       successCallback(data, statusText, xhr);
+    },
+    error: (xhr, status, error) => {
+      if (errorCallback) {
+        errorCallback(xhr, status, error);
+      } else {
+        console.error('FPPPost Error:', status, error);
+        $.jGrowl("Error saving setting: " + error, { themeState: 'danger' });
+      }
     }
   });
 }
