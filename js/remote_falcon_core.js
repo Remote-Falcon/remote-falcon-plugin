@@ -80,7 +80,7 @@ async function getPluginConfig() {
   // await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylist', (data) => {
   //   REMOTE_PLAYLIST = data?.remotePlaylist;
   // });
-  getRemotePlaylistFromConfig();
+  await getRemotePlaylistFromConfig();
 }
 
 async function getRemotePlaylistFromConfig() {
