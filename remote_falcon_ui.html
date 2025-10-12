@@ -252,6 +252,37 @@
           <input type="checkbox" class="form-control" name="verboseLoggingCheckbox" id="verboseLoggingCheckbox">
         </div>
       </div>
+      <!-- Manual Config Update -->
+       <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Plugin Config
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            You can manually edit your config file here <br />
+            <span class="warning">WARNING!</span> <br />
+            Messing this up could break the plugin! <br />
+            Only use this if you know what you're doing.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group" style="flex-direction: column;">
+            <textarea
+              class="form-control"
+              name="pluginConfigTextarea"
+              id="pluginConfigTextarea"
+              rows="15"
+              cols="80"
+              style="font-family: monospace; font-size: 12px; margin-bottom: 10px; width: 100%;">
+            </textarea>
+            <div style="display: flex; gap: 10px;">
+              <button id="loadConfigButton" class="buttons btn-outline-primary btn-rounded" type="button">Load Config</button>
+              <button id="saveConfigButton" class="buttons btn-outline-success btn-rounded" type="button">Save Config</button>
+              <button id="resetConfigButton" class="buttons btn-outline-danger btn-rounded" type="button">Reset to Default</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </body>

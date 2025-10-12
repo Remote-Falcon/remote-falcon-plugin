@@ -103,25 +103,84 @@ $(document).ready(async () => {
   $('#stopListenerButton').click(async () => {
     await stopListener();
   });
+
+  $('#loadConfigButton').click(async () => {
+    await loadPluginConfig();
+  });
+
+  $('#saveConfigButton').click(async () => {
+    await savePluginConfig();
+  });
+
+  $('#resetConfigButton').click(async () => {
+    await resetPluginConfigToDefault();
+  });
 });
 
 async function init() {
   showLoader();
 
-  //This only happens one time
-  await saveDefaultPluginConfig();
+  // Set a maximum timeout to ensure loader is hidden even if something hangs
+  const loaderTimeout = setTimeout(() => {
+    console.warn('Init timeout reached - forcing loader to hide');
+    hideLoader();
+    $.jGrowl("Plugin loaded with warnings - some features may not be available", { themeState: 'warning' });
+  }, 10000); // 10 second timeout
 
-  //Set the config globals
-  await getPluginConfig();
-  await getPlaylists();
-  await checkPluginUpdates();
+  try {
+    // This only happens one time
+    try {
+      await saveDefaultPluginConfig();
+    } catch (error) {
+      console.error('Error saving default config:', error);
+      $.jGrowl("Warning: Could not save default config", { themeState: 'warning' });
+    }
 
-  if(REMOTE_TOKEN && REMOTE_TOKEN !== '') {
-    await savePluginVersionAndFPPVersionToRF();
-    await checkPlugin();
+    // Set the config globals
+    try {
+      await getPluginConfig();
+    } catch (error) {
+      console.error('Error getting plugin config:', error);
+      $.jGrowl("Warning: Could not load plugin config", { themeState: 'warning' });
+    }
+
+    try {
+      await getPlaylists();
+    } catch (error) {
+      console.error('Error getting playlists:', error);
+      $.jGrowl("Warning: Could not load playlists", { themeState: 'warning' });
+    }
+
+    try {
+      await checkPluginUpdates();
+    } catch (error) {
+      console.error('Error checking plugin updates:', error);
+      // Silent fail for updates check
+    }
+
+    if(REMOTE_TOKEN && REMOTE_TOKEN !== '') {
+      try {
+        await savePluginVersionAndFPPVersionToRF();
+      } catch (error) {
+        console.error('Error saving plugin version to RF:', error);
+        // Silent fail for version reporting
+      }
+
+      try {
+        await checkPlugin();
+      } catch (error) {
+        console.error('Error checking plugin:', error);
+        $.jGrowl("Warning: Could not run plugin check", { themeState: 'warning' });
+      }
+    }
+  } catch (error) {
+    console.error('Unexpected error during init:', error);
+    $.jGrowl("Error during initialization", { themeState: 'danger' });
+  } finally {
+    // Always clear the timeout and hide the loader
+    clearTimeout(loaderTimeout);
+    hideLoader();
   }
-  
-  hideLoader();
 }
 
 async function syncPlaylistToRF() {
@@ -235,4 +294,104 @@ async function stopListener() {
   await getPluginConfig();
   $('#remoteFalconStatus').html(getRemoteFalconListenerEnabledStatus(REMOTE_FALCON_LISTENER_ENABLED));
   $.jGrowl("Stopped Listener", { themeState: 'success' });
+}
+
+async function loadPluginConfig() {
+  await FPPGet('/api/configfile/plugin.remote-falcon', (data) => {
+    $('#pluginConfigTextarea').val(data);
+    $.jGrowl("Config Loaded", { themeState: 'success' });
+  });
+}
+
+async function savePluginConfig() {
+  const configContent = $('#pluginConfigTextarea').val();
+
+  if (!configContent || configContent.trim() === '') {
+    $.jGrowl("Config cannot be empty", { themeState: 'danger' });
+    return;
+  }
+
+  await $.ajax({
+    url: '/api/configfile/plugin.remote-falcon',
+    type: 'POST',
+    contentType: 'text/plain',
+    data: configContent,
+    async: true,
+    success: async () => {
+      $.jGrowl("Config Saved Successfully", { themeState: 'success' });
+
+      // Reload the plugin config globals
+      await getPluginConfig();
+
+      // Prompt to restart listener
+      if (confirm('Config saved. Do you want to restart the listener for changes to take effect?')) {
+        await restartListener();
+        // Refresh the page after restart
+        setTimeout(() => {
+          location.reload();
+        }, 1000);
+      } else {
+        // Refresh page even if they don't restart
+        setTimeout(() => {
+          location.reload();
+        }, 500);
+      }
+    },
+    error: (_jqXHR, status, error) => {
+      console.error('Save Config Error:', status, error);
+      $.jGrowl("Error saving config: " + error, { themeState: 'danger' });
+    }
+  });
+}
+
+async function resetPluginConfigToDefault() {
+  if (!confirm('Are you sure you want to reset the config to default values? This will overwrite all current settings!')) {
+    return;
+  }
+
+  // Create default config based on saveDefaultPluginConfig values
+  const defaultConfig = `init = "true"
+remoteToken = ""
+remoteFalconListenerEnabled = "true"
+remoteFalconListenerRestarting = "false"
+interruptSchedule = "false"
+requestFetchTime = "3"
+additionalWaitTime = "0"
+fppStatusCheckTime = "1"
+pluginsApiPath = "${DEFAULT_PLUGINS_API_PATH}"
+verboseLogging = "false"`;
+
+  $('#pluginConfigTextarea').val(defaultConfig);
+
+  await $.ajax({
+    url: '/api/configfile/plugin.remote-falcon',
+    type: 'POST',
+    contentType: 'text/plain',
+    data: defaultConfig,
+    async: true,
+    success: async () => {
+      $.jGrowl("Config Reset to Default Successfully", { themeState: 'success' });
+
+      // Reload the plugin config globals
+      await getPluginConfig();
+
+      // Prompt to restart listener
+      if (confirm('Config reset complete. Do you want to restart the listener for changes to take effect?')) {
+        await restartListener();
+        // Refresh the page after restart
+        setTimeout(() => {
+          location.reload();
+        }, 1000);
+      } else {
+        // Refresh page even if they don't restart
+        setTimeout(() => {
+          location.reload();
+        }, 500);
+      }
+    },
+    error: (_jqXHR, status, error) => {
+      console.error('Reset Config Error:', status, error);
+      $.jGrowl("Error resetting config: " + error, { themeState: 'danger' });
+    }
+  });
 }
