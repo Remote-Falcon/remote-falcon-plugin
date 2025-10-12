@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2025.10.12.1";
+$PLUGIN_VERSION = "2025.10.12.2";
 
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
@@ -55,6 +55,8 @@ $rfSequencesCleared = false;
 $additionalWaitTime = "";
 $pluginsApiPath = "";
 $verboseLogging = false;
+$lastQueuedSequence = "";
+$lastQueuedTime = 0;
 
 // Heartbeat tracking
 $lastHeartbeatTime = 0;
@@ -65,9 +67,18 @@ logEntry("Plugins API Path: " . $pluginsApiPath);
 $remoteToken = urldecode($pluginSettings['remoteToken']);
 $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
 logEntry("Remote Playlist: ".$remotePlaylist);
+
+// Safely fetch remote preferences with error handling
 $remotePreferences = remotePreferences($remoteToken);
-$viewerControlMode = $remotePreferences->viewerControlMode;
-logEntry("Viewer Control Mode: " . $viewerControlMode);
+if ($remotePreferences === null || !isset($remotePreferences->viewerControlMode)) {
+  logEntry("WARNING - Unable to fetch remote preferences. Using default 'jukebox' mode.");
+  logEntry("Please verify your Remote Token is correct and the API is accessible.");
+  $viewerControlMode = "jukebox"; // Default to jukebox mode
+} else {
+  $viewerControlMode = $remotePreferences->viewerControlMode;
+  logEntry("Viewer Control Mode: " . $viewerControlMode);
+}
+
 $interruptSchedule = urldecode($pluginSettings['interruptSchedule']);
 logEntry("Interrupt Schedule: " . $interruptSchedule);
 $interruptSchedule = $interruptSchedule == "true" ? true : false;
@@ -106,9 +117,18 @@ while(true) {
     $remoteToken = urldecode($pluginSettings['remoteToken']);
     $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
     logEntry("Remote Playlist: ".$remotePlaylist);
+
+    // Safely fetch remote preferences with error handling
     $remotePreferences = remotePreferences($remoteToken);
-    $viewerControlMode = $remotePreferences->viewerControlMode;
-    logEntry("Viewer Control Mode: " . $viewerControlMode);
+    if ($remotePreferences === null || !isset($remotePreferences->viewerControlMode)) {
+      logEntry("WARNING - Unable to fetch remote preferences. Using default 'jukebox' mode.");
+      logEntry("Please verify your Remote Token is correct and the API is accessible.");
+      $viewerControlMode = "jukebox"; // Default to jukebox mode
+    } else {
+      $viewerControlMode = $remotePreferences->viewerControlMode;
+      logEntry("Viewer Control Mode: " . $viewerControlMode);
+    }
+
     $interruptSchedule = urldecode($pluginSettings['interruptSchedule']);
     logEntry("Interrupt Schedule: " . $interruptSchedule);
     $interruptSchedule = $interruptSchedule == "true" ? true : false;
@@ -161,9 +181,25 @@ while(true) {
 
 function doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $additionalWaitTime, $remotePlaylist, $remoteToken) {
   $secondsRemaining = intVal($fppStatus->seconds_remaining);
+  $currentlyPlaying = pathinfo($fppStatus->current_sequence, PATHINFO_FILENAME);
+  if($currentlyPlaying == "") {
+    $currentlyPlaying = pathinfo($fppStatus->current_song, PATHINFO_FILENAME);
+  }
+
+  // Check if we've already queued a sequence for the current playing sequence
+  // Prevent duplicate queueing if we're still within the timing window
+  if($currentlyPlaying == $GLOBALS['lastQueuedSequence']) {
+    $timeSinceQueue = time() - $GLOBALS['lastQueuedTime'];
+    if($timeSinceQueue < ($requestFetchTime + $additionalWaitTime + 2)) {
+      logEntry_verbose("Already queued for current sequence, skipping. Time since queue: " . $timeSinceQueue . "s");
+      return;
+    }
+  }
+
   if($secondsRemaining < $requestFetchTime) {
-  $start_time = microtime(true);
-  logEntry_verbose("Starting Non Interrupt Function");
+    $start_time = microtime(true);
+    logEntry_verbose("Starting Non Interrupt Function");
+
     if($viewerControlMode == "voting") {
       logEntry($requestFetchTime . " seconds remaining. Getting highest voted sequence.");
       $highestVotedSequence = highestVotedSequence($remoteToken);
@@ -172,11 +208,21 @@ function doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, 
       if($winningSequence != null) {
         logEntry("Queuing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
         insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $winningSequenceIndex);
+
+        // Track that we've queued for this sequence
+        $GLOBALS['lastQueuedSequence'] = $currentlyPlaying;
+        $GLOBALS['lastQueuedTime'] = time();
+
         $fppWaitTime = $requestFetchTime + $additionalWaitTime;
         logEntry("Sleeping for " . $fppWaitTime . " seconds.");
         sleep($fppWaitTime);
       }else {
         logEntry("No votes");
+
+        // Track that we've checked (even with no result) to prevent re-checking
+        $GLOBALS['lastQueuedSequence'] = $currentlyPlaying;
+        $GLOBALS['lastQueuedTime'] = time();
+
         $fppWaitTime = $requestFetchTime + $additionalWaitTime;
         logEntry("Sleeping for " . $fppWaitTime . " seconds.");
         sleep($fppWaitTime);
@@ -189,11 +235,21 @@ function doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, 
       if($nextSequence != null) {
         logEntry("Queuing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
         insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $nextSequenceIndex);
+
+        // Track that we've queued for this sequence
+        $GLOBALS['lastQueuedSequence'] = $currentlyPlaying;
+        $GLOBALS['lastQueuedTime'] = time();
+
         $fppWaitTime = $requestFetchTime + $additionalWaitTime;
         logEntry("Sleeping for " . $fppWaitTime . " seconds.");
         sleep($fppWaitTime);
       }else {
         logEntry("No requests");
+
+        // Track that we've checked (even with no result) to prevent re-checking
+        $GLOBALS['lastQueuedSequence'] = $currentlyPlaying;
+        $GLOBALS['lastQueuedTime'] = time();
+
         $fppWaitTime = $requestFetchTime + $additionalWaitTime;
         logEntry("Sleeping for " . $fppWaitTime . " seconds.");
         sleep($fppWaitTime);
@@ -209,6 +265,13 @@ function doInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $ad
   if($fppStatus->current_playlist != null) {
     $currentPlaylist = $fppStatus->current_playlist->playlist;
     if($currentPlaylist != $GLOBALS['remotePlaylist']) {
+      // Check if we recently interrupted - prevent rapid fire interrupts
+      $timeSinceLastInterrupt = time() - $GLOBALS['lastQueuedTime'];
+      if($timeSinceLastInterrupt < ($requestFetchTime + $additionalWaitTime + 2)) {
+        logEntry_verbose("Recently interrupted, skipping. Time since last: " . $timeSinceLastInterrupt . "s");
+        return;
+      }
+
       $start_time = microtime(true);
       logEntry_verbose("Starting Interrupt Function");
       if($viewerControlMode == "voting") {
@@ -218,6 +281,11 @@ function doInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $ad
         if($winningSequence != null) {
           insertPlaylistImmediate(rawurlencode($remotePlaylist), $winningSequenceIndex);
           logEntry("Playing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
+
+          // Track the interrupt time
+          $GLOBALS['lastQueuedSequence'] = $winningSequence;
+          $GLOBALS['lastQueuedTime'] = time();
+
           $fppWaitTime = $requestFetchTime + $additionalWaitTime;
           logEntry("Sleeping for " . $fppWaitTime . " seconds.");
           sleep($fppWaitTime);
@@ -229,6 +297,11 @@ function doInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $ad
         if($nextSequence != null) {
           insertPlaylistImmediate(rawurlencode($remotePlaylist), $nextSequenceIndex);
           logEntry("Playing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
+
+          // Track the interrupt time
+          $GLOBALS['lastQueuedSequence'] = $nextSequence;
+          $GLOBALS['lastQueuedTime'] = time();
+
           $fppWaitTime = $requestFetchTime + $additionalWaitTime;
           logEntry("Sleeping for " . $fppWaitTime . " seconds.");
           sleep($fppWaitTime);
@@ -252,8 +325,20 @@ function updateCurrentlyPlaying($currentlyPlaying, $currentlyPlayingInRF, $remot
 }
 
 function updateNextScheduledSequence($fppStatus, $currentlyPlaying, $nextScheduledInRF, $remoteToken) {
+  // Check if current_playlist exists before accessing it
+  if (!isset($fppStatus->current_playlist) || $fppStatus->current_playlist === null) {
+    logEntry_verbose("Current playlist is null, skipping next scheduled sequence update");
+    return;
+  }
+
+  if (!isset($fppStatus->current_playlist->playlist)) {
+    logEntry_verbose("Current playlist name is not set, skipping next scheduled sequence update");
+    return;
+  }
+
   $currentPlaylist = $fppStatus->current_playlist->playlist;
   $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
+
   if($playlistDetails != null && $playlistDetails != '') {
     $mainPlaylist = $playlistDetails->mainPlaylist;
     if($mainPlaylist != null && $mainPlaylist != "" && count($mainPlaylist) > 0) {
@@ -292,17 +377,48 @@ function remotePreferences($remoteToken) {
   $options = array(
     'http' => array(
       'method'  => 'GET',
+      'timeout' => 10,
       'header'=>  "remotetoken: $remoteToken\r\n"
       )
   );
   $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
-  return json_decode( $result );
+  $result = @file_get_contents( $url, false, $context );
+
+  if ($result === FALSE) {
+    logEntry("ERROR - Failed to fetch remote preferences from: " . $url);
+    return null;
+  }
+
+  $decoded = json_decode( $result );
+  if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+    logEntry("ERROR - Invalid JSON response from remotePreferences: " . json_last_error_msg());
+    return null;
+  }
+
+  return $decoded;
 }
 
 function getFppStatus() {
-  $result=file_get_contents("http://127.0.0.1/api/system/status");
-  return json_decode( $result );
+  $options = array(
+    'http' => array(
+      'timeout' => 5
+    )
+  );
+  $context = stream_context_create($options);
+  $result = @file_get_contents("http://127.0.0.1/api/system/status", false, $context);
+
+  if ($result === FALSE) {
+    logEntry_verbose("ERROR - Failed to get FPP status");
+    return null;
+  }
+
+  $decoded = json_decode($result);
+  if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+    logEntry("ERROR - Invalid JSON response from FPP status: " . json_last_error_msg());
+    return null;
+  }
+
+  return $decoded;
 }
 
 function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
@@ -315,6 +431,7 @@ function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
   $options = array(
     'http' => array(
       'method'  => 'POST',
+      'timeout' => 10,
       'content' => json_encode( $data ),
       'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
                   "Accept: application/json\r\n" .
@@ -322,10 +439,17 @@ function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
       )
   );
   $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
+  $result = @file_get_contents( $url, false, $context );
+
+  if ($result === FALSE) {
+    logEntry("ERROR - Failed to update what's playing to: " . $url);
+    return false;
+  }
+
   $end_time = microtime(true);
   $execution_time = ($end_time - $start_time);
   logEntry_verbose("SUCCESS - Calling Plugins API to update what's playing. Execution time: " . $execution_time * 1000 . " ms");
+  return true;
 }
 
 function updateNextScheduledSequenceInRf($nextScheduled, $remoteToken) {
@@ -338,6 +462,7 @@ function updateNextScheduledSequenceInRf($nextScheduled, $remoteToken) {
   $options = array(
     'http' => array(
       'method'  => 'POST',
+      'timeout' => 10,
       'content' => json_encode( $data ),
       'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
                   "Accept: application/json\r\n" .
@@ -345,32 +470,57 @@ function updateNextScheduledSequenceInRf($nextScheduled, $remoteToken) {
       )
   );
   $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
+  $result = @file_get_contents( $url, false, $context );
+
+  if ($result === FALSE) {
+    logEntry("ERROR - Failed to update next scheduled sequence to: " . $url);
+    return false;
+  }
+
   $end_time = microtime(true);
   $execution_time = ($end_time - $start_time);
   logEntry_verbose("SUCCESS - Calling Plugins API to update next scheduled. Execution time: " . $execution_time * 1000 . " ms");
+  return true;
 }
 
-function insertPlaylistImmediate($remotePlaylistEncoded, $index) { 
+function insertPlaylistImmediate($remotePlaylistEncoded, $index) {
   $url = "http://127.0.0.1/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
   $options = array(
     'http' => array(
-      'method'  => 'GET'
+      'method'  => 'GET',
+      'timeout' => 5
       )
   );
   $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
+  $result = @file_get_contents( $url, false, $context );
+
+  if ($result === FALSE) {
+    logEntry("ERROR - Failed to insert playlist immediate: " . rawurldecode($remotePlaylistEncoded) . " at index " . $index);
+    return false;
+  }
+
+  logEntry_verbose("SUCCESS - Inserted playlist immediate");
+  return true;
 }
 
 function insertPlaylistAfterCurrent($remotePlaylistEncoded, $index) {
   $url = "http://127.0.0.1/api/command/Insert%20Playlist%20After%20Current/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
   $options = array(
     'http' => array(
-      'method'  => 'GET'
+      'method'  => 'GET',
+      'timeout' => 5
       )
   );
   $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
+  $result = @file_get_contents( $url, false, $context );
+
+  if ($result === FALSE) {
+    logEntry("ERROR - Failed to insert playlist after current: " . rawurldecode($remotePlaylistEncoded) . " at index " . $index);
+    return false;
+  }
+
+  logEntry_verbose("SUCCESS - Inserted playlist after current");
+  return true;
 }
 
 function stopGracefully() {
@@ -388,12 +538,25 @@ function getPlaylistDetails($remotePlaylistEncoded) {
   $url = "http://127.0.0.1/api/playlist/" . $remotePlaylistEncoded;
   $options = array(
     'http' => array(
-      'method'  => 'GET'
+      'method'  => 'GET',
+      'timeout' => 5
       )
   );
   $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
-  return json_decode( $result );
+  $result = @file_get_contents( $url, false, $context );
+
+  if ($result === FALSE) {
+    logEntry_verbose("ERROR - Failed to get playlist details for: " . rawurldecode($remotePlaylistEncoded));
+    return null;
+  }
+
+  $decoded = json_decode( $result );
+  if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+    logEntry("ERROR - Invalid JSON response from getPlaylistDetails: " . json_last_error_msg());
+    return null;
+  }
+
+  return $decoded;
 }
 
 function highestVotedSequence($remoteToken) {
@@ -403,15 +566,28 @@ function highestVotedSequence($remoteToken) {
   $options = array(
     'http' => array(
       'method'  => 'GET',
+      'timeout' => 10,
       'header'=>  "remotetoken: $remoteToken\r\n"
       )
   );
   $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
+  $result = @file_get_contents( $url, false, $context );
+
+  if ($result === FALSE) {
+    logEntry("ERROR - Failed to fetch highest voted sequence from: " . $url);
+    return (object)['winningPlaylist' => null, 'playlistIndex' => null];
+  }
+
+  $decoded = json_decode( $result );
+  if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+    logEntry("ERROR - Invalid JSON response from highestVotedSequence: " . json_last_error_msg());
+    return (object)['winningPlaylist' => null, 'playlistIndex' => null];
+  }
+
   $end_time = microtime(true);
   $execution_time = ($end_time - $start_time);
   logEntry_verbose("SUCCESS - Calling Plugins API to fetch highest voted sequence. Execution time: " . $execution_time * 1000 . " ms");
-  return json_decode( $result );
+  return $decoded;
 }
 
 function nextPlaylistInQueue($remoteToken) {
@@ -421,15 +597,28 @@ function nextPlaylistInQueue($remoteToken) {
   $options = array(
     'http' => array(
       'method'  => 'GET',
+      'timeout' => 10,
       'header'=>  "remotetoken: $remoteToken\r\n"
       )
   );
   $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
+  $result = @file_get_contents( $url, false, $context );
+
+  if ($result === FALSE) {
+    logEntry("ERROR - Failed to fetch next playlist in queue from: " . $url);
+    return (object)['nextPlaylist' => null, 'playlistIndex' => null];
+  }
+
+  $decoded = json_decode( $result );
+  if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+    logEntry("ERROR - Invalid JSON response from nextPlaylistInQueue: " . json_last_error_msg());
+    return (object)['nextPlaylist' => null, 'playlistIndex' => null];
+  }
+
   $end_time = microtime(true);
   $execution_time = ($end_time - $start_time);
   logEntry_verbose("SUCCESS - Calling Plugins API to fetch next requested sequence. Execution time: " . $execution_time * 1000 . " ms");
-  return json_decode( $result );
+  return $decoded;
 }
 
 function sendFppHeartbeat($remoteToken) {
