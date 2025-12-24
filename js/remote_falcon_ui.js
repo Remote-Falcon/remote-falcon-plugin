@@ -58,6 +58,14 @@ $(document).ready(async () => {
   $('#checkPluginButton').click(async () => {
     await checkPlugin();
   });
+  
+  $('#testConnectivityButton').click(async () => {
+    await runConnectivityTest(true);
+  });
+  
+  $('#tailLogButton').click(async () => {
+    await tailListenerLog();
+  });
 
   $('#requestFetchTimeInput').blur(async () => {
     await FPPPost('/api/plugin/remote-falcon/settings/requestFetchTime', $('#requestFetchTimeInput').val().toString(), async () => {
@@ -160,6 +168,12 @@ async function init() {
 
     if(REMOTE_TOKEN && REMOTE_TOKEN !== '') {
       try {
+        await runConnectivityTest(false);
+      } catch (error) {
+        console.error('Error testing connectivity during init:', error);
+      }
+
+      try {
         await savePluginVersionAndFPPVersionToRF();
       } catch (error) {
         console.error('Error saving plugin version to RF:', error);
@@ -172,6 +186,8 @@ async function init() {
         console.error('Error checking plugin:', error);
         $.jGrowl("Warning: Could not run plugin check", { themeState: 'warning' });
       }
+    } else {
+      $('#connectivityStatus').text('Add Show Token to test connectivity');
     }
   } catch (error) {
     console.error('Unexpected error during init:', error);
@@ -242,20 +258,18 @@ async function syncPlaylistToRF() {
 
 async function checkPlugin() {
   $('#checkPluginResults').html('');
+  $("#checkPluginResults").removeClass('good warning');
 
   var checkPluginResults = [];
 
-  await RFAPIGet('/actuator/health', (data, statusText, xhr) => {
-    if(xhr?.status !== 200 || data?.status !== 'UP') {
-      checkPluginResults.push('Plugin is unable to reach the Remote Falcon API.');
-    }
-  }, (xhr, status, error) => {
-    console.error('RFAPIGet Error:', status, error);
-    hideLoader();
-  });
-
   if(REMOTE_TOKEN == null || REMOTE_TOKEN === '') {
     checkPluginResults.push('Remote Token has not been entered.');
+  } else {
+    const connectivity = await runConnectivityTest(false);
+    if(!connectivity?.ok) {
+      const connectivityError = connectivity?.error ? ` (${connectivity.error})` : '';
+      checkPluginResults.push('Plugin is unable to reach the Remote Falcon API.' + connectivityError);
+    }
   }
 
   if(REMOTE_PLAYLIST == null || REMOTE_PLAYLIST === '') {
@@ -289,11 +303,100 @@ async function checkPlugin() {
   });
 }
 
+async function runConnectivityTest(showToast = false) {
+  const $status = $('#connectivityStatus');
+  if($status.length) {
+    $status.removeClass('good warning');
+    $status.text('Testing connectivity...');
+  }
+
+  try {
+    let result = null;
+    await RFAPIGet('/q/health', (data, _statusText, xhr) => {
+      result = {
+        ok: xhr?.status === 200 && data?.status && data.status.toUpperCase() === 'UP',
+        status: data?.status,
+        latencyMs: null,
+        error: null
+      };
+    }, (xhr, status, error) => {
+      console.error('RFAPIGet Error:', status, error);
+      result = { ok: false, error: error || status };
+    });
+
+    if(result?.ok) {
+      if($status.length) {
+        $status.text('Remote Falcon API reachable');
+        $status.addClass('good');
+      }
+      if(showToast) {
+        $.jGrowl("Remote Falcon API reachable", { themeState: 'success' });
+      }
+      return result;
+    }
+
+    const errorLabel = result?.error ? result.error : 'status_not_up';
+    if($status.length) {
+      $status.text('Remote Falcon API unreachable');
+      $status.addClass('warning');
+    }
+    if(showToast) {
+      $.jGrowl("Remote Falcon API unreachable: " + errorLabel, { themeState: 'danger' });
+    }
+    return result;
+  } catch (error) {
+    console.error('Connectivity test failed:', error);
+    if($status.length) {
+      $status.text('Connectivity test failed');
+      $status.addClass('warning');
+    }
+    if(showToast) {
+      $.jGrowl("Connectivity test failed", { themeState: 'danger' });
+    }
+    return { ok: false, error: 'ajax_failed' };
+  }
+}
+
 async function stopListener() {
   await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'false', () => {});
   await getPluginConfig();
   $('#remoteFalconStatus').html(getRemoteFalconListenerEnabledStatus(REMOTE_FALCON_LISTENER_ENABLED));
   $.jGrowl("Stopped Listener", { themeState: 'success' });
+}
+
+async function tailListenerLog() {
+  const $status = $('#tailLogStatus');
+  const $output = $('#tailLogOutput');
+
+  if($status.length) {
+    $status.text('Loading...');
+  }
+  if($output.length) {
+    $output.text('');
+  }
+
+  try {
+    await FPPGet('/api/file/Logs/remote-falcon-listener.log?tail=50', (data) => {
+      if($output.length) {
+        $output.text(data);
+      }
+      if($status.length) {
+        $status.text('Updated');
+      }
+    }, (_xhr, status, error) => {
+      console.error('Tail log error:', status, error);
+      if($status.length) {
+        $status.text('Failed to load log');
+      }
+      $.jGrowl("Failed to load listener log", { themeState: 'danger' });
+    });
+  } catch (error) {
+    console.error('Tail log exception:', error);
+    if($status.length) {
+      $status.text('Failed to load log');
+    }
+    $.jGrowl("Failed to load listener log", { themeState: 'danger' });
+  }
 }
 
 async function loadPluginConfig() {

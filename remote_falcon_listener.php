@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2025.10.12.2";
+$PLUGIN_VERSION = "2026.*.*.*";
 
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
@@ -7,6 +7,13 @@ $pluginPath = $settings['pluginDirectory']."/".$pluginName."/";
 $logFile = $settings['logDirectory']."/".$pluginName."-listener.log";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
 $pluginSettings = parse_ini_file($pluginConfigFile);
+
+logEntry("Starting Remote Falcon Plugin v" . $PLUGIN_VERSION);
+
+if ($pluginSettings === false) {
+  logEntry("ERROR - Unable to read plugin config file at startup: " . $pluginConfigFile);
+  $pluginSettings = array();
+}
 
 WriteSettingToFile("pluginVersion",urlencode($PLUGIN_VERSION),$pluginName);
 
@@ -42,8 +49,6 @@ if (strlen(urldecode($pluginSettings['remoteFalconListenerRestarting']))<1){
   WriteSettingToFile("remoteFalconListenerRestarting",urlencode("false"),$pluginName);
 }
 
-logEntry("Starting Remote Falcon Plugin v" . $PLUGIN_VERSION);
-
 $remoteToken = "";
 $remotePlaylist = "";
 $viewerControlMode = "";
@@ -57,10 +62,6 @@ $pluginsApiPath = "";
 $verboseLogging = false;
 $lastQueuedSequence = "";
 $lastQueuedTime = 0;
-
-// Heartbeat tracking
-$lastHeartbeatTime = 0;
-$heartbeatIntervalSeconds = 15;
 
 $pluginsApiPath = urldecode($pluginSettings['pluginsApiPath']);
 logEntry("Plugins API Path: " . $pluginsApiPath);
@@ -90,22 +91,21 @@ $fppStatusCheckTime = floatval(urldecode($pluginSettings['fppStatusCheckTime']))
 logEntry("FPP Status Check Time: " . $fppStatusCheckTime . " (" . $fppStatusCheckTime * 1000000 . " microseconds)");
 $verboseLogging = urldecode($pluginSettings['verboseLogging']);
 logEntry("Verbose Logging: " . $verboseLogging);
-$GLOBALS['verboseLogging'] = $verboseLogging == "true" ? true : false;
+$GLOBALS['verboseLogging'] = ($verboseLogging === "true");
 
 while(true) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
+
+  if ($pluginSettings === false) {
+    logEntry("ERROR - Unable to read plugin config file: " . $pluginConfigFile . ". Retrying in 5 seconds.");
+    sleep(5);
+    continue;
+  }
+
   $remoteFppEnabled = urldecode($pluginSettings['remoteFalconListenerEnabled']);
   $remoteFppEnabled = $remoteFppEnabled == "true" ? true : false;
   $remoteFppRestarting = urldecode($pluginSettings['remoteFalconListenerRestarting']);
   $remoteFppRestarting = $remoteFppRestarting == "true" ? true : false;
-
-  // Send periodic heartbeat from the listener so it continues even when UI is closed
-  if ($remoteFppEnabled) {
-    if ((time() - $lastHeartbeatTime) >= $heartbeatIntervalSeconds) {
-      sendFppHeartbeat($remoteToken);
-      $lastHeartbeatTime = time();
-    }
-  }
 
   if($remoteFppRestarting == 1) {
     WriteSettingToFile("remoteFalconListenerEnabled",urlencode("true"),$pluginName);
@@ -140,7 +140,7 @@ while(true) {
     logEntry("FPP Status Check Time: " . $fppStatusCheckTime . " (" . $fppStatusCheckTime * 1000000 . " microseconds)");
     $verboseLogging = urldecode($pluginSettings['verboseLogging']);
     logEntry("Verbose Logging: " . $verboseLogging);
-    $GLOBALS['verboseLogging'] = $verboseLogging == "true" ? true : false;
+    $GLOBALS['verboseLogging'] = ($verboseLogging === "true");
   }
 
   if($remoteFppEnabled == 1) {
@@ -621,51 +621,35 @@ function nextPlaylistInQueue($remoteToken) {
   return $decoded;
 }
 
-function sendFppHeartbeat($remoteToken) {
-  $start_time = microtime(true);
-  logEntry_verbose("Calling Plugins API to send heartbeat");
-  $url = $GLOBALS['pluginsApiPath'] . "/fppHeartbeat";
-  $options = array(
-    'http' => array(
-      'method'  => 'POST',
-      'content' => json_encode((object)[]),
-      'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
-                  "Accept: application/json\r\n" .
-                  "remotetoken: $remoteToken\r\n"
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = @file_get_contents( $url, false, $context );
-  if ($result === FALSE) {
-    logEntry("ERROR - Heartbeat POST failed to: " . $url);
-  } else {
-    $end_time = microtime(true);
-    $execution_time = ($end_time - $start_time);
-    logEntry_verbose("SUCCESS - Heartbeat sent. Execution time: " . $execution_time * 1000 . " ms");
-  }
-}
-
 function logEntry($data) {
 
-	global $logFile,$myPid;
+	global $logFile;
 
-	$data = $_SERVER['PHP_SELF']." : [".$myPid."] ".$data;
-	
-	$logWrite= fopen($logFile, "a") or die("Unable to open file!");
+  $logWrite = @fopen($logFile, "a");
+  if ($logWrite === false) {
+    error_log("Remote Falcon listener cannot open log file: " . $logFile . " | Message: " . $data);
+    return;
+  }
+
 	fwrite($logWrite, date('Y-m-d h:i:s A',time()).": ".$data."\n");
 	fclose($logWrite);
 }
 
 function logEntry_verbose($data) {
-  if($GLOBALS['verboseLogging'] == 1) {
-    global $logFile,$myPid;
-  
-    $data = $_SERVER['PHP_SELF']." : [".$myPid."] ".$data;
-    
-    $logWrite= fopen($logFile, "a") or die("Unable to open file!");
-    fwrite($logWrite, date('Y-m-d h:i:s A',time()).": ".$data."\n");
-    fclose($logWrite);
+  if(!isset($GLOBALS['verboseLogging']) || $GLOBALS['verboseLogging'] !== true) {
+    return;
   }
+
+  global $logFile;
+  
+  $logWrite = @fopen($logFile, "a");
+  if ($logWrite === false) {
+    error_log("Remote Falcon listener cannot open log file: " . $logFile . " | Message: " . $data);
+    return;
+  }
+
+  fwrite($logWrite, date('Y-m-d h:i:s A',time()).": ".$data."\n");
+  fclose($logWrite);
 }
 
 ?>

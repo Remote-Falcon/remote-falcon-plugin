@@ -107,12 +107,36 @@
           </div>
           <div class="mb-2 text-muted card-subtitle">
             This will run a check on the plugin configuration and automatically report any issues.
+            You can also test connectivity from FPP to the Remote Falcon API.
           </div>
         </div>
         <div class="col-md-6">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+            <button id="checkPluginButton" class="buttons btn-outline-primary btn-rounded" type="button">Run Checks</button>
+            <button id="testConnectivityButton" class="buttons btn-outline-secondary btn-rounded" type="button">Test Connectivity</button>
+            <span id="connectivityStatus" class="text-muted"></span>
+          </div>
           <div id="checkPluginResults">
             
           </div>
+        </div>
+      </div>
+      <!-- Listener Log Tail -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Listener Log (tail)
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            View the latest lines from <code>remote-falcon-listener.log</code>.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+            <button id="tailLogButton" class="buttons btn-outline-primary btn-rounded" type="button">Tail Log (50 lines)</button>
+            <span id="tailLogStatus" class="text-muted"></span>
+          </div>
+          <pre id="tailLogOutput" style="max-height: 200px; overflow-y: auto; background: #f5f5f5; padding: 10px; border-radius: 4px;"></pre>
         </div>
       </div>
       <hr />
