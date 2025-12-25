@@ -18,6 +18,25 @@
 .input-group {
   padding-top: .5em;
 }
+.playlist-sync-group {
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.auto-sync-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px;
+}
+
+.auto-sync-check label {
+  margin: 0;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
 .h5{
   font-size:1.25rem;
   font-weight: bold;
@@ -41,6 +60,68 @@
   padding-top: 1em;
   font-weight: bold;
   color: green;
+}
+
+/* Sync overlay */
+.rf-sync-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.rf-sync-dialog {
+  background: #fff;
+  padding: 18px 20px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  width: 360px;
+  max-width: 90%;
+  text-align: center;
+}
+
+.rf-sync-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.rf-sync-text {
+  color: #444;
+  margin-bottom: 12px;
+}
+
+.rf-sync-item {
+  color: #666;
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+  word-break: break-word;
+}
+
+.rf-sync-bar {
+  background: #eef0f2;
+  border-radius: 6px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.rf-sync-bar-fill {
+  background: #28a745;
+  height: 100%;
+  width: 0;
+  transition: width 0.2s ease;
+}
+
+.loader-status {
+  margin-top: 140px;
+  text-align: center;
+  color: #333;
+  font-weight: 600;
 }
 
 

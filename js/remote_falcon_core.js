@@ -12,6 +12,7 @@ var FPP_STATUS_CHECK_TIME = null;
 var REMOTE_PLAYLIST = null;
 var PLUGINS_API_PATH = DEFAULT_PLUGINS_API_PATH;
 var VERBOSE_LOGGING = null;
+var AUTO_SYNC_METADATA = false;
 
 async function saveDefaultPluginConfig() {
   await FPPGet('/api/plugin/remote-falcon/settings/init', async (data) => {
@@ -27,6 +28,7 @@ async function saveDefaultPluginConfig() {
       await FPPPost('/api/plugin/remote-falcon/settings/fppStatusCheckTime', '1', () => {});
       await FPPPost('/api/plugin/remote-falcon/settings/pluginsApiPath', PLUGINS_API_PATH, () => {});
       await FPPPost('/api/plugin/remote-falcon/settings/verboseLogging', 'false', () => {});
+      await FPPPost('/api/plugin/remote-falcon/settings/autoSyncMetadata', 'false', () => {});
       $.jGrowl("Default Config Saved", { themeState: 'success' });
     }
   })
@@ -77,6 +79,9 @@ async function getPluginConfig() {
   await FPPGet('/api/plugin/remote-falcon/settings/verboseLogging', (data) => {
     VERBOSE_LOGGING = data?.verboseLogging == 'true';
   });
+   await FPPGet('/api/plugin/remote-falcon/settings/autoSyncMetadata', (data) => {
+    AUTO_SYNC_METADATA = data?.autoSyncMetadata == 'true';
+  });
   // await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylist', (data) => {
   //   REMOTE_PLAYLIST = data?.remotePlaylist;
   // });
@@ -85,9 +90,12 @@ async function getPluginConfig() {
 
 async function getRemotePlaylistFromConfig() {
   await FPPGet('/api/configfile/plugin.remote-falcon', (data) => {
-    var remotePlaylistSplit = data?.split('remotePlaylist = "');
-    var remotePlaylistValueSplit = remotePlaylistSplit[1]?.split('"');
-    REMOTE_PLAYLIST = remotePlaylistValueSplit[0]
+    if (!data || typeof data !== 'string') {
+      REMOTE_PLAYLIST = null;
+      return;
+    }
+    const match = data.match(/remotePlaylist\s*=\s*"([^"]*)"/);
+    REMOTE_PLAYLIST = match && match[1] ? normalizePlaylistName(match[1]) : null;
   });
 }
 
@@ -109,15 +117,21 @@ async function checkPluginUpdates() {
 async function getPlaylists() {
   await FPPGet('/api/playlists', (data) => {
     var playlistOptions = '';
+    const normalizedRemote = normalizePlaylistName(REMOTE_PLAYLIST);
     data.forEach(playlist => {
-      if(playlist === REMOTE_PLAYLIST) {
-        playlistOptions += '<option selected value="' + playlist + '">' + playlist + '</option>';
-      }else {
-        playlistOptions += '<option value="' + playlist + '">' + playlist + '</option>';
-      }
+      const normalizedPlaylist = normalizePlaylistName(playlist);
+      const selectedAttr = normalizedRemote && normalizedPlaylist === normalizedRemote ? ' selected' : '';
+      playlistOptions += '<option' + selectedAttr + ' value="' + playlist + '">' + playlist + '</option>';
     });
     $('#remotePlaylistSelect').html(playlistOptions);
+    if (normalizedRemote) {
+      $('#remotePlaylistSelect').val(REMOTE_PLAYLIST);
+    }
   })
+}
+
+function normalizePlaylistName(name) {
+  return typeof name === 'string' ? name.trim() : '';
 }
 
 async function restartListener() {

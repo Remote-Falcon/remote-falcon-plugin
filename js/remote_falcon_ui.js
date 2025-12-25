@@ -12,6 +12,7 @@ $(document).ready(async () => {
   $('#fppStatusCheckTimeInput').val(FPP_STATUS_CHECK_TIME);
   $('#pluginsApiPathInput').val(PLUGINS_API_PATH);
   $('#verboseLoggingCheckbox').prop('checked', VERBOSE_LOGGING);
+  $('#autoSyncMetadataCheckbox').prop('checked', AUTO_SYNC_METADATA);
 
   //Component Handlers
   $('#remoteTokenInput').blur(async () => {
@@ -108,6 +109,14 @@ $(document).ready(async () => {
     });
   });
 
+  $('#autoSyncMetadataCheckbox').change(async () => {
+    const isChecked = $('#autoSyncMetadataCheckbox').is(':checked');
+    AUTO_SYNC_METADATA = isChecked;
+    await FPPPost('/api/plugin/remote-falcon/settings/autoSyncMetadata', isChecked.toString(), () => {
+      $.jGrowl(isChecked ? "Metadata sync enabled" : "Metadata sync disabled", { themeState: 'success' });
+    });
+  });
+
   $('#stopListenerButton').click(async () => {
     await stopListener();
   });
@@ -127,16 +136,17 @@ $(document).ready(async () => {
 
 async function init() {
   showLoader();
+  updateLoaderStatus("Starting up...");
 
   // Set a maximum timeout to ensure loader is hidden even if something hangs
   const loaderTimeout = setTimeout(() => {
     console.warn('Init timeout reached - forcing loader to hide');
     hideLoader();
     $.jGrowl("Plugin loaded with warnings - some features may not be available", { themeState: 'warning' });
-  }, 10000); // 10 second timeout
+  }, 6000); // shorter timeout so UI shows quickly
 
   try {
-    // This only happens one time
+    updateLoaderStatus("Saving defaults...");
     try {
       await saveDefaultPluginConfig();
     } catch (error) {
@@ -144,7 +154,7 @@ async function init() {
       $.jGrowl("Warning: Could not save default config", { themeState: 'warning' });
     }
 
-    // Set the config globals
+    updateLoaderStatus("Loading configuration...");
     try {
       await getPluginConfig();
     } catch (error) {
@@ -152,6 +162,7 @@ async function init() {
       $.jGrowl("Warning: Could not load plugin config", { themeState: 'warning' });
     }
 
+    updateLoaderStatus("Loading playlists...");
     try {
       await getPlaylists();
     } catch (error) {
@@ -159,36 +170,44 @@ async function init() {
       $.jGrowl("Warning: Could not load playlists", { themeState: 'warning' });
     }
 
-    try {
-      await checkPluginUpdates();
-    } catch (error) {
-      console.error('Error checking plugin updates:', error);
-      // Silent fail for updates check
-    }
+    // At this point the UI is usable; hide loader and run the rest in the background
+    hideLoader();
+    clearTimeout(loaderTimeout);
 
-    if(REMOTE_TOKEN && REMOTE_TOKEN !== '') {
+    // Background non-blocking tasks
+    setTimeout(async () => {
       try {
-        await runConnectivityTest(false);
+        await checkPluginUpdates();
       } catch (error) {
-        console.error('Error testing connectivity during init:', error);
+        console.error('Error checking plugin updates:', error);
+        // Silent fail for updates check
       }
 
-      try {
-        await savePluginVersionAndFPPVersionToRF();
-      } catch (error) {
-        console.error('Error saving plugin version to RF:', error);
-        // Silent fail for version reporting
-      }
+      if(REMOTE_TOKEN && REMOTE_TOKEN !== '') {
+        try {
+          $('#connectivityStatus').text('Testing connectivity...');
+          await runConnectivityTest(false);
+        } catch (error) {
+          console.error('Error testing connectivity during init:', error);
+        }
 
-      try {
-        await checkPlugin();
-      } catch (error) {
-        console.error('Error checking plugin:', error);
-        $.jGrowl("Warning: Could not run plugin check", { themeState: 'warning' });
+        try {
+          await savePluginVersionAndFPPVersionToRF();
+        } catch (error) {
+          console.error('Error saving plugin version to RF:', error);
+          // Silent fail for version reporting
+        }
+
+        try {
+          await checkPlugin();
+        } catch (error) {
+          console.error('Error checking plugin:', error);
+          $.jGrowl("Warning: Could not run plugin check", { themeState: 'warning' });
+        }
+      } else {
+        $('#connectivityStatus').text('Add Show Token to test connectivity');
       }
-    } else {
-      $('#connectivityStatus').text('Add Show Token to test connectivity');
-    }
+    }, 0);
   } catch (error) {
     console.error('Unexpected error during init:', error);
     $.jGrowl("Error during initialization", { themeState: 'danger' });
@@ -199,58 +218,201 @@ async function init() {
   }
 }
 
+function updateLoaderStatus(message) {
+  $('#loaderStatus').text(message);
+}
+
+function getPlaylistReadableName(playlist) {
+  if (!playlist) {
+    return '';
+  }
+  if (playlist?.sequenceName) {
+    return playlist.sequenceName.split('.')[0];
+  }
+  if (playlist?.mediaName) {
+    return playlist.mediaName.split('.')[0];
+  }
+  if (playlist?.note) {
+    return playlist.note;
+  }
+  return '';
+}
+
+function parseAlbumArtUrl(commentTag) {
+  if (!commentTag || typeof commentTag !== 'string') {
+    return '';
+  }
+  let candidate = commentTag.trim();
+  if (candidate.endsWith(',')) {
+    candidate = candidate.slice(0, -1).trim();
+  }
+  if (candidate.startsWith('"') && candidate.endsWith('"')) {
+    candidate = candidate.slice(1, -1).trim();
+  }
+  return isImageUrl(candidate) ? candidate : '';
+}
+
+function isImageUrl(url) {
+  return /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|svg)(\?\S*)?$/i.test(url);
+}
+
+function ensureSyncOverlay() {
+  if ($('#rfSyncProgressOverlay').length) {
+    return;
+  }
+  const overlay = $(`
+    <div id="rfSyncProgressOverlay" class="rf-sync-overlay" style="display:none;">
+      <div class="rf-sync-dialog">
+        <div class="rf-sync-title">Syncing with Remote Falcon</div>
+        <div id="rfSyncProgressText" class="rf-sync-text">Preparing...</div>
+        <div id="rfSyncItemText" class="rf-sync-item"></div>
+        <div class="rf-sync-bar">
+          <div id="rfSyncProgressBar" class="rf-sync-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+  `);
+  $('body').append(overlay);
+}
+
+function updateSyncProgress(message, percent = null, itemLabel = null) {
+  ensureSyncOverlay();
+  if (message) {
+    $('#rfSyncProgressText').text(message);
+  }
+  if (itemLabel !== null) {
+    $('#rfSyncItemText').text(itemLabel);
+  }
+  if (percent !== null && !Number.isNaN(percent)) {
+    const clamped = Math.max(0, Math.min(100, percent));
+    $('#rfSyncProgressBar').css('width', clamped + '%');
+  }
+  $('#rfSyncProgressOverlay').fadeIn(100);
+}
+
+function hideSyncProgress() {
+  $('#rfSyncProgressOverlay').fadeOut(150);
+}
+
+async function fetchFppData(url) {
+  let result = null;
+  try {
+    await FPPGet(url, (data) => {
+      result = data;
+    });
+  } catch (error) {
+    console.error('FPPGet failed for', url, error);
+  }
+  return result;
+}
+
 async function syncPlaylistToRF() {
   if(REMOTE_TOKEN) {
     var selectedPlaylist = $('#remotePlaylistSelect').val();
-    await FPPGet('/api/playlist/' + encodeURIComponent(selectedPlaylist), async (data) => {
+    const shouldSyncMetadata = $('#autoSyncMetadataCheckbox').is(':checked');
+    updateSyncProgress('Loading playlist...', 10);
+
+    try {
+      const data = await fetchFppData('/api/playlist/' + encodeURIComponent(selectedPlaylist));
+      if(!data) {
+        $.jGrowl("Unable to load playlist", { themeState: 'danger' });
+        return;
+      }
+
       var totalItems = data?.playlistInfo?.total_items;
+      const playlistItems = data?.mainPlaylist || [];
+      const totalCount = playlistItems.length;
+
       if(PLUGINS_API_PATH.includes("remotefalcon.com") && totalItems > 200) {
         $.jGrowl("Cannot sync more than 200 items", { themeState: 'danger' });
-      }else {
-        var sequences = [];
-        if(data?.mainPlaylist) {
-          var playlistIndex = 1;
-          data?.mainPlaylist.forEach(playlist => {
-            if(playlist?.type === 'sequence' || playlist?.type === 'both') {
-              sequences.push({
-                playlistName: playlist?.sequenceName?.split('.')[0],
-                playlistDuration: playlist?.duration,
-                playlistIndex: playlistIndex,
-                playlistType: 'SEQUENCE',
-              });
-            }else if(playlist?.type === 'media') {
-              sequences.push({
-                playlistName: playlist?.mediaName?.split('.')[0],
-                playlistDuration: 0,
-                playlistIndex: playlistIndex,
-                playlistType: 'MEDIA',
-              });
-            }else if(playlist?.type === 'command' && playlist?.note != null) {
-              sequences.push({
-                playlistName: playlist?.note,
-                playlistDuration: 0,
-                playlistIndex: playlistIndex,
-                playlistType: 'COMMAND',
-              });
-            }
-            playlistIndex++;
-          })
-        }
-        if(sequences.length === 0) {
-          $.jGrowl("Playlist is Empty", { themeState: 'danger' });
-        }else {
-          await RFAPIPost('/syncPlaylists', {playlists: sequences}, async (data, statusText, xhr) => {
-            if(xhr?.status === 200) {
-              REMOTE_PLAYLIST = $('#remotePlaylistSelect').val();
-              await FPPPost('/api/plugin/remote-falcon/settings/remotePlaylist', REMOTE_PLAYLIST, async () => {
-                $.jGrowl("Remote Playlist Saved", { themeState: 'success' });
-                await restartListener();
-              });
-            }
-          })
-        }
+        return;
       }
-    });
+
+      var sequences = [];
+      var playlistIndex = 1;
+      var processed = 0;
+
+      for (const playlist of playlistItems) {
+        processed++;
+        const readableName = getPlaylistReadableName(playlist);
+        updateSyncProgress(
+          `Gathering metadata ${processed}/${totalCount}`,
+          totalCount ? (Math.round((processed / totalCount) * 70) + 10) : 30,
+          readableName
+        );
+
+        if(playlist?.type == 'both') {
+          if (shouldSyncMetadata) {
+            const mediaData = await fetchFppData('/api/media/' + encodeURIComponent(playlist?.mediaName) + "/meta");
+            const mediaAlbumUrl = parseAlbumArtUrl(mediaData?.format?.tags?.comment);
+            sequences.push({
+              playlistName: playlist?.sequenceName?.split('.')[0],
+              playlistDuration: playlist?.duration,
+              playlistIndex: playlistIndex,
+              playlistType: 'SEQUENCE',
+              mediaTitle: mediaData?.format?.tags?.title ? mediaData?.format?.tags?.title : '',
+              mediaArtist: mediaData?.format?.tags?.artist ? mediaData?.format?.tags?.artist : '',
+              mediaAlbumUrl: mediaAlbumUrl,
+            });
+          } else {
+            sequences.push({
+              playlistName: playlist?.sequenceName?.split('.')[0],
+              playlistDuration: playlist?.duration,
+              playlistIndex: playlistIndex,
+              playlistType: 'SEQUENCE',
+            });
+          }
+        }else if(playlist?.type === 'sequence') {
+          sequences.push({
+            playlistName: playlist?.sequenceName?.split('.')[0],
+            playlistDuration: playlist?.duration,
+            playlistIndex: playlistIndex,
+            playlistType: 'SEQUENCE',
+          });
+        }else if(playlist?.type === 'media') {
+          sequences.push({
+            playlistName: playlist?.mediaName?.split('.')[0],
+            playlistDuration: 0,
+            playlistIndex: playlistIndex,
+            playlistType: 'MEDIA',
+          });
+        }else if(playlist?.type === 'command' && playlist?.note != null) {
+          sequences.push({
+            playlistName: playlist?.note,
+            playlistDuration: 0,
+            playlistIndex: playlistIndex,
+            playlistType: 'COMMAND',
+          });
+        }
+        playlistIndex++;
+      }
+
+      if(sequences.length === 0) {
+        $.jGrowl("Playlist is Empty", { themeState: 'danger' });
+        return;
+      }
+
+      updateSyncProgress('Syncing with Remote Falcon...', 90, '');
+
+      await RFAPIPost('/syncPlaylists', {playlists: sequences}, async (data, statusText, xhr) => {
+        if(xhr?.status === 200) {
+          updateSyncProgress('Sync complete', 100);
+          REMOTE_PLAYLIST = $('#remotePlaylistSelect').val();
+          await FPPPost('/api/plugin/remote-falcon/settings/remotePlaylist', REMOTE_PLAYLIST, async () => {
+            $.jGrowl("Remote Playlist Saved", { themeState: 'success' });
+            await restartListener();
+          });
+        }
+      }, (xhr, status, error) => {
+        console.error('syncPlaylists failed:', status, error);
+        $.jGrowl("Error syncing playlists", { themeState: 'danger' });
+      });
+    } catch (error) {
+      console.error('Sync to RF failed:', error);
+      $.jGrowl("Error syncing playlists", { themeState: 'danger' });
+    } finally {
+      setTimeout(() => hideSyncProgress(), 200);
+    }
   }else {
     $.jGrowl("Remote Token Missing", { themeState: 'danger' });
   }
@@ -311,12 +473,14 @@ async function runConnectivityTest(showToast = false) {
   }
 
   try {
+    const start = performance.now();
     let result = null;
     await RFAPIGet('/q/health', (data, _statusText, xhr) => {
+      const latency = performance.now() - start;
       result = {
         ok: xhr?.status === 200 && data?.status && data.status.toUpperCase() === 'UP',
         status: data?.status,
-        latencyMs: null,
+        latencyMs: Math.round(latency),
         error: null
       };
     }, (xhr, status, error) => {
@@ -326,11 +490,13 @@ async function runConnectivityTest(showToast = false) {
 
     if(result?.ok) {
       if($status.length) {
-        $status.text('Remote Falcon API reachable');
+        const latencyText = result.latencyMs != null ? ` (${result.latencyMs} ms)` : '';
+        $status.text('Remote Falcon API reachable' + latencyText);
         $status.addClass('good');
       }
       if(showToast) {
-        $.jGrowl("Remote Falcon API reachable", { themeState: 'success' });
+        const latencyText = result.latencyMs != null ? ` in ${result.latencyMs} ms` : '';
+        $.jGrowl("Remote Falcon API reachable" + latencyText, { themeState: 'success' });
       }
       return result;
     }
@@ -462,7 +628,8 @@ requestFetchTime = "3"
 additionalWaitTime = "0"
 fppStatusCheckTime = "1"
 pluginsApiPath = "${DEFAULT_PLUGINS_API_PATH}"
-verboseLogging = "false"`;
+verboseLogging = "false"
+autoSyncMetadata = "false"`;
 
   $('#pluginConfigTextarea').val(defaultConfig);
 
