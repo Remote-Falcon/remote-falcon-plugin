@@ -17,27 +17,27 @@ The Remote Falcon Plugin is an FPP (Falcon Player) plugin that enables remote co
 
 - `remote_falcon_listener.php` - Core background service that polls FPP status and Remote Falcon API
 - `remote_falcon_ui.html` - Configuration UI displayed in FPP web interface
-- `api.php` - Defines REST endpoints exposed by the plugin
+- `menu.inc` - FPP menu integration (registers the plugin's pages under FPP's content/help menus)
 - `pluginInfo.json` - FPP plugin manifest with version compatibility and metadata
 - `commands/` - PHP scripts for FPP commands (toggle viewer control, restart listener, etc.)
 - `commands/descriptions.json` - Command definitions for FPP integration
+- `commands/_lib.php` - Shared helpers (`rf_load_settings`, `rf_request`) used by command scripts
 - `js/` - JavaScript files for UI functionality
 - `css/` - Styling for the plugin UI
-- `scripts/` - Installation and lifecycle hooks (install, start, stop)
-- `help/` - Help documentation
+- `scripts/` - Installation and lifecycle hooks (`fpp_install.sh`, `fpp_uninstall.sh`, `preStart.sh`, `postStart.sh`, `preStop.sh`, `postStop.sh`)
+- `help/help.php` - In-app help documentation linked from FPP's Help menu
 
 ## Architecture
 
 ### Listener Service (remote_falcon_listener.php)
 
-The listener runs as a continuous PHP process managed by FPP:
+The listener runs as a long-lived PHP process backgrounded by `scripts/postStart.sh`. The script writes the PID to `/home/fpp/media/plugins/remote-falcon/remote_falcon_listener.pid` so `postStop.sh` and `fpp_uninstall.sh` can shut it down cleanly. FPP itself does not supervise the daemon.
 
 1. **Initialization**: Reads plugin configuration from `/opt/fpp/media/config/plugin.remote-falcon`
 2. **Main Loop**: Continuously polls FPP status and Remote Falcon API
 3. **Two Modes**:
    - **Non-Interrupt Mode**: Inserts requested/voted sequences after the current sequence when time remaining < fetch time
    - **Interrupt Mode**: Immediately inserts requested/voted sequences, interrupting the schedule
-4. **Heartbeat**: Sends periodic heartbeat to Remote Falcon API every 15 seconds
 
 ### Key Configuration Settings
 
@@ -84,7 +84,7 @@ Since this plugin runs on FPP hardware, testing typically requires:
 1. Make changes locally
 2. Commit and push to GitHub
 3. Update plugin on FPP through the FPP web interface (Status/Control > Plugin Manager)
-4. Monitor logs at `/home/fpp/media/logs/remote_falcon_listener.log`
+4. Monitor logs at `/home/fpp/media/logs/remote-falcon-listener.log`
 
 ### Local Development
 
@@ -92,7 +92,17 @@ The plugin files are typically located at `/opt/fpp/media/plugins/remote-falcon/
 
 ### Logs
 
-The listener logs to `/home/fpp/media/logs/remote_falcon_listener.log` with timestamps. Enable verbose logging for detailed API call timing and execution flow.
+The listener logs to `/home/fpp/media/logs/remote-falcon-listener.log` with timestamps. `scripts/postStart.sh` also redirects the daemon's stdout/stderr to the same file, so fatal PHP errors that bypass `logEntry` still get captured. Enable verbose logging for detailed API call timing and execution flow.
+
+## Deployment & Updates
+
+FPP's plugin manager controls install and upgrade:
+
+- **Install**: FPP runs `git clone --single-branch --branch <branch> <srcURL>` into `/home/fpp/media/plugins/remote-falcon/`, then executes `scripts/fpp_install.sh` once.
+- **Upgrade**: FPP runs the equivalent of `git pull` against the configured branch. **`fpp_install.sh` is NOT re-run on upgrade** — anything that needs to happen on every code change must live in `postStart.sh` or in the plugin code itself.
+- **Uninstall**: FPP runs `scripts/fpp_uninstall.sh` (which kills the listener via PID file and removes the CSP entry) and then deletes the plugin directory.
+
+The lifecycle scripts (`preStart.sh`, `postStart.sh`, `preStop.sh`, `postStop.sh`) run on plugin start/stop. FPP does not supervise the listener daemon — the plugin owns its own process via the PID file.
 
 ## Important Patterns
 

@@ -1,30 +1,14 @@
 #!/usr/bin/env php
 <?php
-$skipJSsettings=true;
+$skipJSsettings = true;
 include_once "/opt/fpp/www/config.php";
 include_once "/opt/fpp/www/common.php";
-$pluginName = "remote-falcon";
-$pluginConfigFile = $settings['configDirectory'] . "/plugin.remote-falcon";
-$pluginSettings = parse_ini_file($pluginConfigFile);
+include_once __DIR__ . "/_lib.php";
 
-$remoteToken = urldecode($pluginSettings['remoteToken']);
-$pluginsApiPath = urldecode($pluginSettings['pluginsApiPath']);
-
-if(strlen($remoteToken)>1) {
-	$url = $pluginsApiPath . "/updateManagedPsa";
-	$data = array(
-		'managedPsaEnabled' => 'Y'
-	);
-	$options = array(
-		'http' => array(
-			'method'  => 'POST',
-			'content' => json_encode( $data ),
-			'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
-									"Accept: application/json\r\n" .
-									"remotetoken: $remoteToken\r\n"
-			)
-	);
-	$context = stream_context_create( $options );
-	$result = file_get_contents( $url, false, $context );
+$cfg = rf_load_settings();
+if ($cfg === null || strlen($cfg['remoteToken']) <= 1) {
+    exit(0);
 }
+
+rf_request('POST', $cfg['pluginsApiPath'] . "/updateManagedPsa", $cfg['remoteToken'], ['managedPsaEnabled' => 'Y']);
 ?>
