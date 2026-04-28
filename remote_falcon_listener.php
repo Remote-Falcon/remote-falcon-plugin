@@ -88,6 +88,10 @@ logEntry("Request Fetch Time: " . $requestFetchTime);
 $additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
 logEntry("Additional Wait Time: " . $additionalWaitTime);
 $fppStatusCheckTime = floatval(urldecode($pluginSettings['fppStatusCheckTime']));
+if ($fppStatusCheckTime < 0.1) {
+  logEntry("WARNING - fppStatusCheckTime ($fppStatusCheckTime) too low, clamping to 0.1");
+  $fppStatusCheckTime = 0.1;
+}
 logEntry("FPP Status Check Time: " . $fppStatusCheckTime . " (" . $fppStatusCheckTime * 1000000 . " microseconds)");
 $verboseLogging = urldecode($pluginSettings['verboseLogging']);
 logEntry("Verbose Logging: " . $verboseLogging);
@@ -137,6 +141,10 @@ while(true) {
     $additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
     logEntry("Additional Wait Time: " . $additionalWaitTime);
     $fppStatusCheckTime = floatval(urldecode($pluginSettings['fppStatusCheckTime']));
+    if ($fppStatusCheckTime < 0.1) {
+      logEntry("WARNING - fppStatusCheckTime ($fppStatusCheckTime) too low, clamping to 0.1");
+      $fppStatusCheckTime = 0.1;
+    }
     logEntry("FPP Status Check Time: " . $fppStatusCheckTime . " (" . $fppStatusCheckTime * 1000000 . " microseconds)");
     $verboseLogging = urldecode($pluginSettings['verboseLogging']);
     logEntry("Verbose Logging: " . $verboseLogging);
@@ -367,6 +375,7 @@ function getNextSequence($mainPlaylist, $currentlyPlaying) {
           $nextScheduled = $mainPlaylist[$i+1]->sequenceName;
         }
       }
+      break;
     }
   }
   return pathinfo($nextScheduled, PATHINFO_FILENAME);

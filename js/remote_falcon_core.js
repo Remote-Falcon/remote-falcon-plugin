@@ -95,7 +95,17 @@ async function getRemotePlaylistFromConfig() {
       return;
     }
     const match = data.match(/remotePlaylist\s*=\s*"([^"]*)"/);
-    REMOTE_PLAYLIST = match && match[1] ? normalizePlaylistName(match[1]) : null;
+    if (!match || !match[1]) {
+      REMOTE_PLAYLIST = null;
+      return;
+    }
+    let value = match[1];
+    try {
+      value = decodeURIComponent(value);
+    } catch (e) {
+      // Malformed encoding — fall back to the raw match.
+    }
+    REMOTE_PLAYLIST = normalizePlaylistName(value);
   });
 }
 
@@ -144,17 +154,22 @@ async function restartListener() {
 
   $('#remoteFalconStatus').html(getRemoteFalconListenerEnabledStatus(REMOTE_FALCON_LISTENER_ENABLED));
 
+  var listenerCameBack = false;
   var checkListenerStatus = setInterval(async () => {
     await getPluginConfig();
     $('#remoteFalconStatus').html(getRemoteFalconListenerEnabledStatus(REMOTE_FALCON_LISTENER_ENABLED));
     if(REMOTE_FALCON_LISTENER_ENABLED) {
+      listenerCameBack = true;
       $.jGrowl("Listener Restarted", { themeState: 'success' });
       clearInterval(checkListenerStatus);
     }
   }, 1000);
 
-  setTimeout(async () => {
+  setTimeout(() => {
     clearInterval(checkListenerStatus);
+    if (!listenerCameBack) {
+      $.jGrowl("Listener did not restart in time. Try Restart Listener again or check the listener log.", { themeState: 'danger' });
+    }
   }, 5000);
 }
 
