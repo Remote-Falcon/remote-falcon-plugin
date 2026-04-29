@@ -1,0 +1,16 @@
+{
+    "name": "remote-falcon/remote-falcon-plugin",
+    "description": "FPP plugin for Remote Falcon viewer-controlled light shows",
+    "type": "project",
+    "license": "MIT",
+    "homepage": "https://remotefalcon.com",
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.6"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

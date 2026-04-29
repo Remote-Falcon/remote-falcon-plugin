@@ -2,6 +2,7 @@
 $PLUGIN_VERSION = "2026.01.02.01";
 
 include_once "/opt/fpp/www/common.php";
+require_once __DIR__ . "/lib/listener_logic.php";
 $pluginName = basename(dirname(__FILE__));
 $pluginPath = $settings['pluginDirectory']."/".$pluginName."/"; 
 $logFile = $settings['logDirectory']."/".$pluginName."-listener.log";
@@ -87,10 +88,10 @@ $requestFetchTime = intVal(urldecode($pluginSettings['requestFetchTime']));
 logEntry("Request Fetch Time: " . $requestFetchTime);
 $additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
 logEntry("Additional Wait Time: " . $additionalWaitTime);
-$fppStatusCheckTime = floatval(urldecode($pluginSettings['fppStatusCheckTime']));
-if ($fppStatusCheckTime < 0.1) {
-  logEntry("WARNING - fppStatusCheckTime ($fppStatusCheckTime) too low, clamping to 0.1");
-  $fppStatusCheckTime = 0.1;
+$rawStatusCheckTime = urldecode($pluginSettings['fppStatusCheckTime']);
+$fppStatusCheckTime = rf_clamp_status_check_time($rawStatusCheckTime);
+if (floatval($rawStatusCheckTime) < 0.1) {
+  logEntry("WARNING - fppStatusCheckTime ($rawStatusCheckTime) too low, clamping to 0.1");
 }
 logEntry("FPP Status Check Time: " . $fppStatusCheckTime . " (" . $fppStatusCheckTime * 1000000 . " microseconds)");
 $verboseLogging = urldecode($pluginSettings['verboseLogging']);
@@ -140,10 +141,10 @@ while(true) {
     logEntry("Request Fetch Time: " . $requestFetchTime);
     $additionalWaitTime = intVal(urldecode($pluginSettings['additionalWaitTime']));
     logEntry("Additional Wait Time: " . $additionalWaitTime);
-    $fppStatusCheckTime = floatval(urldecode($pluginSettings['fppStatusCheckTime']));
-    if ($fppStatusCheckTime < 0.1) {
-      logEntry("WARNING - fppStatusCheckTime ($fppStatusCheckTime) too low, clamping to 0.1");
-      $fppStatusCheckTime = 0.1;
+    $rawStatusCheckTime = urldecode($pluginSettings['fppStatusCheckTime']);
+    $fppStatusCheckTime = rf_clamp_status_check_time($rawStatusCheckTime);
+    if (floatval($rawStatusCheckTime) < 0.1) {
+      logEntry("WARNING - fppStatusCheckTime ($rawStatusCheckTime) too low, clamping to 0.1");
     }
     logEntry("FPP Status Check Time: " . $fppStatusCheckTime . " (" . $fppStatusCheckTime * 1000000 . " microseconds)");
     $verboseLogging = urldecode($pluginSettings['verboseLogging']);
@@ -364,21 +365,10 @@ function clearNextScheduledSequence($remoteToken) {
   updateNextScheduledSequenceInRf(" ", $remoteToken);
 }
 
+// Thin wrapper around rf_get_next_sequence (lib/listener_logic.php) to keep
+// the existing call site stable. The pure logic is unit-tested in tests/.
 function getNextSequence($mainPlaylist, $currentlyPlaying) {
-  $nextScheduled = "";
-  for ($i = 0; $i < count($mainPlaylist); $i++) {
-    if(isset($mainPlaylist[$i]->sequenceName) && pathinfo($mainPlaylist[$i]->sequenceName, PATHINFO_FILENAME) == $currentlyPlaying) {
-      if($i+1 == count($mainPlaylist)) {
-        $nextScheduled = $mainPlaylist[0]->sequenceName;
-      }else {
-        if(isset($mainPlaylist[$i+1]->sequenceName)) {
-          $nextScheduled = $mainPlaylist[$i+1]->sequenceName;
-        }
-      }
-      break;
-    }
-  }
-  return pathinfo($nextScheduled, PATHINFO_FILENAME);
+  return rf_get_next_sequence($mainPlaylist, (string) $currentlyPlaying);
 }
 
 function remotePreferences($remoteToken) {
