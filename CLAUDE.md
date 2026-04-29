@@ -78,17 +78,40 @@ The plugin supports FPP versions 2.0 through 9.0+ with different branches:
 
 ## Development Workflow
 
-### Testing Changes
+### Testing strategy
 
-Since this plugin runs on FPP hardware, testing typically requires:
-1. Make changes locally
-2. Commit and push to GitHub
-3. Update plugin on FPP through the FPP web interface (Status/Control > Plugin Manager)
-4. Monitor logs at `/home/fpp/media/logs/remote-falcon-listener.log`
+Most listener logic is pure code that can be tested locally without FPP. Real hardware is the FINAL gate, not the only place tests live.
 
-### Local Development
+**Layer 1 — PHPUnit unit tests (run anywhere, <2s).** For any pure function — sequence selection, dedup logic, cache behavior, settings parsing, value clamping. Functions in `lib/` MUST have unit tests in `tests/`. Run with `vendor/bin/phpunit` after `composer install`.
 
-The plugin files are typically located at `/opt/fpp/media/plugins/remote-falcon/` on FPP systems. Direct SSH access allows for rapid testing without git commits.
+**Layer 2 — Integration tests with mock servers (run anywhere, ~30s).** For end-to-end listener flow using mock FPP and RF backends. Add a test when changing the listener's loop or HTTP behavior. (Layer 2 harness lands in a follow-up branch.)
+
+**Layer 3 — Browser smoke (manual, optional).** UI changes (`remote_falcon_ui.html`, `js/`) can be sanity-checked locally with a mock backend before pushing.
+
+**Layer 4 — Real-hardware validation (release gate).** Required before merging changes to master that touch the listener, lifecycle scripts, or commands/. Workflow:
+1. Make changes locally on a feature branch.
+2. Layers 1+2 must be green in CI.
+3. Push the branch, install on a real FPP via the Plugin Manager.
+4. Monitor `/home/fpp/media/logs/remote-falcon-listener.log` and run the smoke checklist.
+5. Merge to master.
+
+CI runs Layers 1+2 on every push (`.github/workflows/test.yml`).
+
+### Local development
+
+Plugin files live at `/opt/fpp/media/plugins/remote-falcon/` on FPP systems. Direct SSH access allows for rapid testing without git commits.
+
+To run tests locally:
+```bash
+composer install     # one-time, creates vendor/ (gitignored)
+vendor/bin/phpunit
+```
+
+The `vendor/` directory is **never committed**. PHPUnit is a dev-only dependency; it never ships to FPP installs. CI verifies this via the `vendor-check` job. See `composer.json` for the dependency list and `phpunit.xml` for test configuration.
+
+### Pure-logic extraction
+
+Functions that take inputs and produce outputs (no I/O, no global mutation, no logging) live in `lib/listener_logic.php` and are unit-tested. The listener (`remote_falcon_listener.php`) `require_once`s the lib and calls the helpers from its orchestration code. When adding new pure logic, write it in `lib/` first and test it before wiring it up in the listener.
 
 ### Logs
 
