@@ -3,6 +3,7 @@ $PLUGIN_VERSION = "2026.01.02.01";
 
 include_once "/opt/fpp/www/common.php";
 require_once __DIR__ . "/lib/listener_logic.php";
+require_once __DIR__ . "/lib/listener_http.php";
 $pluginName = basename(dirname(__FILE__));
 $pluginPath = $settings['pluginDirectory']."/".$pluginName."/"; 
 $logFile = $settings['logDirectory']."/".$pluginName."-listener.log";
@@ -371,253 +372,99 @@ function getNextSequence($mainPlaylist, $currentlyPlaying) {
   return rf_get_next_sequence($mainPlaylist, (string) $currentlyPlaying);
 }
 
+// FPP localhost is hardcoded for now; perf branch may make it configurable.
+const RF_FPP_BASE_URL = "http://127.0.0.1";
+
 function remotePreferences($remoteToken) {
-  $url = $GLOBALS['pluginsApiPath'] . "/remotePreferences";
-  $options = array(
-    'http' => array(
-      'method'  => 'GET',
-      'timeout' => 10,
-      'header'=>  "remotetoken: $remoteToken\r\n"
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = @file_get_contents( $url, false, $context );
-
-  if ($result === FALSE) {
-    logEntry("ERROR - Failed to fetch remote preferences from: " . $url);
-    return null;
+  $result = rf_http_rf_get_preferences($GLOBALS['pluginsApiPath'], $remoteToken);
+  if ($result === null) {
+    logEntry("ERROR - Failed to fetch remote preferences from: " . $GLOBALS['pluginsApiPath'] . "/remotePreferences");
   }
-
-  $decoded = json_decode( $result );
-  if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
-    logEntry("ERROR - Invalid JSON response from remotePreferences: " . json_last_error_msg());
-    return null;
-  }
-
-  return $decoded;
+  return $result;
 }
 
 function getFppStatus() {
-  $options = array(
-    'http' => array(
-      'timeout' => 5
-    )
-  );
-  $context = stream_context_create($options);
-  $result = @file_get_contents("http://127.0.0.1/api/system/status", false, $context);
-
-  if ($result === FALSE) {
+  $result = rf_http_fpp_get_status(RF_FPP_BASE_URL);
+  if ($result === null) {
     logEntry_verbose("ERROR - Failed to get FPP status");
-    return null;
   }
-
-  $decoded = json_decode($result);
-  if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
-    logEntry("ERROR - Invalid JSON response from FPP status: " . json_last_error_msg());
-    return null;
-  }
-
-  return $decoded;
+  return $result;
 }
 
 function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
   $start_time = microtime(true);
   logEntry_verbose("Calling Plugins API to update what's playing");
-  $url = $GLOBALS['pluginsApiPath'] . "/updateWhatsPlaying";
-  $data = array(
-    'playlist' => trim($currentlyPlaying)
-  );
-  $options = array(
-    'http' => array(
-      'method'  => 'POST',
-      'timeout' => 10,
-      'content' => json_encode( $data ),
-      'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
-                  "Accept: application/json\r\n" .
-                  "remotetoken: $remoteToken\r\n"
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = @file_get_contents( $url, false, $context );
-
-  if ($result === FALSE) {
-    logEntry("ERROR - Failed to update what's playing to: " . $url);
+  $ok = rf_http_rf_update_whats_playing($GLOBALS['pluginsApiPath'], $remoteToken, $currentlyPlaying);
+  if (!$ok) {
+    logEntry("ERROR - Failed to update what's playing to: " . $GLOBALS['pluginsApiPath'] . "/updateWhatsPlaying");
     return false;
   }
-
-  $end_time = microtime(true);
-  $execution_time = ($end_time - $start_time);
-  logEntry_verbose("SUCCESS - Calling Plugins API to update what's playing. Execution time: " . $execution_time * 1000 . " ms");
+  logEntry_verbose("SUCCESS - Calling Plugins API to update what's playing. Execution time: " . ((microtime(true) - $start_time) * 1000) . " ms");
   return true;
 }
 
 function updateNextScheduledSequenceInRf($nextScheduled, $remoteToken) {
   $start_time = microtime(true);
   logEntry_verbose("Calling Plugins API to update next scheduled");
-  $url = $GLOBALS['pluginsApiPath'] . "/updateNextScheduledSequence";
-  $data = array(
-    'sequence' => trim($nextScheduled)
-  );
-  $options = array(
-    'http' => array(
-      'method'  => 'POST',
-      'timeout' => 10,
-      'content' => json_encode( $data ),
-      'header'=>  "Content-Type: application/json; charset=UTF-8\r\n" .
-                  "Accept: application/json\r\n" .
-                  "remotetoken: $remoteToken\r\n"
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = @file_get_contents( $url, false, $context );
-
-  if ($result === FALSE) {
-    logEntry("ERROR - Failed to update next scheduled sequence to: " . $url);
+  $ok = rf_http_rf_update_next_scheduled($GLOBALS['pluginsApiPath'], $remoteToken, $nextScheduled);
+  if (!$ok) {
+    logEntry("ERROR - Failed to update next scheduled sequence to: " . $GLOBALS['pluginsApiPath'] . "/updateNextScheduledSequence");
     return false;
   }
-
-  $end_time = microtime(true);
-  $execution_time = ($end_time - $start_time);
-  logEntry_verbose("SUCCESS - Calling Plugins API to update next scheduled. Execution time: " . $execution_time * 1000 . " ms");
+  logEntry_verbose("SUCCESS - Calling Plugins API to update next scheduled. Execution time: " . ((microtime(true) - $start_time) * 1000) . " ms");
   return true;
 }
 
 function insertPlaylistImmediate($remotePlaylistEncoded, $index) {
-  $url = "http://127.0.0.1/api/command/Insert%20Playlist%20Immediate/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
-  $options = array(
-    'http' => array(
-      'method'  => 'GET',
-      'timeout' => 5
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = @file_get_contents( $url, false, $context );
-
-  if ($result === FALSE) {
+  $ok = rf_http_fpp_insert_immediate(RF_FPP_BASE_URL, $remotePlaylistEncoded, (int) $index);
+  if (!$ok) {
     logEntry("ERROR - Failed to insert playlist immediate: " . rawurldecode($remotePlaylistEncoded) . " at index " . $index);
     return false;
   }
-
   logEntry_verbose("SUCCESS - Inserted playlist immediate");
   return true;
 }
 
 function insertPlaylistAfterCurrent($remotePlaylistEncoded, $index) {
-  $url = "http://127.0.0.1/api/command/Insert%20Playlist%20After%20Current/" . $remotePlaylistEncoded . "/" . $index . "/" . $index;
-  $options = array(
-    'http' => array(
-      'method'  => 'GET',
-      'timeout' => 5
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = @file_get_contents( $url, false, $context );
-
-  if ($result === FALSE) {
+  $ok = rf_http_fpp_insert_after_current(RF_FPP_BASE_URL, $remotePlaylistEncoded, (int) $index);
+  if (!$ok) {
     logEntry("ERROR - Failed to insert playlist after current: " . rawurldecode($remotePlaylistEncoded) . " at index " . $index);
     return false;
   }
-
   logEntry_verbose("SUCCESS - Inserted playlist after current");
   return true;
 }
 
-function stopGracefully() {
-  $url = "http://127.0.0.1/api/playlists/stopgracefully";
-  $options = array(
-    'http' => array(
-      'method'  => 'GET'
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = file_get_contents( $url, false, $context );
-}
-
 function getPlaylistDetails($remotePlaylistEncoded) {
-  $url = "http://127.0.0.1/api/playlist/" . $remotePlaylistEncoded;
-  $options = array(
-    'http' => array(
-      'method'  => 'GET',
-      'timeout' => 5
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = @file_get_contents( $url, false, $context );
-
-  if ($result === FALSE) {
+  $result = rf_http_fpp_get_playlist(RF_FPP_BASE_URL, $remotePlaylistEncoded);
+  if ($result === null) {
     logEntry_verbose("ERROR - Failed to get playlist details for: " . rawurldecode($remotePlaylistEncoded));
-    return null;
   }
-
-  $decoded = json_decode( $result );
-  if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
-    logEntry("ERROR - Invalid JSON response from getPlaylistDetails: " . json_last_error_msg());
-    return null;
-  }
-
-  return $decoded;
+  return $result;
 }
 
 function highestVotedSequence($remoteToken) {
   $start_time = microtime(true);
   logEntry_verbose("Calling Plugins API to fetch highest voted sequence");
-  $url = $GLOBALS['pluginsApiPath'] . "/highestVotedPlaylist";
-  $options = array(
-    'http' => array(
-      'method'  => 'GET',
-      'timeout' => 10,
-      'header'=>  "remotetoken: $remoteToken\r\n"
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = @file_get_contents( $url, false, $context );
-
-  if ($result === FALSE) {
-    logEntry("ERROR - Failed to fetch highest voted sequence from: " . $url);
+  $result = rf_http_rf_get_highest_voted($GLOBALS['pluginsApiPath'], $remoteToken);
+  if ($result === null) {
+    logEntry("ERROR - Failed to fetch highest voted sequence from: " . $GLOBALS['pluginsApiPath'] . "/highestVotedPlaylist");
     return (object)['winningPlaylist' => null, 'playlistIndex' => null];
   }
-
-  $decoded = json_decode( $result );
-  if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
-    logEntry("ERROR - Invalid JSON response from highestVotedSequence: " . json_last_error_msg());
-    return (object)['winningPlaylist' => null, 'playlistIndex' => null];
-  }
-
-  $end_time = microtime(true);
-  $execution_time = ($end_time - $start_time);
-  logEntry_verbose("SUCCESS - Calling Plugins API to fetch highest voted sequence. Execution time: " . $execution_time * 1000 . " ms");
-  return $decoded;
+  logEntry_verbose("SUCCESS - Calling Plugins API to fetch highest voted sequence. Execution time: " . ((microtime(true) - $start_time) * 1000) . " ms");
+  return $result;
 }
 
 function nextPlaylistInQueue($remoteToken) {
   $start_time = microtime(true);
   logEntry_verbose("Calling Plugins API to fetch next requested sequence");
-  $url = $GLOBALS['pluginsApiPath'] . "/nextPlaylistInQueue?updateQueue=true";
-  $options = array(
-    'http' => array(
-      'method'  => 'GET',
-      'timeout' => 10,
-      'header'=>  "remotetoken: $remoteToken\r\n"
-      )
-  );
-  $context = stream_context_create( $options );
-  $result = @file_get_contents( $url, false, $context );
-
-  if ($result === FALSE) {
-    logEntry("ERROR - Failed to fetch next playlist in queue from: " . $url);
+  $result = rf_http_rf_get_next_in_queue($GLOBALS['pluginsApiPath'], $remoteToken);
+  if ($result === null) {
+    logEntry("ERROR - Failed to fetch next playlist in queue from: " . $GLOBALS['pluginsApiPath'] . "/nextPlaylistInQueue");
     return (object)['nextPlaylist' => null, 'playlistIndex' => null];
   }
-
-  $decoded = json_decode( $result );
-  if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
-    logEntry("ERROR - Invalid JSON response from nextPlaylistInQueue: " . json_last_error_msg());
-    return (object)['nextPlaylist' => null, 'playlistIndex' => null];
-  }
-
-  $end_time = microtime(true);
-  $execution_time = ($end_time - $start_time);
-  logEntry_verbose("SUCCESS - Calling Plugins API to fetch next requested sequence. Execution time: " . $execution_time * 1000 . " ms");
-  return $decoded;
+  logEntry_verbose("SUCCESS - Calling Plugins API to fetch next requested sequence. Execution time: " . ((microtime(true) - $start_time) * 1000) . " ms");
+  return $result;
 }
 
 function logEntry($data) {
