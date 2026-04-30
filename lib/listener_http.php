@@ -39,13 +39,14 @@ if (!function_exists('rf_http_request')) {
         }
         // Read response headers. PHP 8.4+ exposes http_get_last_response_headers();
         // older versions only expose the locally scoped $http_response_header,
-        // which is deprecated in 8.5+. Use a dynamic variable name to avoid
-        // tripping the static deprecation warning on the older path.
+        // which is deprecated in 8.5+. Use get_defined_vars() to read the
+        // magic variable on older PHP without writing its name in source
+        // (which would trip 8.5's static deprecation warning).
         if (function_exists('http_get_last_response_headers')) {
             $responseHeaders = http_get_last_response_headers() ?? [];
         } else {
-            $varName = 'http_response_header';
-            $responseHeaders = isset(${$varName}) ? ${$varName} : [];
+            $definedVars = get_defined_vars();
+            $responseHeaders = $definedVars['http_response_header'] ?? [];
         }
         $statusCode = 0;
         if (isset($responseHeaders[0])) {
