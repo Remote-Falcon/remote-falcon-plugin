@@ -327,20 +327,19 @@ function doInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $ad
 }
 
 function updateCurrentlyPlaying($currentlyPlaying, $currentlyPlayingInRF, $remoteToken) {
-  if($currentlyPlaying != $currentlyPlayingInRF) {
-    updateWhatsPlaying($currentlyPlaying, $remoteToken);
-    logEntry("Updated current playing sequence to " . $currentlyPlaying);
-    $GLOBALS['currentlyPlayingInRF'] = $currentlyPlaying;
+  $newValue = rf_decide_currently_playing_update((string) $currentlyPlaying, (string) $currentlyPlayingInRF);
+  if ($newValue !== null) {
+    updateWhatsPlaying($newValue, $remoteToken);
+    logEntry("Updated current playing sequence to " . $newValue);
+    $GLOBALS['currentlyPlayingInRF'] = $newValue;
   }
 }
 
 function updateNextScheduledSequence($fppStatus, $currentlyPlaying, $nextScheduledInRF, $remoteToken) {
-  // Check if current_playlist exists before accessing it
   if (!isset($fppStatus->current_playlist) || $fppStatus->current_playlist === null) {
     logEntry_verbose("Current playlist is null, skipping next scheduled sequence update");
     return;
   }
-
   if (!isset($fppStatus->current_playlist->playlist)) {
     logEntry_verbose("Current playlist name is not set, skipping next scheduled sequence update");
     return;
@@ -349,16 +348,17 @@ function updateNextScheduledSequence($fppStatus, $currentlyPlaying, $nextSchedul
   $currentPlaylist = $fppStatus->current_playlist->playlist;
   $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
 
-  if($playlistDetails != null && $playlistDetails != '') {
-    $mainPlaylist = $playlistDetails->mainPlaylist;
-    if($mainPlaylist != null && $mainPlaylist != "" && count($mainPlaylist) > 0) {
-      $nextScheduled = getNextSequence($mainPlaylist, $currentlyPlaying);
-      if($nextScheduled != $nextScheduledInRF && $currentPlaylist != $GLOBALS['remotePlaylist']) {
-        updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
-        logEntry("Updated next scheduled sequence to " . $nextScheduled);
-        $GLOBALS['nextScheduledInRF'] = $nextScheduled;
-      }
-    }
+  $nextScheduled = rf_decide_next_scheduled_update(
+    $playlistDetails,
+    (string) $currentPlaylist,
+    (string) $currentlyPlaying,
+    (string) $nextScheduledInRF,
+    (string) $GLOBALS['remotePlaylist']
+  );
+  if ($nextScheduled !== null) {
+    updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
+    logEntry("Updated next scheduled sequence to " . $nextScheduled);
+    $GLOBALS['nextScheduledInRF'] = $nextScheduled;
   }
 }
 

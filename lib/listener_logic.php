@@ -53,4 +53,58 @@ if (!function_exists('rf_get_next_sequence')) {
         }
         return $f;
     }
+
+    /**
+     * Decide whether to push an "updateWhatsPlaying" to RF.
+     * Returns the value to post (echoes $currentlyPlaying) when the listener's
+     * cached "what RF thinks is playing" disagrees with what FPP actually plays.
+     * Returns null when no update is needed.
+     */
+    function rf_decide_currently_playing_update(string $currentlyPlaying, string $currentlyPlayingInRF): ?string {
+        return $currentlyPlaying !== $currentlyPlayingInRF ? $currentlyPlaying : null;
+    }
+
+    /**
+     * Decide what value to post as "next scheduled sequence" given current
+     * state. Returns null if the listener should skip the update.
+     *
+     * Skips when:
+     *  - playlist details aren't available (HTTP fetch failed).
+     *  - the playlist has no mainPlaylist or it's empty / not an array.
+     *  - the next-scheduled value matches what we last told RF (no change).
+     *  - FPP is currently playing the user's Remote Falcon playlist (we don't
+     *    track "next scheduled" while RF is in control of sequencing).
+     *
+     * The caller is responsible for making the HTTP fetch of $playlistDetails
+     * and for updating any cached state after a successful post.
+     */
+    function rf_decide_next_scheduled_update(
+        ?stdClass $playlistDetails,
+        string $currentPlaylist,
+        string $currentlyPlaying,
+        string $nextScheduledInRF,
+        string $remotePlaylist
+    ): ?string {
+        if ($playlistDetails === null) {
+            return null;
+        }
+        if (!isset($playlistDetails->mainPlaylist)) {
+            return null;
+        }
+        $mainPlaylist = $playlistDetails->mainPlaylist;
+        if (!is_array($mainPlaylist) || count($mainPlaylist) === 0) {
+            return null;
+        }
+
+        $nextScheduled = rf_get_next_sequence($mainPlaylist, $currentlyPlaying);
+
+        if ($nextScheduled === $nextScheduledInRF) {
+            return null;
+        }
+        if ($currentPlaylist === $remotePlaylist) {
+            return null;
+        }
+
+        return $nextScheduled;
+    }
 }

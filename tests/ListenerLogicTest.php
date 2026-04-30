@@ -111,4 +111,78 @@ final class ListenerLogicTest extends TestCase {
         // floatval('abc') === 0.0, which is < 0.1
         $this->assertSame(0.1, rf_clamp_status_check_time('not a number'));
     }
+
+    // -------- rf_decide_currently_playing_update --------
+
+    public function testDecideCurrentlyPlayingUpdate_noChangeReturnsNull(): void {
+        $this->assertNull(rf_decide_currently_playing_update('song', 'song'));
+        $this->assertNull(rf_decide_currently_playing_update('', ''));
+    }
+
+    public function testDecideCurrentlyPlayingUpdate_changeReturnsNewValue(): void {
+        $this->assertSame('song', rf_decide_currently_playing_update('song', ''));
+        $this->assertSame('song-b', rf_decide_currently_playing_update('song-b', 'song-a'));
+    }
+
+    public function testDecideCurrentlyPlayingUpdate_clearsToSpaceSentinel(): void {
+        // Listener uses a single space to clear "currently playing" in RF.
+        $this->assertSame(' ', rf_decide_currently_playing_update(' ', 'song'));
+    }
+
+    // -------- rf_decide_next_scheduled_update --------
+
+    private function playlistDetails(array $sequenceNames): stdClass {
+        $details = new stdClass();
+        $details->mainPlaylist = array_map(function ($name) {
+            $o = new stdClass();
+            $o->sequenceName = $name;
+            return $o;
+        }, $sequenceNames);
+        return $details;
+    }
+
+    public function testDecideNextScheduledUpdate_postsNextSequence(): void {
+        $details = $this->playlistDetails(['a.fseq', 'b.fseq', 'c.fseq']);
+        $result = rf_decide_next_scheduled_update($details, 'MyShow', 'a', '', 'OtherPlaylist');
+        $this->assertSame('b', $result);
+    }
+
+    public function testDecideNextScheduledUpdate_skipsWhenUnchanged(): void {
+        $details = $this->playlistDetails(['a.fseq', 'b.fseq']);
+        // Already told RF that "b" is next; computed value matches → skip.
+        $this->assertNull(rf_decide_next_scheduled_update($details, 'MyShow', 'a', 'b', 'OtherPlaylist'));
+    }
+
+    public function testDecideNextScheduledUpdate_skipsWhenPlayingRemotePlaylist(): void {
+        $details = $this->playlistDetails(['a.fseq', 'b.fseq']);
+        // FPP is currently playing the user's RF playlist → RF owns sequencing.
+        $this->assertNull(rf_decide_next_scheduled_update($details, 'RfPlaylist', 'a', '', 'RfPlaylist'));
+    }
+
+    public function testDecideNextScheduledUpdate_skipsOnNullPlaylistDetails(): void {
+        $this->assertNull(rf_decide_next_scheduled_update(null, 'MyShow', 'a', '', 'Other'));
+    }
+
+    public function testDecideNextScheduledUpdate_skipsWhenMainPlaylistMissing(): void {
+        $details = new stdClass();  // no mainPlaylist property
+        $this->assertNull(rf_decide_next_scheduled_update($details, 'MyShow', 'a', '', 'Other'));
+    }
+
+    public function testDecideNextScheduledUpdate_skipsOnEmptyMainPlaylist(): void {
+        $details = new stdClass();
+        $details->mainPlaylist = [];
+        $this->assertNull(rf_decide_next_scheduled_update($details, 'MyShow', 'a', '', 'Other'));
+    }
+
+    public function testDecideNextScheduledUpdate_skipsWhenMainPlaylistNotArray(): void {
+        $details = new stdClass();
+        $details->mainPlaylist = 'unexpected string';
+        $this->assertNull(rf_decide_next_scheduled_update($details, 'MyShow', 'a', '', 'Other'));
+    }
+
+    public function testDecideNextScheduledUpdate_wrapsAtEndOfPlaylist(): void {
+        $details = $this->playlistDetails(['a.fseq', 'b.fseq', 'c.fseq']);
+        // Currently playing 'c' (last item) → wraps to 'a'.
+        $this->assertSame('a', rf_decide_next_scheduled_update($details, 'MyShow', 'c', '', 'Other'));
+    }
 }
