@@ -26,32 +26,49 @@ final class MockServer {
     }
 
     public function start(): int {
-        $this->port = $this->findFreePort();
-        $router = realpath(__DIR__ . '/router.php');
-        $cmd = sprintf(
-            '%s -S 127.0.0.1:%d %s',
-            escapeshellarg(PHP_BINARY),
-            $this->port,
-            escapeshellarg($router)
-        );
-        $env = array_merge(
-            $this->inheritedEnv(),
-            [
-                'RF_MOCK_CONFIG' => $this->configPath,
-                'RF_MOCK_RECORDINGS' => $this->recordingsPath,
-            ]
-        );
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['file', '/dev/null', 'a'],
-            2 => ['file', '/dev/null', 'a'],
-        ];
-        $this->process = proc_open($cmd, $descriptors, $pipes, null, $env);
-        if (!is_resource($this->process)) {
-            throw new RuntimeException("[{$this->name}] failed to start mock server");
+        $maxAttempts = 5;
+        $lastError = '';
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $this->port = $this->findFreePort();
+            $router = realpath(__DIR__ . '/router.php');
+            $cmd = sprintf(
+                '%s -S 127.0.0.1:%d %s',
+                escapeshellarg(PHP_BINARY),
+                $this->port,
+                escapeshellarg($router)
+            );
+            $env = array_merge(
+                $this->inheritedEnv(),
+                [
+                    'RF_MOCK_CONFIG' => $this->configPath,
+                    'RF_MOCK_RECORDINGS' => $this->recordingsPath,
+                ]
+            );
+            $descriptors = [
+                0 => ['pipe', 'r'],
+                1 => ['file', '/dev/null', 'a'],
+                2 => ['file', '/dev/null', 'a'],
+            ];
+            $this->process = proc_open($cmd, $descriptors, $pipes, null, $env);
+            if (!is_resource($this->process)) {
+                $lastError = "proc_open returned non-resource";
+                continue;
+            }
+            try {
+                $this->waitForReady();
+                return $this->port;
+            } catch (RuntimeException $e) {
+                $lastError = $e->getMessage();
+                // Child likely failed to bind (port race) or crashed; clean up
+                // and retry with a fresh port.
+                if (is_resource($this->process)) {
+                    proc_terminate($this->process, 9);
+                    proc_close($this->process);
+                    $this->process = null;
+                }
+            }
         }
-        $this->waitForReady();
-        return $this->port;
+        throw new RuntimeException("[{$this->name}] failed to start mock server after {$maxAttempts} attempts: {$lastError}");
     }
 
     public function stop(): void {
@@ -102,14 +119,25 @@ final class MockServer {
             throw new RuntimeException("Failed to find free port: $errstr");
         }
         $name = stream_socket_get_name($sock, false);
-        stream_socket_shutdown($sock, STREAM_SHUT_RDWR);
+        // Close fully (not stream_socket_shutdown) to release the port before
+        // handing the number off to `php -S`. There's still a small race window
+        // here, but waitForReady() retries connections so a slow `php -S` start
+        // will be tolerated.
+        fclose($sock);
         $parts = explode(':', $name);
         return (int) end($parts);
     }
 
     private function waitForReady(): void {
-        $deadline = microtime(true) + 5.0;
+        $deadline = microtime(true) + 3.0;
         while (microtime(true) < $deadline) {
+            // Bail early if the child died (e.g., port already in use).
+            if (is_resource($this->process)) {
+                $status = proc_get_status($this->process);
+                if (!$status['running']) {
+                    throw new RuntimeException("[{$this->name}] child process exited before becoming ready");
+                }
+            }
             $sock = @stream_socket_client(
                 "tcp://127.0.0.1:{$this->port}",
                 $errno,
@@ -120,7 +148,7 @@ final class MockServer {
                 fclose($sock);
                 return;
             }
-            usleep(50000);
+            usleep(30000);
         }
         throw new RuntimeException("[{$this->name}] mock server failed to become ready on port {$this->port}");
     }

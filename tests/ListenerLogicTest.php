@@ -185,4 +185,99 @@ final class ListenerLogicTest extends TestCase {
         // Currently playing 'c' (last item) → wraps to 'a'.
         $this->assertSame('a', rf_decide_next_scheduled_update($details, 'MyShow', 'c', '', 'Other'));
     }
+
+    // -------- rf_extract_currently_playing --------
+
+    private function fppStatus(?string $sequence, ?string $song = null): stdClass {
+        $s = new stdClass();
+        if ($sequence !== null) $s->current_sequence = $sequence;
+        if ($song !== null) $s->current_song = $song;
+        return $s;
+    }
+
+    public function testExtractCurrentlyPlaying_usesCurrentSequenceWhenSet(): void {
+        $this->assertSame('song-name', rf_extract_currently_playing($this->fppStatus('song-name.fseq')));
+    }
+
+    public function testExtractCurrentlyPlaying_fallsBackToCurrentSong(): void {
+        $this->assertSame('media', rf_extract_currently_playing($this->fppStatus('', 'media.mp3')));
+    }
+
+    public function testExtractCurrentlyPlaying_returnsEmptyWhenBothMissing(): void {
+        $this->assertSame('', rf_extract_currently_playing(new stdClass()));
+    }
+
+    public function testExtractCurrentlyPlaying_returnsEmptyWhenBothEmpty(): void {
+        $this->assertSame('', rf_extract_currently_playing($this->fppStatus('', '')));
+    }
+
+    public function testExtractCurrentlyPlaying_stripsPathAndExtension(): void {
+        $this->assertSame('a', rf_extract_currently_playing($this->fppStatus('subdir/a.fseq')));
+    }
+
+    // -------- rf_should_skip_non_interrupt_check --------
+
+    public function testSkipNonInterrupt_falseWhenSequenceDiffers(): void {
+        // Different sequence → never skip, regardless of timing.
+        $this->assertFalse(rf_should_skip_non_interrupt_check('a', 'b', 1000, 999, 3, 0));
+    }
+
+    public function testSkipNonInterrupt_trueWhenSameSequenceWithinWindow(): void {
+        // Same sequence, queued 2s ago, window is 3+0+2=5 → skip.
+        $this->assertTrue(rf_should_skip_non_interrupt_check('a', 'a', 1002, 1000, 3, 0));
+    }
+
+    public function testSkipNonInterrupt_falseWhenSameSequenceOutsideWindow(): void {
+        // Same sequence but queued 10s ago, window 5 → re-check.
+        $this->assertFalse(rf_should_skip_non_interrupt_check('a', 'a', 1010, 1000, 3, 0));
+    }
+
+    public function testSkipNonInterrupt_windowIncludesAdditionalWaitTime(): void {
+        // requestFetchTime=3, additionalWaitTime=5, total window = 10.
+        // 8s elapsed → still inside window → skip.
+        $this->assertTrue(rf_should_skip_non_interrupt_check('a', 'a', 1008, 1000, 3, 5));
+        // 11s elapsed → outside → re-check.
+        $this->assertFalse(rf_should_skip_non_interrupt_check('a', 'a', 1011, 1000, 3, 5));
+    }
+
+    /**
+     * Documents an existing bug surfaced by the audit. With duplicate
+     * sequence names back-to-back in the playlist, the second occurrence
+     * is incorrectly suppressed because dedup keys on name only. The
+     * perf branch fixes this by keying on (playlist, position, start_time).
+     */
+    public function testSkipNonInterrupt_duplicateSequenceBack2Back_existingBuggyBehavior(): void {
+        // 'a' just queued, FPP rolls into the SECOND 'a' in the playlist.
+        // Within the window, dedup says skip — but it shouldn't, because
+        // this is a different play of the same-named sequence.
+        $this->assertTrue(rf_should_skip_non_interrupt_check('a', 'a', 1001, 1000, 3, 0));
+    }
+
+    // -------- rf_should_skip_interrupt_check --------
+
+    public function testSkipInterrupt_trueWithinWindow(): void {
+        $this->assertTrue(rf_should_skip_interrupt_check(1002, 1000, 3, 0));
+    }
+
+    public function testSkipInterrupt_falseOutsideWindow(): void {
+        $this->assertFalse(rf_should_skip_interrupt_check(1010, 1000, 3, 0));
+    }
+
+    public function testSkipInterrupt_doesNotKeyOnSequenceName(): void {
+        // Unlike non-interrupt mode, interrupt mode has no name parameter —
+        // any recent interrupt blocks another regardless of sequence identity.
+        $this->assertTrue(rf_should_skip_interrupt_check(1001, 1000, 3, 0));
+    }
+
+    // -------- rf_should_fetch_now --------
+
+    public function testShouldFetchNow_trueWhenSecondsRemainingBelowFetchTime(): void {
+        $this->assertTrue(rf_should_fetch_now(2, 3));
+        $this->assertTrue(rf_should_fetch_now(0, 3));
+    }
+
+    public function testShouldFetchNow_falseWhenSecondsRemainingAtOrAboveFetchTime(): void {
+        $this->assertFalse(rf_should_fetch_now(3, 3));
+        $this->assertFalse(rf_should_fetch_now(10, 3));
+    }
 }

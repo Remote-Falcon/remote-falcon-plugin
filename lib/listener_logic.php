@@ -107,4 +107,69 @@ if (!function_exists('rf_get_next_sequence')) {
 
         return $nextScheduled;
     }
+
+    /**
+     * Extract the base filename of what FPP is currently playing.
+     * Falls back from current_sequence to current_song for media-only items.
+     * Returns "" if neither is populated.
+     */
+    function rf_extract_currently_playing(stdClass $fppStatus): string {
+        $name = "";
+        if (isset($fppStatus->current_sequence)) {
+            $name = pathinfo($fppStatus->current_sequence, PATHINFO_FILENAME);
+        }
+        if ($name === "" && isset($fppStatus->current_song)) {
+            $name = pathinfo($fppStatus->current_song, PATHINFO_FILENAME);
+        }
+        return $name;
+    }
+
+    /**
+     * In non-interrupt mode, decide whether to skip this iteration's RF
+     * fetch because we already queued for the same sequence recently.
+     *
+     * NOTE: the current behavior keys dedup on the sequence NAME, which
+     * means a playlist with two consecutive instances of the same sequence
+     * (or the same sequence wrapping back-to-back at end of playlist) will
+     * incorrectly suppress the second queue. The perf branch's correctness
+     * fix changes the key to (playlist, position, start_time). This
+     * function locks in current behavior so the bug is visible in tests.
+     */
+    function rf_should_skip_non_interrupt_check(
+        string $currentlyPlaying,
+        string $lastQueuedSequence,
+        int $now,
+        int $lastQueuedTime,
+        int $requestFetchTime,
+        int $additionalWaitTime
+    ): bool {
+        if ($currentlyPlaying !== $lastQueuedSequence) {
+            return false;
+        }
+        $window = $requestFetchTime + $additionalWaitTime + 2;
+        return ($now - $lastQueuedTime) < $window;
+    }
+
+    /**
+     * In interrupt mode, decide whether to skip this iteration's interrupt
+     * because we recently fired one. Unlike non-interrupt mode this does
+     * NOT key on the sequence name; any recent interrupt blocks another.
+     */
+    function rf_should_skip_interrupt_check(
+        int $now,
+        int $lastQueuedTime,
+        int $requestFetchTime,
+        int $additionalWaitTime
+    ): bool {
+        $window = $requestFetchTime + $additionalWaitTime + 2;
+        return ($now - $lastQueuedTime) < $window;
+    }
+
+    /**
+     * Whether the current sequence is close enough to ending that the
+     * non-interrupt loop should fetch the next request/vote.
+     */
+    function rf_should_fetch_now(int $secondsRemaining, int $requestFetchTime): bool {
+        return $secondsRemaining < $requestFetchTime;
+    }
 }

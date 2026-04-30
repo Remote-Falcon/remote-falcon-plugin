@@ -190,23 +190,22 @@ while(true) {
 }
 
 function doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $additionalWaitTime, $remotePlaylist, $remoteToken) {
-  $secondsRemaining = intVal($fppStatus->seconds_remaining);
-  $currentlyPlaying = pathinfo($fppStatus->current_sequence, PATHINFO_FILENAME);
-  if($currentlyPlaying == "") {
-    $currentlyPlaying = pathinfo($fppStatus->current_song, PATHINFO_FILENAME);
+  $secondsRemaining = intVal($fppStatus->seconds_remaining ?? 0);
+  $currentlyPlaying = rf_extract_currently_playing($fppStatus);
+
+  if (rf_should_skip_non_interrupt_check(
+        $currentlyPlaying,
+        (string) ($GLOBALS['lastQueuedSequence'] ?? ''),
+        time(),
+        (int) ($GLOBALS['lastQueuedTime'] ?? 0),
+        (int) $requestFetchTime,
+        (int) $additionalWaitTime
+      )) {
+    logEntry_verbose("Already queued for current sequence, skipping. Time since queue: " . (time() - (int) ($GLOBALS['lastQueuedTime'] ?? 0)) . "s");
+    return;
   }
 
-  // Check if we've already queued a sequence for the current playing sequence
-  // Prevent duplicate queueing if we're still within the timing window
-  if($currentlyPlaying == $GLOBALS['lastQueuedSequence']) {
-    $timeSinceQueue = time() - $GLOBALS['lastQueuedTime'];
-    if($timeSinceQueue < ($requestFetchTime + $additionalWaitTime + 2)) {
-      logEntry_verbose("Already queued for current sequence, skipping. Time since queue: " . $timeSinceQueue . "s");
-      return;
-    }
-  }
-
-  if($secondsRemaining < $requestFetchTime) {
+  if (rf_should_fetch_now($secondsRemaining, (int) $requestFetchTime)) {
     $start_time = microtime(true);
     logEntry_verbose("Starting Non Interrupt Function");
 
@@ -275,10 +274,13 @@ function doInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $ad
   if($fppStatus->current_playlist != null) {
     $currentPlaylist = $fppStatus->current_playlist->playlist;
     if($currentPlaylist != $GLOBALS['remotePlaylist']) {
-      // Check if we recently interrupted - prevent rapid fire interrupts
-      $timeSinceLastInterrupt = time() - $GLOBALS['lastQueuedTime'];
-      if($timeSinceLastInterrupt < ($requestFetchTime + $additionalWaitTime + 2)) {
-        logEntry_verbose("Recently interrupted, skipping. Time since last: " . $timeSinceLastInterrupt . "s");
+      if (rf_should_skip_interrupt_check(
+            time(),
+            (int) ($GLOBALS['lastQueuedTime'] ?? 0),
+            (int) $requestFetchTime,
+            (int) $additionalWaitTime
+          )) {
+        logEntry_verbose("Recently interrupted, skipping. Time since last: " . (time() - (int) ($GLOBALS['lastQueuedTime'] ?? 0)) . "s");
         return;
       }
 
