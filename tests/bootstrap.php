@@ -6,5 +6,7 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../lib/listener_logic.php';
 require_once __DIR__ . '/../lib/listener_http.php';
+require_once __DIR__ . '/../lib/listener_log.php';
+require_once __DIR__ . '/../lib/listener_actions.php';
 require_once __DIR__ . '/integration/MockServer.php';
 require_once __DIR__ . '/integration/IntegrationTestCase.php';
