@@ -101,28 +101,38 @@ fi
 
 # --- 4. Restart listener via plugin command ---
 
-section "Restart listener"
+section "Restart listener (real kill+respawn)"
 
 OLD_PID="$PID"
 
-# The plugin's restart command sets two flags that the listener loop
-# notices and reloads its configuration on. The PID stays the same
-# (this is "reload settings" not "kill and respawn") — that's the
-# documented existing behavior, not a bug in T2.
+# The restart command kills the running listener via postStop.sh + PID
+# file and launches a fresh one via postStart.sh. The new process picks
+# up any code changes left on disk by an upgrade. Behavioral assertion:
+# the PID after restart must differ from the PID before.
 docker exec "$FPP_CONTAINER" /home/fpp/media/plugins/remote-falcon/commands/restart_remote_falcon.php >/dev/null
 sleep 3
 
 if docker exec "$FPP_CONTAINER" sh -c "kill -0 $OLD_PID 2>/dev/null"; then
-    ok "listener still running after restart command (process-level reload, not respawn)"
+    fail "old listener still alive after restart (expected respawn)"
 else
-    fail "listener died unexpectedly during restart"
+    ok "old listener terminated by restart"
 fi
 
-if docker exec "$FPP_CONTAINER" grep -q "Restarting Remote Falcon Plugin" /home/fpp/media/logs/remote-falcon-listener.log; then
-    ok "listener log shows restart banner"
+NEW_PID=$(docker exec "$FPP_CONTAINER" cat /home/fpp/media/plugins/remote-falcon/remote_falcon_listener.pid 2>/dev/null || echo "")
+if [ -n "$NEW_PID" ] && [ "$NEW_PID" != "$OLD_PID" ] && docker exec "$FPP_CONTAINER" sh -c "kill -0 $NEW_PID 2>/dev/null"; then
+    ok "new listener running with different pid (was $OLD_PID, now $NEW_PID)"
 else
-    fail "listener log missing restart banner"
+    fail "no new listener after restart (old=$OLD_PID, new=${NEW_PID:-<none>})"
 fi
+
+if docker exec "$FPP_CONTAINER" grep -q "Starting Remote Falcon Plugin" /home/fpp/media/logs/remote-falcon-listener.log; then
+    ok "listener log shows fresh startup banner from respawn"
+else
+    fail "listener log missing startup banner after restart"
+fi
+
+# Track new PID so subsequent checks reference the live process.
+PID="$NEW_PID"
 
 # --- 5. Stop listener via plugin command ---
 
@@ -133,9 +143,10 @@ docker exec "$FPP_CONTAINER" /home/fpp/media/plugins/remote-falcon/commands/stop
 # longer than fppStatusCheckTime + a small buffer.
 sleep 3
 
-# Same caveat — "stop" pauses the loop but doesn't kill the process. This
-# is documented existing behavior. Real shutdown happens via postStop.sh.
-if docker exec "$FPP_CONTAINER" sh -c "kill -0 $OLD_PID 2>/dev/null"; then
+# Existing behavior: "stop" pauses the loop but doesn't kill the process.
+# Real shutdown happens via postStop.sh. (This is independent of the
+# restart-fix landing in fix/listener-restart-actually-restarts.)
+if docker exec "$FPP_CONTAINER" sh -c "kill -0 $PID 2>/dev/null"; then
     ok "process still alive after stop command (existing behavior; loop pauses)"
 else
     fail "process died unexpectedly after stop command"
@@ -148,7 +159,7 @@ section "postStop.sh terminates listener"
 docker exec "$FPP_CONTAINER" /home/fpp/media/plugins/remote-falcon/scripts/postStop.sh
 sleep 1
 
-if docker exec "$FPP_CONTAINER" sh -c "kill -0 $OLD_PID 2>/dev/null"; then
+if docker exec "$FPP_CONTAINER" sh -c "kill -0 $PID 2>/dev/null"; then
     fail "listener still running after postStop.sh"
 else
     ok "listener terminated by postStop.sh"
