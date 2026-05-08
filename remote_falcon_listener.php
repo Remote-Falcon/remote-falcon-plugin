@@ -1,7 +1,18 @@
 <?php
 $PLUGIN_VERSION = "2026.01.02.01";
 
+// /opt/fpp/www/common.php is FPP's PHP "common functions" file, but it's
+// authored for the web-UI context: it emits HTML markup (script tags,
+// settings-as-JS-globals, etc.) as a top-level side effect when included.
+// In our CLI listener context, postStart.sh redirects stdout/stderr to
+// the listener log, so that markup ends up polluting the log file with
+// ~100 lines of UI HTML on every startup. Buffer the output and discard
+// it; we just want the side-effect of the function/variable definitions
+// (notably WriteSettingToFile and the $settings array).
+ob_start();
 include_once "/opt/fpp/www/common.php";
+ob_end_clean();
+
 require_once __DIR__ . "/lib/listener_logic.php";
 require_once __DIR__ . "/lib/listener_http.php";
 require_once __DIR__ . "/lib/listener_log.php";
