@@ -223,4 +223,40 @@ if (!function_exists('rf_get_next_sequence')) {
         $cache = &_rf_playlist_cache_ref();
         $cache = [];
     }
+
+    /**
+     * Check whether the listener's settings INI file needs to be re-parsed.
+     * The listener loop re-parses every tick to pick up flag changes
+     * (Stop / Restart). filemtime() is far cheaper than parse_ini_file()
+     * — when the file hasn't changed since our last parse, we can reuse
+     * the previously decoded array.
+     *
+     * Returns true when:
+     *   - we have no prior mtime (first call)
+     *   - filemtime() can't stat the file (defensive: re-parse to surface
+     *     errors to the listener's existing error path)
+     *   - the file has been modified since $lastMtime
+     *
+     * Note: WriteSettingToFile always rewrites the file, which bumps mtime.
+     * So flag changes via the FPP UI / commands always trigger a re-parse.
+     */
+    function rf_ini_should_reparse(string $path, ?int $lastMtime): bool {
+        $mtime = @filemtime($path);
+        if ($mtime === false) {
+            return true;
+        }
+        if ($lastMtime === null) {
+            return true;
+        }
+        return $mtime !== $lastMtime;
+    }
+
+    /**
+     * Return the current mtime of the file, or null if it can't be stat'd.
+     * Caller stores this and passes it back to rf_ini_should_reparse.
+     */
+    function rf_ini_current_mtime(string $path): ?int {
+        $mtime = @filemtime($path);
+        return $mtime === false ? null : $mtime;
+    }
 }

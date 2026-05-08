@@ -101,13 +101,21 @@ $verboseLogging = urldecode($pluginSettings['verboseLogging']);
 logEntry("Verbose Logging: " . $verboseLogging);
 $GLOBALS['verboseLogging'] = ($verboseLogging === "true");
 
-while(true) {
-  $pluginSettings = parse_ini_file($pluginConfigFile);
+$lastIniMtime = null;
 
-  if ($pluginSettings === false) {
-    logEntry("ERROR - Unable to read plugin config file: " . $pluginConfigFile . ". Retrying in 5 seconds.");
-    sleep(5);
-    continue;
+while(true) {
+  // Re-parse the settings INI only when its mtime has changed. parse_ini_file
+  // is far cheaper than HTTP, but at 1Hz polling for a multi-hour show it
+  // adds up. WriteSettingToFile always bumps mtime, so flag changes still
+  // trigger a re-parse on the very next tick.
+  if (rf_ini_should_reparse($pluginConfigFile, $lastIniMtime) || !isset($pluginSettings) || $pluginSettings === false) {
+    $pluginSettings = parse_ini_file($pluginConfigFile);
+    if ($pluginSettings === false) {
+      logEntry("ERROR - Unable to read plugin config file: " . $pluginConfigFile . ". Retrying in 5 seconds.");
+      sleep(5);
+      continue;
+    }
+    $lastIniMtime = rf_ini_current_mtime($pluginConfigFile);
   }
 
   $remoteFppEnabled = urldecode($pluginSettings['remoteFalconListenerEnabled']);

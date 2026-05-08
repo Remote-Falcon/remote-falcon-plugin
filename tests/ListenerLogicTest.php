@@ -366,4 +366,67 @@ final class ListenerLogicTest extends TestCase {
         $this->assertNull(rf_playlist_cache_get('A', 100.0, 60.0));
         $this->assertNull(rf_playlist_cache_get('B', 100.0, 60.0));
     }
+
+    // -------- rf_ini_should_reparse / rf_ini_current_mtime (perf 2.4) --------
+
+    public function testIniShouldReparse_trueOnFirstCall(): void {
+        $tmp = tempnam(sys_get_temp_dir(), 'rf-ini-test-');
+        file_put_contents($tmp, "key = \"value\"\n");
+        try {
+            $this->assertTrue(rf_ini_should_reparse($tmp, null));
+        } finally {
+            @unlink($tmp);
+        }
+    }
+
+    public function testIniShouldReparse_falseWhenMtimeUnchanged(): void {
+        $tmp = tempnam(sys_get_temp_dir(), 'rf-ini-test-');
+        file_put_contents($tmp, "key = \"value\"\n");
+        try {
+            $mtime = rf_ini_current_mtime($tmp);
+            $this->assertNotNull($mtime);
+            $this->assertFalse(rf_ini_should_reparse($tmp, $mtime));
+        } finally {
+            @unlink($tmp);
+        }
+    }
+
+    public function testIniShouldReparse_trueAfterModification(): void {
+        $tmp = tempnam(sys_get_temp_dir(), 'rf-ini-test-');
+        file_put_contents($tmp, "key = \"value\"\n");
+        try {
+            $first = rf_ini_current_mtime($tmp);
+            // Force a different mtime — touch with a future timestamp.
+            touch($tmp, $first + 60);
+            clearstatcache();
+            $this->assertTrue(rf_ini_should_reparse($tmp, $first));
+        } finally {
+            @unlink($tmp);
+        }
+    }
+
+    public function testIniShouldReparse_trueWhenFileMissing(): void {
+        $tmp = sys_get_temp_dir() . '/rf-ini-nonexistent-' . uniqid() . '.ini';
+        // Defensive: stat fails → we say re-parse, so the listener's
+        // existing error-path can surface the real problem.
+        $this->assertTrue(rf_ini_should_reparse($tmp, 100));
+        $this->assertTrue(rf_ini_should_reparse($tmp, null));
+    }
+
+    public function testIniCurrentMtime_returnsNullForMissingFile(): void {
+        $tmp = sys_get_temp_dir() . '/rf-ini-nonexistent-' . uniqid() . '.ini';
+        $this->assertNull(rf_ini_current_mtime($tmp));
+    }
+
+    public function testIniCurrentMtime_returnsIntForExistingFile(): void {
+        $tmp = tempnam(sys_get_temp_dir(), 'rf-ini-test-');
+        file_put_contents($tmp, "x");
+        try {
+            $m = rf_ini_current_mtime($tmp);
+            $this->assertIsInt($m);
+            $this->assertGreaterThan(0, $m);
+        } finally {
+            @unlink($tmp);
+        }
+    }
 }
