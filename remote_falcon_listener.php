@@ -166,7 +166,10 @@ while(true) {
   $sleepSeconds = $fppStatusCheckTime;
 
   if($remoteFppEnabled == 1) {
-    logEntry_verbose("Getting FPP Status");
+    // Per-tick "Getting FPP Status" log was previously emitted at verbose
+    // level. At 1 Hz over a multi-hour show that's thousands of lines/hour
+    // of noise that obscures actual events. Removed in perf 2.5; the poll
+    // cadence is implicit in the timestamps of the lines that DO fire.
     $fppStatus = getFppStatus();
     if($fppStatus != null && $fppStatus != false) {
       $statusName = $fppStatus->status_name;

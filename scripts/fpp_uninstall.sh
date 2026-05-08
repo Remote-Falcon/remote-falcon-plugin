@@ -27,4 +27,7 @@ if [ -x "${FPPDIR}/scripts/ManageApacheContentPolicy.sh" ]; then
     ${FPPDIR}/scripts/ManageApacheContentPolicy.sh remove connect-src https://remotefalcon.com 2>/dev/null || true
 fi
 
+# Remove the logrotate symlink installed by fpp_install.sh.
+sudo rm -f /etc/logrotate.d/remote-falcon 2>/dev/null || rm -f /etc/logrotate.d/remote-falcon 2>/dev/null || true
+
 #fpp_uninstall

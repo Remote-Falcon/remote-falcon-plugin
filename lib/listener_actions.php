@@ -159,7 +159,9 @@ if (!function_exists('rf_fpp_base_url')) {
         // returns null). At ~1Hz polling during a show, this skips ~3,600
         // FPP HTTP calls/hour.
         if ((string) $currentPlaylist === (string) $GLOBALS['remotePlaylist']) {
-            logEntry_verbose("Playing remote playlist; skipping next-scheduled fetch");
+            // No log line: this fires every poll while playing the RF
+            // playlist (the most common state during a show), and a
+            // verbose-level entry per tick swamps the log with noise.
             return;
         }
 
