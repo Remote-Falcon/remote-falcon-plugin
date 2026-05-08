@@ -152,6 +152,43 @@ else
     fail "process died unexpectedly after stop command"
 fi
 
+if docker exec "$FPP_CONTAINER" grep -q 'remoteFalconListenerEnabled = "false"' /home/fpp/media/config/plugin.remote-falcon; then
+    ok "enabled flag set to false by stop command"
+else
+    fail "enabled flag not flipped to false"
+fi
+
+# --- 5b. Restart command recovers from stopped state ---
+
+section "Restart from stopped state (recovers via command)"
+
+# Listener is currently in "stopped" state (enabled=false, process alive
+# but loop paused). Calling the restart command should:
+#   1. Flip enabled back to true (so the new loop runs).
+#   2. Kill the existing process via postStop.sh.
+#   3. Launch a fresh process via postStart.sh.
+# This proves the UI's Restart button can recover from a stopped state
+# (which the legacy flag-toggle approach could not).
+
+PRE_RECOVER_PID="$PID"
+docker exec "$FPP_CONTAINER" /home/fpp/media/plugins/remote-falcon/commands/restart_remote_falcon.php >/dev/null
+sleep 3
+
+if docker exec "$FPP_CONTAINER" grep -q 'remoteFalconListenerEnabled = "true"' /home/fpp/media/config/plugin.remote-falcon; then
+    ok "enabled flag flipped back to true by restart command"
+else
+    fail "enabled flag still false after restart"
+fi
+
+LATEST_PID=$(docker exec "$FPP_CONTAINER" cat /home/fpp/media/plugins/remote-falcon/remote_falcon_listener.pid 2>/dev/null || echo "")
+if [ -n "$LATEST_PID" ] && [ "$LATEST_PID" != "$PRE_RECOVER_PID" ] && docker exec "$FPP_CONTAINER" sh -c "kill -0 $LATEST_PID 2>/dev/null"; then
+    ok "fresh listener (pid $LATEST_PID) running after recovery"
+else
+    fail "no respawn from stopped state (was=$PRE_RECOVER_PID, now=${LATEST_PID:-<none>})"
+fi
+
+PID="$LATEST_PID"
+
 # --- 6. postStop.sh actually kills the listener ---
 
 section "postStop.sh terminates listener"

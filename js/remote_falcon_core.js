@@ -148,12 +148,28 @@ function normalizePlaylistName(name) {
 
 async function restartListener() {
   $.jGrowl("Restarting Listener", { themeState: 'success' });
-  await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'false', () => {});
-  await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', 'true', () => {});
+
+  // Invoke FPP's command system to run the plugin's "Remote Falcon - Restart
+  // Listener" command. That command (commands/restart_remote_falcon.php)
+  // performs a real kill+respawn via postStop.sh + postStart.sh and works
+  // whether or not a listener is currently running. This replaces the
+  // legacy approach of toggling settings flags and waiting for the running
+  // listener loop to reload — that approach only worked when the listener
+  // was already alive and could not pick up new code on disk.
+  try {
+    await $.ajax({
+      url: '/api/command/' + encodeURIComponent('Remote Falcon - Restart Listener'),
+      type: 'GET',
+      timeout: 15000,
+    });
+  } catch (e) {
+    console.error('Restart Listener command failed:', e);
+    $.jGrowl("Failed to invoke Restart Listener command", { themeState: 'danger' });
+    return;
+  }
+
   await getPluginConfig();
-
   await checkPlugin();
-
   $('#remoteFalconStatus').html(getRemoteFalconListenerEnabledStatus(REMOTE_FALCON_LISTENER_ENABLED));
 
   var listenerCameBack = false;
