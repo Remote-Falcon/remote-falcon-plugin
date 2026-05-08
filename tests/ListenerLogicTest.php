@@ -307,4 +307,63 @@ final class ListenerLogicTest extends TestCase {
         $this->assertSame(10.0, rf_next_poll_seconds('idle', 10.0));
         $this->assertSame(5.0, rf_next_poll_seconds('idle', 5.0));
     }
+
+    // -------- rf_playlist_cache_* (perf 2.2) --------
+
+    private function fakePlaylistDetails(string $marker): stdClass {
+        $o = new stdClass();
+        $o->mainPlaylist = [(object) ['sequenceName' => $marker]];
+        return $o;
+    }
+
+    public function testPlaylistCache_missReturnsNull(): void {
+        rf_playlist_cache_clear();
+        $this->assertNull(rf_playlist_cache_get('NoSuchPlaylist', 100.0, 60.0));
+    }
+
+    public function testPlaylistCache_hitWithinTtl(): void {
+        rf_playlist_cache_clear();
+        $details = $this->fakePlaylistDetails('a.fseq');
+        rf_playlist_cache_put('MyShow', $details, 100.0);
+        $hit = rf_playlist_cache_get('MyShow', 130.0, 60.0);
+        $this->assertNotNull($hit);
+        $this->assertSame('a.fseq', $hit->mainPlaylist[0]->sequenceName);
+    }
+
+    public function testPlaylistCache_expiredEntryReturnsNull(): void {
+        rf_playlist_cache_clear();
+        rf_playlist_cache_put('MyShow', $this->fakePlaylistDetails('a.fseq'), 100.0);
+        // 61s later → past 60s TTL.
+        $this->assertNull(rf_playlist_cache_get('MyShow', 161.0, 60.0));
+    }
+
+    public function testPlaylistCache_atTtlBoundaryIsHit(): void {
+        rf_playlist_cache_clear();
+        rf_playlist_cache_put('MyShow', $this->fakePlaylistDetails('a.fseq'), 100.0);
+        // Exactly at TTL → still a hit (not strictly greater).
+        $this->assertNotNull(rf_playlist_cache_get('MyShow', 160.0, 60.0));
+    }
+
+    public function testPlaylistCache_separateKeysIsolated(): void {
+        rf_playlist_cache_clear();
+        rf_playlist_cache_put('Show1', $this->fakePlaylistDetails('a.fseq'), 100.0);
+        rf_playlist_cache_put('Show2', $this->fakePlaylistDetails('b.fseq'), 100.0);
+        $this->assertSame('a.fseq', rf_playlist_cache_get('Show1', 100.0, 60.0)->mainPlaylist[0]->sequenceName);
+        $this->assertSame('b.fseq', rf_playlist_cache_get('Show2', 100.0, 60.0)->mainPlaylist[0]->sequenceName);
+    }
+
+    public function testPlaylistCache_putOverwrites(): void {
+        rf_playlist_cache_clear();
+        rf_playlist_cache_put('MyShow', $this->fakePlaylistDetails('old'), 100.0);
+        rf_playlist_cache_put('MyShow', $this->fakePlaylistDetails('new'), 200.0);
+        $this->assertSame('new', rf_playlist_cache_get('MyShow', 200.0, 60.0)->mainPlaylist[0]->sequenceName);
+    }
+
+    public function testPlaylistCache_clearRemovesEverything(): void {
+        rf_playlist_cache_put('A', $this->fakePlaylistDetails('a'), 100.0);
+        rf_playlist_cache_put('B', $this->fakePlaylistDetails('b'), 100.0);
+        rf_playlist_cache_clear();
+        $this->assertNull(rf_playlist_cache_get('A', 100.0, 60.0));
+        $this->assertNull(rf_playlist_cache_get('B', 100.0, 60.0));
+    }
 }

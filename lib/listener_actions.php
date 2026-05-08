@@ -163,7 +163,17 @@ if (!function_exists('rf_fpp_base_url')) {
             return;
         }
 
-        $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
+        // Cache playlist details for 60 seconds; FPP playlists rarely
+        // change mid-show. Removes ~3,600 FPP HTTP calls per hour.
+        $cacheKey = (string) $currentPlaylist;
+        $now = microtime(true);
+        $playlistDetails = rf_playlist_cache_get($cacheKey, $now, 60.0);
+        if ($playlistDetails === null) {
+            $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
+            if ($playlistDetails !== null) {
+                rf_playlist_cache_put($cacheKey, $playlistDetails, $now);
+            }
+        }
 
         $nextScheduled = rf_decide_next_scheduled_update(
             $playlistDetails,

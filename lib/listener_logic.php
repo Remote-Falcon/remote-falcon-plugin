@@ -188,4 +188,39 @@ if (!function_exists('rf_get_next_sequence')) {
         }
         return $configuredSeconds;
     }
+
+    /**
+     * In-memory cache for FPP playlist details. The listener fetches the
+     * playlist every poll (~1 Hz) but FPP playlists almost never change
+     * mid-show; caching by name with a TTL of 60s typically removes
+     * thousands of FPP HTTP calls per hour during a show.
+     *
+     * Cache lives in a static variable inside an internal helper. Tests
+     * call rf_playlist_cache_clear() between scenarios.
+     */
+    function &_rf_playlist_cache_ref(): array {
+        static $cache = [];
+        return $cache;
+    }
+
+    function rf_playlist_cache_get(string $key, float $now, float $maxAgeSeconds): ?stdClass {
+        $cache = &_rf_playlist_cache_ref();
+        if (!isset($cache[$key])) {
+            return null;
+        }
+        if (($now - $cache[$key]['at']) > $maxAgeSeconds) {
+            return null;
+        }
+        return $cache[$key]['value'];
+    }
+
+    function rf_playlist_cache_put(string $key, stdClass $value, float $now): void {
+        $cache = &_rf_playlist_cache_ref();
+        $cache[$key] = ['at' => $now, 'value' => $value];
+    }
+
+    function rf_playlist_cache_clear(): void {
+        $cache = &_rf_playlist_cache_ref();
+        $cache = [];
+    }
 }

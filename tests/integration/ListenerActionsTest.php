@@ -32,6 +32,9 @@ final class ListenerActionsTest extends IntegrationTestCase {
         $GLOBALS['remotePlaylist'] = 'MyRfPlaylist';
         $GLOBALS['currentlyPlayingInRF'] = '';
         $GLOBALS['nextScheduledInRF'] = '';
+
+        // Reset the playlist details cache so prior tests can't bleed in.
+        rf_playlist_cache_clear();
     }
 
     protected function tearDown(): void {
@@ -231,6 +234,34 @@ final class ListenerActionsTest extends IntegrationTestCase {
 
         $this->assertContains('/updateNextScheduledSequence', $this->pathsRecordedOn($this->rfMock));
         $this->assertSame('b', $GLOBALS['nextScheduledInRF']);
+    }
+
+    public function testUpdateNextScheduledSequence_cachesPlaylistDetailsAcrossCalls(): void {
+        // Perf 2.2: playlist details cached for 60s. Three back-to-back
+        // calls with the same playlist should produce ONE FPP fetch and
+        // (depending on next-scheduled state changes) up to one RF post.
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => [
+                'mainPlaylist' => [
+                    ['sequenceName' => 'a.fseq'],
+                    ['sequenceName' => 'b.fseq'],
+                    ['sequenceName' => 'c.fseq'],
+                ],
+            ],
+        ]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+
+        $status = $this->makeFppStatus('a.fseq', 30, 'OtherPlaylist');
+
+        // Call three times in a row.
+        updateNextScheduledSequence($status, 'a', '', 'tok');
+        updateNextScheduledSequence($status, 'a', 'b', 'tok');
+        updateNextScheduledSequence($status, 'a', 'b', 'tok');
+
+        $fppHits = array_filter($this->pathsRecordedOn($this->fppMock), function ($p) {
+            return strpos($p, '/api/playlist/') === 0;
+        });
+        $this->assertCount(1, $fppHits, 'FPP playlist endpoint should be hit once across 3 calls within TTL');
     }
 
     public function testUpdateNextScheduledSequence_skipsFppFetchWhenPlayingRemotePlaylist(): void {
