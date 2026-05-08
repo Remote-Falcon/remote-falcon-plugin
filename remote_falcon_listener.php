@@ -1,16 +1,19 @@
 <?php
 $PLUGIN_VERSION = "2026.01.02.01";
 
-// /opt/fpp/www/common.php is FPP's PHP "common functions" file, but it's
-// authored for the web-UI context: it emits HTML markup (script tags,
-// settings-as-JS-globals, etc.) as a top-level side effect when included.
-// In our CLI listener context, postStart.sh redirects stdout/stderr to
-// the listener log, so that markup ends up polluting the log file with
-// ~100 lines of UI HTML on every startup. Buffer the output and discard
-// it; we just want the side-effect of the function/variable definitions
-// (notably WriteSettingToFile and the $settings array).
+// /opt/fpp/www/common.php is FPP's PHP "common functions" file, authored
+// for the web-UI context: it emits HTML markup (script tags, settings-
+// as-JS-globals, etc.) as a top-level side effect, and reads $_SERVER
+// keys like REQUEST_URI that don't exist in a CLI context. In our
+// listener context, postStart.sh redirects stdout/stderr to the listener
+// log, so both the markup AND the warnings about missing $_SERVER keys
+// would otherwise pollute the log on every startup.
+//
+// Buffer stdout to discard the HTML, and use @include to suppress the
+// CLI-context warnings. We still get the function/variable definitions
+// we actually need (WriteSettingToFile, the $settings array, etc.).
 ob_start();
-include_once "/opt/fpp/www/common.php";
+@include_once "/opt/fpp/www/common.php";
 ob_end_clean();
 
 require_once __DIR__ . "/lib/listener_logic.php";
