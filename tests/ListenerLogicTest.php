@@ -280,4 +280,31 @@ final class ListenerLogicTest extends TestCase {
         $this->assertFalse(rf_should_fetch_now(3, 3));
         $this->assertFalse(rf_should_fetch_now(10, 3));
     }
+
+    // -------- rf_next_poll_seconds (idle backoff) --------
+
+    public function testNextPollSeconds_returnsConfiguredWhenPlaying(): void {
+        $this->assertSame(1.0, rf_next_poll_seconds('playing', 1.0));
+        $this->assertSame(0.5, rf_next_poll_seconds('playing', 0.5));
+    }
+
+    public function testNextPollSeconds_returnsConfiguredForOtherStates(): void {
+        // Any non-"idle" state uses the configured value.
+        $this->assertSame(1.0, rf_next_poll_seconds('paused', 1.0));
+        $this->assertSame(1.0, rf_next_poll_seconds('stopping', 1.0));
+        $this->assertSame(1.0, rf_next_poll_seconds('', 1.0));
+    }
+
+    public function testNextPollSeconds_backsOffWhenIdle(): void {
+        // FPP between scheduled blocks → no point polling fast.
+        $this->assertSame(5.0, rf_next_poll_seconds('idle', 1.0));
+        $this->assertSame(5.0, rf_next_poll_seconds('idle', 0.5));
+    }
+
+    public function testNextPollSeconds_idleNeverFasterThanConfigured(): void {
+        // If user configured slower than 5s, idle keeps their value —
+        // backoff should never poll harder than they asked for.
+        $this->assertSame(10.0, rf_next_poll_seconds('idle', 10.0));
+        $this->assertSame(5.0, rf_next_poll_seconds('idle', 5.0));
+    }
 }

@@ -172,4 +172,20 @@ if (!function_exists('rf_get_next_sequence')) {
     function rf_should_fetch_now(int $secondsRemaining, int $requestFetchTime): bool {
         return $secondsRemaining < $requestFetchTime;
     }
+
+    /**
+     * The number of seconds the listener should sleep before its next FPP
+     * status poll. When FPP is idle (between scheduled blocks, no playlist
+     * running), back off to 5s — there's nothing to react to and the user
+     * doesn't notice idle-state polling latency. When playing, use the
+     * configured fppStatusCheckTime so reaction stays fast.
+     */
+    function rf_next_poll_seconds(string $statusName, float $configuredSeconds): float {
+        if ($statusName === 'idle') {
+            // At least 5s, but never faster than configured (idle is a
+            // backoff — should never poll FPP harder than the user asked).
+            return max(5.0, $configuredSeconds);
+        }
+        return $configuredSeconds;
+    }
 }

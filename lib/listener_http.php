@@ -75,27 +75,27 @@ if (!function_exists('rf_http_request')) {
 
     // --- FPP localhost API ---
 
-    function rf_http_fpp_get_status(string $fppBaseUrl, int $timeout = 5): ?stdClass {
+    function rf_http_fpp_get_status(string $fppBaseUrl, int $timeout = 1): ?stdClass {
         $url = $fppBaseUrl . '/api/system/status';
         $body = rf_http_request('GET', $url, [], null, $timeout);
         $decoded = rf_http_decode_json($body);
         return $decoded instanceof stdClass ? $decoded : null;
     }
 
-    function rf_http_fpp_get_playlist(string $fppBaseUrl, string $playlistEncoded, int $timeout = 5): ?stdClass {
+    function rf_http_fpp_get_playlist(string $fppBaseUrl, string $playlistEncoded, int $timeout = 1): ?stdClass {
         $url = $fppBaseUrl . '/api/playlist/' . $playlistEncoded;
         $body = rf_http_request('GET', $url, [], null, $timeout);
         $decoded = rf_http_decode_json($body);
         return $decoded instanceof stdClass ? $decoded : null;
     }
 
-    function rf_http_fpp_insert_immediate(string $fppBaseUrl, string $playlistEncoded, int $index, int $timeout = 5): bool {
+    function rf_http_fpp_insert_immediate(string $fppBaseUrl, string $playlistEncoded, int $index, int $timeout = 1): bool {
         $url = $fppBaseUrl . '/api/command/Insert%20Playlist%20Immediate/' . $playlistEncoded . '/' . $index . '/' . $index;
         $body = rf_http_request('GET', $url, [], null, $timeout);
         return $body !== null;
     }
 
-    function rf_http_fpp_insert_after_current(string $fppBaseUrl, string $playlistEncoded, int $index, int $timeout = 5): bool {
+    function rf_http_fpp_insert_after_current(string $fppBaseUrl, string $playlistEncoded, int $index, int $timeout = 1): bool {
         $url = $fppBaseUrl . '/api/command/Insert%20Playlist%20After%20Current/' . $playlistEncoded . '/' . $index . '/' . $index;
         $body = rf_http_request('GET', $url, [], null, $timeout);
         return $body !== null;

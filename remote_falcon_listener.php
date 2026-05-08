@@ -155,11 +155,14 @@ while(true) {
     $GLOBALS['verboseLogging'] = ($verboseLogging === "true");
   }
 
+  $sleepSeconds = $fppStatusCheckTime;
+
   if($remoteFppEnabled == 1) {
     logEntry_verbose("Getting FPP Status");
     $fppStatus = getFppStatus();
     if($fppStatus != null && $fppStatus != false) {
       $statusName = $fppStatus->status_name;
+      $sleepSeconds = rf_next_poll_seconds((string) $statusName, (float) $fppStatusCheckTime);
       if($statusName != "idle") {
         $rfSequencesCleared = false;
         $currentlyPlaying = pathinfo($fppStatus->current_sequence, PATHINFO_FILENAME);
@@ -185,10 +188,11 @@ while(true) {
     }else {
       logEntry("FPPD is not running!");
       sleep(5);
+      continue;
     }
   }
 
-  usleep($fppStatusCheckTime * 1000000);
+  usleep((int) ($sleepSeconds * 1000000));
 }
 
 ?>

@@ -152,6 +152,17 @@ if (!function_exists('rf_fpp_base_url')) {
         }
 
         $currentPlaylist = $fppStatus->current_playlist->playlist;
+
+        // Skip the FPP playlist fetch entirely when we're playing the user's
+        // Remote Falcon playlist. In that case RF owns sequencing and we
+        // wouldn't post the result anyway (rf_decide_next_scheduled_update
+        // returns null). At ~1Hz polling during a show, this skips ~3,600
+        // FPP HTTP calls/hour.
+        if ((string) $currentPlaylist === (string) $GLOBALS['remotePlaylist']) {
+            logEntry_verbose("Playing remote playlist; skipping next-scheduled fetch");
+            return;
+        }
+
         $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
 
         $nextScheduled = rf_decide_next_scheduled_update(

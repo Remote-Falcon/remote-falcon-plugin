@@ -233,7 +233,11 @@ final class ListenerActionsTest extends IntegrationTestCase {
         $this->assertSame('b', $GLOBALS['nextScheduledInRF']);
     }
 
-    public function testUpdateNextScheduledSequence_skipsWhenPlayingRemotePlaylist(): void {
+    public function testUpdateNextScheduledSequence_skipsFppFetchWhenPlayingRemotePlaylist(): void {
+        // Perf 2.1 optimization: when current playlist == remote playlist,
+        // we skip the FPP /api/playlist fetch entirely (it would have been
+        // wasted — rf_decide_next_scheduled_update returns null in that
+        // case anyway). Asserts the FPP mock receives ZERO requests.
         $this->fppMock->setRoute('/api/playlist/MyRfPlaylist', [
             'body' => [
                 'mainPlaylist' => [
@@ -246,8 +250,8 @@ final class ListenerActionsTest extends IntegrationTestCase {
         $status = $this->makeFppStatus('a.fseq', 30, 'MyRfPlaylist');
         updateNextScheduledSequence($status, 'a', '', 'tok');
 
-        // FPP playlist GET fires, but no RF post because playing the RF playlist.
-        $this->assertNotEmpty($this->pathsRecordedOn($this->fppMock));
+        // No FPP fetch, no RF post.
+        $this->assertCount(0, $this->fppMock->getRecordings(), 'FPP playlist endpoint should NOT have been hit when on remote playlist');
         $this->assertCount(0, $this->rfMock->getRecordings());
     }
 }
