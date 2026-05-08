@@ -19,6 +19,11 @@ abstract class IntegrationTestCase extends TestCase {
         $this->rfMock = new MockServer('rf');
         $this->fppMock->start();
         $this->rfMock->start();
+        // Each test gets a fresh cURL handle for RF calls so connection
+        // state from prior tests can't bleed in.
+        if (function_exists('_rf_http_rf_curl_reset')) {
+            _rf_http_rf_curl_reset();
+        }
     }
 
     protected function tearDown(): void {

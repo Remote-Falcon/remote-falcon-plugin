@@ -130,16 +130,16 @@ if (!function_exists('rf_http_request')) {
             'Accept' => 'application/json',
             'remotetoken' => $token,
         ];
-        $body = rf_http_request('DELETE', $url, $headers, null, $timeout);
+        $body = _rf_http_rf_curl('DELETE', $url, $headers, null, $timeout);
         return $body !== null;
     }
 
-    // --- Internal helpers ---
+    // --- Internal helpers (RF) ---
 
     function _rf_http_rf_get(string $rfBaseUrl, string $endpoint, string $token, int $timeout): ?stdClass {
         $url = $rfBaseUrl . $endpoint;
         $headers = ['remotetoken' => $token];
-        $body = rf_http_request('GET', $url, $headers, null, $timeout);
+        $body = _rf_http_rf_curl('GET', $url, $headers, null, $timeout);
         $decoded = rf_http_decode_json($body);
         return $decoded instanceof stdClass ? $decoded : null;
     }
@@ -151,7 +151,76 @@ if (!function_exists('rf_http_request')) {
             'Accept' => 'application/json',
             'remotetoken' => $token,
         ];
-        $body = rf_http_request('POST', $url, $headers, json_encode($payload), $timeout);
+        $body = _rf_http_rf_curl('POST', $url, $headers, json_encode($payload), $timeout);
         return $body !== null;
+    }
+
+    /**
+     * Returns a long-lived cURL handle. The same handle is reused across
+     * all RF API calls in the listener process, which lets curl's
+     * connection pool reuse the underlying TCP+TLS connection. For a show
+     * with frequent RF traffic, this typically saves 100-400ms per call
+     * (TLS handshake elimination) once the connection is warm.
+     *
+     * Tests can call _rf_http_rf_curl_reset() between scenarios to force
+     * a fresh handle.
+     */
+    function &_rf_http_rf_curl_handle() {
+        static $ch = null;
+        if ($ch === null) {
+            $ch = curl_init();
+        }
+        return $ch;
+    }
+
+    function _rf_http_rf_curl_reset(): void {
+        // PHP 8.0+ treats cURL handles as objects and garbage-collects them
+        // when the last reference is released. Setting the static slot to
+        // null is sufficient — calling curl_close() emits a deprecation
+        // warning on 8.5+.
+        $ch = &_rf_http_rf_curl_handle();
+        $ch = null;
+    }
+
+    /**
+     * Issue a request via the persistent cURL handle. Returns response
+     * body on 2xx, null on transport error or non-2xx. Same return-value
+     * contract as rf_http_request() so callers don't care which transport
+     * is in use.
+     */
+    function _rf_http_rf_curl(string $method, string $url, array $headers, ?string $body, int $timeout): ?string {
+        $ch = &_rf_http_rf_curl_handle();
+        // Reset per-request options but KEEP the connection pool by reusing
+        // the same handle (curl_close would tear it down).
+        curl_reset($ch);
+        $hdrs = [];
+        foreach ($headers as $name => $value) {
+            $hdrs[] = "$name: $value";
+        }
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_CUSTOMREQUEST => $method,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => $timeout,
+            CURLOPT_CONNECTTIMEOUT => max(1, (int) min($timeout, 5)),
+            CURLOPT_FOLLOWLOCATION => false,
+            // Allow the handle's TCP/TLS connection to be reused across calls.
+            CURLOPT_FORBID_REUSE => false,
+            CURLOPT_FRESH_CONNECT => false,
+            CURLOPT_TCP_KEEPALIVE => 1,
+            CURLOPT_HTTPHEADER => $hdrs,
+        ]);
+        if ($body !== null) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        }
+        $response = curl_exec($ch);
+        if ($response === false) {
+            return null;
+        }
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($status < 200 || $status >= 300) {
+            return null;
+        }
+        return $response;
     }
 }
