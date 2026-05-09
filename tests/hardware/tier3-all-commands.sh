@@ -48,23 +48,20 @@ pi_install_branch "${TEST_BRANCH:-chore/hw-tier3-validation}" > /dev/null
 echo "Seeding safe settings (empty token, unreachable RF)..."
 pi_seed_safe_settings > /dev/null
 
-# URL-encode a command name (only spaces; other chars in our names are
-# already URL-safe). Keep this dumb on purpose — there's no shell percent-
-# encoder we can rely on portably.
-url_encode_name() {
-    local name="$1"
-    echo "${name// /%20}"
-}
-
-# Invoke a command via FPP's /api/command/{name} endpoint. Echoes the
-# HTTP status; sets the global LAST_BODY for further assertions.
+# Invoke a command via FPP's POST /api/command endpoint with a JSON body.
+# T2 covered the GET /api/command/{name} path for "Restart Listener". For
+# T3 we use POST-with-JSON because it handles every command name uniformly:
+# "Purge Queue/Reset Votes" contains a "/" that breaks the GET path (Apache
+# defaults to AllowEncodedSlashes Off, so %2F also 404s). The UI uses POST
+# for any command whose name has special characters; testing it here is
+# at least as representative as the GET path.
 LAST_BODY=""
 invoke_command() {
     local display_name="$1"
-    local encoded
-    encoded=$(url_encode_name "$display_name")
     local resp
-    resp=$(pi "curl -sf -w '\n__HTTP_STATUS__%{http_code}' 'http://127.0.0.1/api/command/$encoded' || echo '__HTTP_STATUS__000'")
+    resp=$(pi "curl -s -X POST -H 'Content-Type: application/json' \
+        --data '$(printf '{\"command\":\"%s\",\"args\":[]}' "$display_name")' \
+        -w '\n__HTTP_STATUS__%{http_code}' 'http://127.0.0.1/api/command' || echo '__HTTP_STATUS__000'")
     local code
     code=$(echo "$resp" | grep -oE 'HTTP_STATUS__[0-9]+' | tail -1 | sed 's/HTTP_STATUS__//')
     LAST_BODY=$(echo "$resp" | sed 's/__HTTP_STATUS__[0-9]*$//')
