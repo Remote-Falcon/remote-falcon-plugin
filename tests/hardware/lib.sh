@@ -39,11 +39,13 @@ pi_snapshot() {
         echo $tar_path:$cfg_path"
 }
 
-# Stop any running listener (handles cross-user kill via sudo).
+# Stop any running listener via the plugin's postStop.sh (which has its
+# own PID file + pkill fallback). We deliberately don't add an extra
+# pkill here in lib.sh — putting "remote_falcon_listener" in the SSH
+# command body causes pkill -f to match (and kill) its own bash
+# invocation, dropping the connection mid-test.
 pi_stop_listener() {
     pi 'sudo /home/fpp/media/plugins/remote-falcon/scripts/postStop.sh 2>/dev/null || true
-        # Belt-and-suspenders: pkill any stragglers as root.
-        sudo pkill -f "/usr/bin/php.*remote_falcon_listener\.php" 2>/dev/null || true
         sleep 1'
 }
 
@@ -105,8 +107,9 @@ pi_restore() {
     local snap="$1"
     local tar_path="${snap%%:*}"
     local cfg_path="${snap##*:}"
+    # No literal "remote_falcon_listener" pkill here — postStop.sh handles
+    # PID-file cleanup and has its own pkill fallback. See pi_stop_listener.
     pi "sudo /home/fpp/media/plugins/remote-falcon/scripts/postStop.sh 2>/dev/null || true
-        sudo pkill -f '/usr/bin/php.*remote_falcon_listener\.php' 2>/dev/null || true
         sleep 1
         sudo rm -f /etc/logrotate.d/remote-falcon
         cd /home/fpp/media/plugins && sudo rm -rf remote-falcon
