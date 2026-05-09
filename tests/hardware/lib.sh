@@ -98,7 +98,12 @@ pi_listener_pid() {
 
 pi_listener_alive() {
     local pid="$1"
-    pi "kill -0 $pid 2>/dev/null && echo alive || echo dead"
+    # Use sudo for the existence probe: when the listener was spawned via
+    # FPP's /api/command/ endpoint it runs as www-data, so a plain kill -0
+    # from the fpp user returns EPERM (not "no such process") and would
+    # falsely report "dead". A /proc/$pid existence check sidesteps signal
+    # permissions entirely.
+    pi "sudo test -d /proc/$pid && echo alive || echo dead"
 }
 
 # Restore from a snapshot (tar_path:cfg_path) and start a fresh listener.
