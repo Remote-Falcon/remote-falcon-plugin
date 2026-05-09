@@ -10,10 +10,14 @@
 # can't write). We chown to fpp:fpp in our install path; this test
 # verifies that fix holds end-to-end against real FPP.
 #
+# Note on urlencoding: plugin-internal code calls WriteSettingToFile
+# with urlencode() applied (see CLAUDE.md), but FPP's own HTTP settings
+# endpoint does NOT urlencode the POST body before writing. So values
+# round-trip verbatim through the API path. We assert raw value match.
+#
 # For each test setting:
 #   1. POST a value to /api/plugin/remote-falcon/settings/{key}
-#   2. Read the INI file directly, verify the key is present with
-#      the urlencoded value (matching WriteSettingToFile semantics)
+#   2. Read the INI file directly, verify the key is present
 #   3. GET the value back via the same endpoint, verify round-trip
 #
 # Usage: FPP_HOST=192.168.1.80 ./tier2-settings-persistence.sh
@@ -38,26 +42,26 @@ pi_install_branch "${TEST_BRANCH:-chore/hw-tier2-validation}" > /dev/null
 echo "Seeding safe settings as a baseline..."
 pi_seed_safe_settings > /dev/null
 
-# Set of (key, raw_value, expected_encoded) tuples. Keys are real plugin
-# settings; values include characters that exercise urlencoding.
+# Set of (key, raw_value) tuples. Keys are real plugin settings; values
+# include a space-bearing string to exercise quoting/round-trip on the
+# /api/plugin/{name}/settings/{key} HTTP path.
 TESTS=(
-    "interruptSchedule|true|true"
-    "requestFetchTime|5|5"
-    "additionalWaitTime|0|0"
-    "fppStatusCheckTime|2|2"
-    "verboseLogging|true|true"
-    "remotePlaylist|My Show 2026|My+Show+2026"
+    "interruptSchedule|true"
+    "requestFetchTime|5"
+    "additionalWaitTime|0"
+    "fppStatusCheckTime|2"
+    "verboseLogging|true"
+    "remotePlaylist|My Show 2026"
 )
 
 # Function: POST a setting via FPP API, verify INI persistence and
-# round-trip via GET. urlencoding is what WriteSettingToFile applies.
+# round-trip via GET. FPP writes the raw value verbatim on this path.
 test_setting() {
     local key="$1"
     local raw="$2"
-    local expected_encoded="$3"
 
     echo
-    echo "  Setting: $key = '$raw' (expect INI: '$expected_encoded')"
+    echo "  Setting: $key = '$raw'"
 
     # POST via FPP plugin settings endpoint
     local post_resp
@@ -72,10 +76,10 @@ test_setting() {
         echo "      response: $post_resp"
     fi
 
-    # Read INI file directly; verify the persisted form
+    # Read INI file directly; verify the persisted form (raw verbatim).
     local ini_line
     ini_line=$(pi "grep -E '^$key = ' /home/fpp/media/config/plugin.remote-falcon 2>/dev/null || echo MISSING")
-    if echo "$ini_line" | grep -q "= \"$expected_encoded\""; then
+    if echo "$ini_line" | grep -qF "= \"$raw\""; then
         ok "  INI line matches: $ini_line"
     else
         fail "  INI mismatch — got: $ini_line"
@@ -95,8 +99,8 @@ test_setting() {
 section "Per-setting POST + INI verify + GET round-trip"
 
 for test in "${TESTS[@]}"; do
-    IFS='|' read -r key raw expected <<< "$test"
-    test_setting "$key" "$raw" "$expected"
+    IFS='|' read -r key raw <<< "$test"
+    test_setting "$key" "$raw"
 done
 
 echo

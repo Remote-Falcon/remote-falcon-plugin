@@ -72,7 +72,12 @@ echo
 echo "Capturing ${OBSERVATION_SECONDS}s of loopback HTTP traffic via tcpdump..."
 
 CAP_FILE=/tmp/rf-tcpdump-$$.txt
-pi "sudo tcpdump -nn -i lo -l -A -s 200 'tcp port 80 and dst port 80' 2>/dev/null | grep --line-buffered '^GET /api/' > $CAP_FILE 2>&1 &
+# tcpdump prints each packet twice when using -A: once as a metadata line
+# ("... HTTP: GET /api/...") and once as the raw payload echo ("GET /api/...").
+# We filter to the metadata line by requiring "HTTP: GET /api/" so each
+# poll is counted exactly once. (Anchoring with ^GET fails because the -A
+# payload line is preceded by binary header bytes printed as dots.)
+pi "sudo tcpdump -nn -i lo -l -A -s 200 'tcp port 80 and dst port 80' 2>/dev/null | grep --line-buffered 'HTTP: GET /api/' > $CAP_FILE 2>&1 &
     DUMP_PID=\$!
     sleep $OBSERVATION_SECONDS
     sudo kill \$DUMP_PID 2>/dev/null
@@ -80,10 +85,12 @@ pi "sudo tcpdump -nn -i lo -l -A -s 200 'tcp port 80 and dst port 80' 2>/dev/nul
 
 echo "Capture complete. Analyzing..."
 
-# Count requests
-STATUS_HITS=$(pi "grep -c 'GET /api/system/status' $CAP_FILE 2>/dev/null || echo 0")
-PLAYLIST_HITS=$(pi "grep -c 'GET /api/playlist/' $CAP_FILE 2>/dev/null || echo 0")
-TOTAL_HITS=$(pi "wc -l < $CAP_FILE")
+# Count requests. Note: `grep -c` returns exit 1 when the count is 0,
+# which used to trip a `|| echo 0` fallback and produce "00". We just
+# wrap with `|| true` so a no-match exit doesn't double-emit a count.
+STATUS_HITS=$(pi "grep -c 'HTTP: GET /api/system/status' $CAP_FILE 2>/dev/null || true")
+PLAYLIST_HITS=$(pi "grep -c 'HTTP: GET /api/playlist/' $CAP_FILE 2>/dev/null || true")
+TOTAL_HITS=$(pi "wc -l < $CAP_FILE 2>/dev/null || echo 0")
 
 # Parse — strip whitespace and newlines
 STATUS_HITS=$(echo "$STATUS_HITS" | tr -d ' \n\r')
