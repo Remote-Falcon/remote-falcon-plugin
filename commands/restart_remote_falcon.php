@@ -24,6 +24,28 @@ $pluginName = "remote-falcon";
 WriteSettingToFile("remoteFalconListenerEnabled", urlencode("true"), $pluginName);
 WriteSettingToFile("remoteFalconListenerRestarting", urlencode("false"), $pluginName);
 
+// Serialize concurrent restart invocations with a PHP-side flock.
+// Without this, rapid-fire UI clicks (or programmatic storms) race on
+// postStart.sh's "check PID file → launch → write PID file" sequence
+// and can spawn multiple listeners.
+//
+// We use PHP's flock() rather than the flock(1) command because flock(1)
+// holds the lock via a file descriptor that's inherited by exec'd
+// children — and postStart.sh nohup's the listener as a child that
+// inherits that FD. The listener never exits, so the lock would never
+// release and PHP exec() would hang waiting for descendant FDs to close.
+// PHP-side flock lets us explicitly LOCK_UN before the function returns,
+// so the listener's inherited FD holds an already-released lock.
+$lockFh = @fopen("/tmp/rf-listener-lifecycle.lock", "c");
+if ($lockFh !== false) {
+    flock($lockFh, LOCK_EX);
+}
+
 exec($pluginDir . "/scripts/postStop.sh > /dev/null 2>&1");
 exec($pluginDir . "/scripts/postStart.sh > /dev/null 2>&1");
+
+if ($lockFh !== false) {
+    flock($lockFh, LOCK_UN);
+    fclose($lockFh);
+}
 ?>
