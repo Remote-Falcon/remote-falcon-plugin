@@ -1,6 +1,11 @@
-# Remote Falcon Plugin — Beta Testing (perf branch)
+# Remote Falcon Plugin — Beta Testing
 
-Thanks for helping test the next release. This branch (`perf/listener-tightening`) is a performance + reliability pass on the FPP listener; it has been validated against five FPP major versions in Docker, an 8-hour soak on a real Pi 3, and the full hardware integration suite.
+Thanks for helping test the next release. The current beta is tagged **`v2026.05.10-beta.1`** — a performance + reliability pass on the FPP listener that has been validated against five FPP major versions in Docker, an 8-hour soak on a real Pi 3, and the full hardware integration suite.
+
+Release page (with notes and stable download URL):
+https://github.com/Remote-Falcon/remote-falcon-plugin/releases/tag/v2026.05.10-beta.1
+
+**Why a tag and not a branch:** the tag is immutable — once `v2026.05.10-beta.1` is published, that exact code is what you get every time, forever. If we cut a follow-up beta you'll get `v2026.05.10-beta.2` (or similar) and decide whether to install it deliberately. No surprise updates from a moving branch.
 
 This guide walks you through:
 
@@ -32,7 +37,7 @@ None of the above changes the way you configure the plugin. Your existing settin
 
 ## 2. Compatibility — read before installing
 
-The beta is only published for branches that match your FPP major version. Pick the right path below.
+The beta is only supported on FPP 5.0+. Check your FPP version before installing.
 
 | Your FPP version       | Supported in this beta? | Notes                                                         |
 |------------------------|-------------------------|---------------------------------------------------------------|
@@ -79,9 +84,12 @@ You do not need to change your Remote Falcon account, token, or playlists. Setti
 
 ## 4. Install the beta
 
-All commands run on the FPP host as `fpp` (over SSH).
+All commands run on the FPP host as `fpp` (over SSH). The `BETA_TAG` variable up top is the only thing you'd change to install a different beta in the future.
 
 ```bash
+# Which beta you're installing. Change only this line if a newer beta tag exists.
+BETA_TAG=v2026.05.10-beta.1
+
 # Step A — Belt-and-suspenders backup of your settings.
 # The install path does NOT touch this file, but a backup costs nothing.
 sudo cp /home/fpp/media/config/plugin.remote-falcon ~/rf-config-backup.ini
@@ -90,9 +98,11 @@ sudo cp /home/fpp/media/config/plugin.remote-falcon ~/rf-config-backup.ini
 sudo /home/fpp/media/plugins/remote-falcon/scripts/postStop.sh
 sudo rm -rf /home/fpp/media/plugins/remote-falcon
 
-# Step C — Clone the beta branch and run the install hook.
+# Step C — Clone the beta tag and run the install hook.
+# Cloning a tag puts the working tree in detached-HEAD at that exact snapshot
+# — no surprise updates from a moving branch.
 cd /home/fpp/media/plugins
-sudo git clone --branch perf/listener-tightening --single-branch \
+sudo git clone --branch "$BETA_TAG" --single-branch \
     https://github.com/Remote-Falcon/remote-falcon-plugin.git remote-falcon
 sudo chown -R fpp:fpp remote-falcon
 sudo -u fpp env FPPDIR=/opt/fpp \
