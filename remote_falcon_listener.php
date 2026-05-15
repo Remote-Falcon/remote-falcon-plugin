@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2026.01.02.01";
+$PLUGIN_VERSION = "2026.05.15.01";
 
 include_once "/opt/fpp/www/common.php";
 $pluginName = basename(dirname(__FILE__));
@@ -93,6 +93,13 @@ $verboseLogging = urldecode($pluginSettings['verboseLogging']);
 logEntry("Verbose Logging: " . $verboseLogging);
 $GLOBALS['verboseLogging'] = ($verboseLogging === "true");
 
+// V17 heartbeat — emit a /fppHeartbeat POST every ~30s independent of
+// show state, so the dashboard can render "plugin online" + gap windows.
+// First tick fires immediately so the user doesn't wait 30s for the
+// first "alive" signal after a restart.
+$lastHeartbeatTs = 0;
+$heartbeatIntervalSeconds = 30;
+
 while(true) {
   $pluginSettings = parse_ini_file($pluginConfigFile);
 
@@ -144,6 +151,11 @@ while(true) {
   }
 
   if($remoteFppEnabled == 1) {
+    $nowTs = time();
+    if (($nowTs - $lastHeartbeatTs) >= $heartbeatIntervalSeconds) {
+      fppHeartbeat($remoteToken);
+      $lastHeartbeatTs = $nowTs;
+    }
     logEntry_verbose("Getting FPP Status");
     $fppStatus = getFppStatus();
     if($fppStatus != null && $fppStatus != false) {
@@ -650,6 +662,28 @@ function logEntry_verbose($data) {
 
   fwrite($logWrite, date('Y-m-d h:i:s A',time()).": ".$data."\n");
   fclose($logWrite);
+}
+
+function fppHeartbeat($remoteToken) {
+  $url = $GLOBALS['pluginsApiPath'] . "/fppHeartbeat";
+  $options = array(
+    'http' => array(
+      'method'  => 'POST',
+      'timeout' => 5,
+      'content' => '{}',
+      'header'  => "Content-Type: application/json; charset=UTF-8\r\n" .
+                   "Accept: application/json\r\n" .
+                   "remotetoken: $remoteToken\r\n",
+      'ignore_errors' => true
+    )
+  );
+  $context = stream_context_create($options);
+  $result = @file_get_contents($url, false, $context);
+  if ($result === FALSE) {
+    logEntry_verbose("WARNING - Heartbeat post failed to: " . $url);
+    return false;
+  }
+  return true;
 }
 
 ?>
