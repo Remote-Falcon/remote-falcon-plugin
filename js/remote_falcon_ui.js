@@ -222,15 +222,25 @@ function updateLoaderStatus(message) {
   $('#loaderStatus').text(message);
 }
 
+// Strip ONLY the trailing extension from a filename, preserving any
+// other dots in the name (version numbers, decimal-style ordering,
+// etc.). Returns the input unchanged when it has no extension or is
+// empty/null. Issue #137 — splitting on the first dot lost everything
+// after it for names like "Carol of the Bells v1.2.fseq".
+function stripFileExtension(filename) {
+  if (!filename) return filename;
+  return filename.replace(/\.[^.]+$/, '');
+}
+
 function getPlaylistReadableName(playlist) {
   if (!playlist) {
     return '';
   }
   if (playlist?.sequenceName) {
-    return playlist.sequenceName.split('.')[0];
+    return stripFileExtension(playlist.sequenceName);
   }
   if (playlist?.mediaName) {
-    return playlist.mediaName.split('.')[0];
+    return stripFileExtension(playlist.mediaName);
   }
   if (playlist?.note) {
     return playlist.note;
@@ -346,7 +356,7 @@ async function syncPlaylistToRF() {
             const mediaData = await fetchFppData('/api/media/' + encodeURIComponent(playlist?.mediaName) + "/meta");
             const mediaAlbumUrl = parseAlbumArtUrl(mediaData?.format?.tags?.comment);
             sequences.push({
-              playlistName: playlist?.sequenceName?.split('.')[0],
+              playlistName: stripFileExtension(playlist?.sequenceName),
               playlistDuration: playlist?.duration,
               playlistIndex: playlistIndex,
               playlistType: 'SEQUENCE',
@@ -356,7 +366,7 @@ async function syncPlaylistToRF() {
             });
           } else {
             sequences.push({
-              playlistName: playlist?.sequenceName?.split('.')[0],
+              playlistName: stripFileExtension(playlist?.sequenceName),
               playlistDuration: playlist?.duration,
               playlistIndex: playlistIndex,
               playlistType: 'SEQUENCE',
@@ -364,14 +374,14 @@ async function syncPlaylistToRF() {
           }
         }else if(playlist?.type === 'sequence') {
           sequences.push({
-            playlistName: playlist?.sequenceName?.split('.')[0],
+            playlistName: stripFileExtension(playlist?.sequenceName),
             playlistDuration: playlist?.duration,
             playlistIndex: playlistIndex,
             playlistType: 'SEQUENCE',
           });
         }else if(playlist?.type === 'media') {
           sequences.push({
-            playlistName: playlist?.mediaName?.split('.')[0],
+            playlistName: stripFileExtension(playlist?.mediaName),
             playlistDuration: 0,
             playlistIndex: playlistIndex,
             playlistType: 'MEDIA',
