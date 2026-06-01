@@ -369,19 +369,22 @@ function clearNextScheduledSequence($remoteToken) {
 }
 
 function getNextSequence($mainPlaylist, $currentlyPlaying) {
-  $nextScheduled = "";
-  for ($i = 0; $i < count($mainPlaylist); $i++) {
+  $n = count($mainPlaylist);
+  for ($i = 0; $i < $n; $i++) {
     if(isset($mainPlaylist[$i]->sequenceName) && pathinfo($mainPlaylist[$i]->sequenceName, PATHINFO_FILENAME) == $currentlyPlaying) {
-      if($i+1 == count($mainPlaylist)) {
-        $nextScheduled = $mainPlaylist[0]->sequenceName;
-      }else {
-        if(isset($mainPlaylist[$i+1]->sequenceName)) {
-          $nextScheduled = $mainPlaylist[$i+1]->sequenceName;
+      // Scan forward through entries with no sequenceName (pauses, etc.),
+      // wrapping at end of playlist. Return the first sequenceName found.
+      for ($step = 1; $step <= $n; $step++) {
+        $j = ($i + $step) % $n;
+        if(isset($mainPlaylist[$j]->sequenceName)) {
+          return pathinfo($mainPlaylist[$j]->sequenceName, PATHINFO_FILENAME);
         }
       }
+      // No sequence-bearing entry anywhere in the playlist (unlikely in practice)
+      return "";
     }
   }
-  return pathinfo($nextScheduled, PATHINFO_FILENAME);
+  return "";
 }
 
 function remotePreferences($remoteToken) {
