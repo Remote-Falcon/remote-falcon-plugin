@@ -1,9 +1,9 @@
 # Remote Falcon Plugin — Beta Testing
 
-Thanks for helping test the next release. The current beta is tagged **`v2026.05.10-beta.1`** — a performance + reliability pass on the FPP listener that has been validated against five FPP major versions in Docker, an 8-hour soak on a real Pi 3, and the full hardware integration suite.
+Thanks for helping test the next release. The current beta is tagged **`v2026.05.10-beta.2`** — a performance + reliability pass on the FPP listener (validated against five FPP major versions in Docker, an 8-hour soak on a real Pi 3, and the full hardware integration suite), plus a fix that lets the **Test Connectivity** button and version reporting work against self-hosted Remote Falcon instances.
 
 Release page (with notes and stable download URL):
-https://github.com/Remote-Falcon/remote-falcon-plugin/releases/tag/v2026.05.10-beta.1
+https://github.com/Remote-Falcon/remote-falcon-plugin/releases/tag/v2026.05.10-beta.2
 
 **Why a tag and not a branch:** the tag is immutable — once `v2026.05.10-beta.1` is published, that exact code is what you get every time, forever. If we cut a follow-up beta you'll get `v2026.05.10-beta.2` (or similar) and decide whether to install it deliberately. No surprise updates from a moving branch.
 
@@ -30,6 +30,7 @@ You should not need to change anything in your existing config. Behavior changes
 - **Settings file is no longer re-parsed every tick.** It is reloaded only when its modification time changes.
 - **Restart Listener no longer races itself.** Rapid clicks of the Restart button can no longer spawn multiple listeners.
 - **Logrotate config installed.** Listener log is rotated automatically; you should not see it grow unbounded any more.
+- **Self-hosted connectivity fixed (beta.2).** The **Test Connectivity** button and the plugin-version report now run server-side, so they work against a self-hosted Remote Falcon API URL instead of failing with `ajax_failed`. No effect if you use the default `remotefalcon.com` URL.
 
 None of the above changes the way you configure the plugin. Your existing settings continue to work.
 
@@ -88,7 +89,7 @@ All commands run on the FPP host as `fpp` (over SSH). The `BETA_TAG` variable up
 
 ```bash
 # Which beta you're installing. Change only this line if a newer beta tag exists.
-BETA_TAG=v2026.05.10-beta.1
+BETA_TAG=v2026.05.10-beta.2
 
 # Step A — Belt-and-suspenders backup of your settings.
 # The install path does NOT touch this file, but a backup costs nothing.
@@ -128,7 +129,7 @@ cat /home/fpp/media/plugins/remote-falcon/remote_falcon_listener.pid
 ps -p $(cat /home/fpp/media/plugins/remote-falcon/remote_falcon_listener.pid) \
     -o pid,user,etime,cmd
 
-# 5.3 — Log should show the new startup banner with version 2026.01.02.01
+# 5.3 — Log should show the new startup banner with version 2026.05.10-beta.2
 #       and your settings echoed back.
 tail -20 /home/fpp/media/logs/remote-falcon-listener.log
 
