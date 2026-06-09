@@ -394,7 +394,10 @@ async function syncPlaylistToRF() {
 
       updateSyncProgress('Syncing with Remote Falcon...', 90, '');
 
-      await RFAPIPost('/syncPlaylists', {playlists: sequences}, async (data, statusText, xhr) => {
+      // Sync server-side (via plugin.php) so the POST isn't blocked by Apache's
+      // CSP for self-hosted API URLs. The browser still builds the full payload
+      // (types + metadata); this is a transparent pass-through. See issue #157.
+      await FPPPost('/plugin.php?plugin=remote-falcon&page=sync_playlists.php&nopage=1', JSON.stringify({playlists: sequences}), async (data, statusText, xhr) => {
         if(xhr?.status === 200) {
           updateSyncProgress('Sync complete', 100);
           REMOTE_PLAYLIST = $('#remotePlaylistSelect').val();
@@ -473,19 +476,18 @@ async function runConnectivityTest(showToast = false) {
   }
 
   try {
-    const start = performance.now();
     let result = null;
-    await RFAPIGet('/q/health', (data, _statusText, xhr) => {
-      const latency = performance.now() - start;
+    // Probe the RF API server-side (via plugin.php) rather than from the
+    // browser, so the test uses the same network path as the listener and is
+    // not blocked by Apache's CSP for self-hosted API URLs. See issue #157.
+    await FPPGet('/plugin.php?plugin=remote-falcon&page=health_check.php&nopage=1', (data) => {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
       result = {
-        ok: xhr?.status === 200 && data?.status && data.status.toUpperCase() === 'UP',
-        status: data?.status,
-        latencyMs: Math.round(latency),
-        error: null
+        ok: parsed?.ok === true,
+        status: parsed?.status,
+        latencyMs: parsed?.latencyMs,
+        error: parsed?.error || null
       };
-    }, (xhr, status, error) => {
-      console.error('RFAPIGet Error:', status, error);
-      result = { ok: false, error: error || status };
     });
 
     if(result?.ok) {

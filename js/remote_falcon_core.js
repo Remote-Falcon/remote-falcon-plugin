@@ -43,9 +43,12 @@ async function savePluginVersionAndFPPVersionToRF() {
       pluginVersion: PLUGIN_VERSION,
       fppVersion: data?.version
     }
-    await RFAPIPost('/pluginVersion', request, () => {},
+    // Report the version server-side (via plugin.php) rather than from the
+    // browser, so it isn't blocked by Apache's CSP for self-hosted API URLs.
+    // See issue #157.
+    await FPPPost('/plugin.php?plugin=remote-falcon&page=report_version.php&nopage=1', JSON.stringify(request), () => {},
       (xhr, status, error) => {
-      console.error('RFAPIPost Error:', status, error);
+      console.error('Version report error:', status, error);
       hideLoader();
     });
   });
@@ -270,43 +273,7 @@ async function FPPPost(url, data, successCallback, errorCallback = null) {
   });
 }
 
-async function RFAPIGet(url, successCallback, errorCallback = null) {
-  await $.ajax({
-    url: PLUGINS_API_PATH + url,
-    type: 'GET',
-    async: true,
-    headers: {'remotetoken': REMOTE_TOKEN},
-    success: (data, statusText, xhr) => {
-      successCallback(data, statusText, xhr);
-    },
-    error: (xhr, status, error) => {
-      if (errorCallback) {
-        errorCallback(xhr, status, error);
-      } else {
-        console.error('RFAPIGet Error:', status, error);
-      }
-    }
-  });
-}
-
-async function RFAPIPost(url, data, successCallback, errorCallback = null) {
-  await $.ajax({
-    url: PLUGINS_API_PATH + url,
-    type: 'POST',
-    contentType: 'application/json',
-    dataType: 'json',
-    data: JSON.stringify(data),
-    async: true,
-    headers: { 'remotetoken': REMOTE_TOKEN },
-    success: (data, statusText, xhr) => {
-      successCallback(data, statusText, xhr);
-    },
-    error: (xhr, status, error) => {
-      if (errorCallback) {
-        errorCallback(xhr, status, error);
-      } else {
-        console.error('RFAPIGet Error:', status, error);
-      }
-    }
-  });
-}
+// Browser -> Remote Falcon API calls have been removed: every RF call the UI
+// used to make from the browser (health check, version report, playlist sync)
+// now runs server-side via plugin.php proxies, so none are subject to Apache's
+// CSP for self-hosted API URLs. See issue #157.
