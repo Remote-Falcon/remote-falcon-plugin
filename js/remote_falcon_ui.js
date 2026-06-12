@@ -323,8 +323,8 @@ async function syncPlaylistToRF() {
       const playlistItems = data?.mainPlaylist || [];
       const totalCount = playlistItems.length;
 
-      if(PLUGINS_API_PATH.includes("remotefalcon.com") && totalItems > 200) {
-        $.jGrowl("Cannot sync more than 200 items", { themeState: 'danger' });
+      if(PLUGINS_API_PATH.includes("remotefalcon.com") && totalItems > 500) {
+        $.jGrowl("Cannot sync more than 500 items", { themeState: 'danger' });
         return;
       }
 
