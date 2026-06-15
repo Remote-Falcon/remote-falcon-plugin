@@ -76,6 +76,17 @@ if (!function_exists('rf_fpp_base_url')) {
         return $result;
     }
 
+    // V17 heartbeat — fire-and-forget liveness POST to the RF plugins API.
+    // Failures are logged at verbose level only; a missed heartbeat must never
+    // disrupt the show loop.
+    function fppHeartbeat($remoteToken) {
+        $ok = rf_http_rf_heartbeat($GLOBALS['pluginsApiPath'], $remoteToken);
+        if (!$ok) {
+            logEntry_verbose("WARNING - Heartbeat post failed to: " . $GLOBALS['pluginsApiPath'] . "/fppHeartbeat");
+        }
+        return $ok;
+    }
+
     function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
         $start_time = microtime(true);
         logEntry_verbose("Calling Plugins API to update what's playing");

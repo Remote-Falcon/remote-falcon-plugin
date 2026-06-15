@@ -134,6 +134,17 @@ if (!function_exists('rf_http_request')) {
         return $body !== null;
     }
 
+    function rf_http_rf_heartbeat(string $rfBaseUrl, string $token, int $timeout = 5): bool {
+        $url = $rfBaseUrl . '/fppHeartbeat';
+        $headers = [
+            'Content-Type' => 'application/json; charset=UTF-8',
+            'Accept' => 'application/json',
+            'remotetoken' => $token,
+        ];
+        $body = _rf_http_rf_curl('POST', $url, $headers, '{}', $timeout);
+        return $body !== null;
+    }
+
     // --- Internal helpers (RF) ---
 
     function _rf_http_rf_get(string $rfBaseUrl, string $endpoint, string $token, int $timeout): ?stdClass {

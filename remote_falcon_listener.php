@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2026.05.10-beta.2";
+$PLUGIN_VERSION = "2026.06.15.01";
 
 // /opt/fpp/www/common.php is FPP's PHP "common functions" file, authored
 // for the web-UI context: it emits HTML markup (script tags, settings-
@@ -117,6 +117,13 @@ $GLOBALS['verboseLogging'] = ($verboseLogging === "true");
 
 $lastIniMtime = null;
 
+// V17 heartbeat — emit a /fppHeartbeat POST every ~30s independent of show
+// state so the dashboard can render "plugin online" + gap windows. First tick
+// fires immediately (lastHeartbeatTs starts at 0) so the "alive" signal lands
+// right after a restart instead of 30s later.
+$lastHeartbeatTs = 0;
+$heartbeatIntervalSeconds = 30;
+
 while(true) {
   // Re-parse the settings INI only when its mtime has changed. parse_ini_file
   // is far cheaper than HTTP, but at 1Hz polling for a multi-hour show it
@@ -180,6 +187,12 @@ while(true) {
   $sleepSeconds = $fppStatusCheckTime;
 
   if($remoteFppEnabled == 1) {
+    $nowTs = time();
+    if (($nowTs - $lastHeartbeatTs) >= $heartbeatIntervalSeconds) {
+      fppHeartbeat($remoteToken);
+      $lastHeartbeatTs = $nowTs;
+    }
+
     // Per-tick "Getting FPP Status" log was previously emitted at verbose
     // level. At 1 Hz over a multi-hour show that's thousands of lines/hour
     // of noise that obscures actual events. Removed in perf 2.5; the poll

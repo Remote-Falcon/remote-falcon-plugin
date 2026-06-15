@@ -58,18 +58,23 @@ final class ListenerLogicTest extends TestCase {
         $this->assertSame('b', rf_get_next_sequence($playlist, 'a'));
     }
 
+    public function testGetNextSequence_scansPastTrailingPauseWithWrap(): void {
+        $pause = new stdClass();
+        $playlist = [$this->seq('a.fseq'), $this->seq('b.fseq'), $pause];
+        // current is the last real sequence; next wraps past the trailing pause to 'a'
+        $this->assertSame('a', rf_get_next_sequence($playlist, 'b'));
+    }
+
     /**
-     * Locks in existing behavior: when the immediate next item has no
-     * sequenceName (e.g., a command-type playlist entry), the function
-     * returns "" rather than skipping ahead to the next valid sequence.
-     * This matches the pre-extraction listener behavior. May be worth
-     * revisiting — a playlist like [sequence, command, sequence] reports
-     * no next-scheduled while playing the first sequence.
+     * When the immediate next item has no sequenceName (a pause or command-type
+     * playlist entry), the function scans ahead to the next real sequence rather
+     * than giving up. Fixes the prior behavior where [sequence, command, sequence]
+     * reported no next-scheduled while playing the first sequence (pause-scan fix).
      */
-    public function testGetNextSequence_returnsEmptyWhenNextItemMissingSequenceName(): void {
+    public function testGetNextSequence_scansPastNextItemMissingSequenceName(): void {
         $missing = new stdClass();  // no sequenceName property
         $playlist = [$this->seq('a.fseq'), $missing, $this->seq('b.fseq')];
-        $this->assertSame('', rf_get_next_sequence($playlist, 'a'));
+        $this->assertSame('b', rf_get_next_sequence($playlist, 'a'));
     }
 
     public function testGetNextSequence_singleSequenceWrapsToItself(): void {

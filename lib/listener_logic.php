@@ -19,7 +19,6 @@ if (!function_exists('rf_get_next_sequence')) {
      * @return string Base filename of the next sequence, or "" if not found.
      */
     function rf_get_next_sequence(array $mainPlaylist, string $currentlyPlaying): string {
-        $nextScheduled = "";
         $count = count($mainPlaylist);
         for ($i = 0; $i < $count; $i++) {
             if (!isset($mainPlaylist[$i]->sequenceName)) {
@@ -28,14 +27,19 @@ if (!function_exists('rf_get_next_sequence')) {
             if (pathinfo($mainPlaylist[$i]->sequenceName, PATHINFO_FILENAME) !== $currentlyPlaying) {
                 continue;
             }
-            if ($i + 1 === $count) {
-                $nextScheduled = $mainPlaylist[0]->sequenceName ?? "";
-            } else {
-                $nextScheduled = $mainPlaylist[$i + 1]->sequenceName ?? "";
+            // Found the current sequence. Scan forward (wrapping) past entries
+            // with no sequenceName (pauses, etc.) so NEXT_PLAYLIST stays
+            // populated even when a pause immediately follows the current
+            // sequence.
+            for ($step = 1; $step <= $count; $step++) {
+                $j = ($i + $step) % $count;
+                if (isset($mainPlaylist[$j]->sequenceName)) {
+                    return pathinfo($mainPlaylist[$j]->sequenceName, PATHINFO_FILENAME);
+                }
             }
-            break;
+            return "";
         }
-        return pathinfo($nextScheduled, PATHINFO_FILENAME);
+        return "";
     }
 
     /**
