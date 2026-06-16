@@ -1,0 +1,72 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  vendor-check:
+    name: Verify vendor/ not committed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail if vendor/ is committed
+        run: |
+          if git ls-files vendor/ 2>/dev/null | grep -q .; then
+            echo "ERROR: vendor/ directory is committed to the repo."
+            echo "Composer dependencies must NOT be committed — they ship to user FPP installs otherwise."
+            git ls-files vendor/ | head -20
+            exit 1
+          fi
+          echo "OK: vendor/ is not committed."
+
+  phpunit:
+    name: PHPUnit (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    needs: vendor-check
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php${{ matrix.php }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php${{ matrix.php }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Lint listener PHP
+        run: php -l remote_falcon_listener.php
+
+      - name: Lint lib/ PHP
+        run: |
+          for f in lib/*.php; do
+            php -l "$f"
+          done
+
+      - name: Lint commands/ PHP
+        run: |
+          for f in commands/*.php; do
+            php -l "$f"
+          done
+
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit

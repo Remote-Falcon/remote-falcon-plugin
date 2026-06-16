@@ -18,17 +18,20 @@ async function saveDefaultPluginConfig() {
   await FPPGet('/api/plugin/remote-falcon/settings/init', async (data) => {
     var init = data?.init;
     if(!init) {
-      await FPPPost('/api/plugin/remote-falcon/settings/init', 'true', () => {});
-      await FPPPost('/api/plugin/remote-falcon/settings/remoteToken', '', () => {});
-      await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'true', () => {});
-      await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', 'false', () => {});
-      await FPPPost('/api/plugin/remote-falcon/settings/interruptSchedule', 'false', () => {});
-      await FPPPost('/api/plugin/remote-falcon/settings/requestFetchTime', '3', () => {});
-      await FPPPost('/api/plugin/remote-falcon/settings/additionalWaitTime', '0', () => {});
-      await FPPPost('/api/plugin/remote-falcon/settings/fppStatusCheckTime', '1', () => {});
-      await FPPPost('/api/plugin/remote-falcon/settings/pluginsApiPath', PLUGINS_API_PATH, () => {});
-      await FPPPost('/api/plugin/remote-falcon/settings/verboseLogging', 'false', () => {});
-      await FPPPost('/api/plugin/remote-falcon/settings/autoSyncMetadata', 'false', () => {});
+      const noop = () => {};
+      await Promise.all([
+        FPPPost('/api/plugin/remote-falcon/settings/init', 'true', noop),
+        FPPPost('/api/plugin/remote-falcon/settings/remoteToken', '', noop),
+        FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'true', noop),
+        FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', 'false', noop),
+        FPPPost('/api/plugin/remote-falcon/settings/interruptSchedule', 'false', noop),
+        FPPPost('/api/plugin/remote-falcon/settings/requestFetchTime', '3', noop),
+        FPPPost('/api/plugin/remote-falcon/settings/additionalWaitTime', '0', noop),
+        FPPPost('/api/plugin/remote-falcon/settings/fppStatusCheckTime', '1', noop),
+        FPPPost('/api/plugin/remote-falcon/settings/pluginsApiPath', PLUGINS_API_PATH, noop),
+        FPPPost('/api/plugin/remote-falcon/settings/verboseLogging', 'false', noop),
+        FPPPost('/api/plugin/remote-falcon/settings/autoSyncMetadata', 'false', noop),
+      ]);
       $.jGrowl("Default Config Saved", { themeState: 'success' });
     }
   })
@@ -40,51 +43,53 @@ async function savePluginVersionAndFPPVersionToRF() {
       pluginVersion: PLUGIN_VERSION,
       fppVersion: data?.version
     }
-    await RFAPIPost('/pluginVersion', request, () => {},
+    // Report the version server-side (via plugin.php) rather than from the
+    // browser, so it isn't blocked by Apache's CSP for self-hosted API URLs.
+    // See issue #157.
+    await FPPPost('/plugin.php?plugin=remote-falcon&page=report_version.php&nopage=1', JSON.stringify(request), () => {},
       (xhr, status, error) => {
-      console.error('RFAPIPost Error:', status, error);
+      console.error('Version report error:', status, error);
       hideLoader();
     });
   });
 }
 
 async function getPluginConfig() {
-  await FPPGet('/api/plugin/remote-falcon/settings/pluginVersion', (data) => {
-    PLUGIN_VERSION = data?.pluginVersion;
-  });
-  await FPPGet('/api/plugin/remote-falcon/settings/remoteToken', (data) => {
-    REMOTE_TOKEN = data?.remoteToken;
-  });
-  await FPPGet('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', (data) => {
-    REMOTE_FALCON_LISTENER_ENABLED = data?.remoteFalconListenerEnabled == 'true';
-  });
-  await FPPGet('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', (data) => {
-    REMOTE_FALCON_LISTENER_RESTARTING = data?.remoteFalconListenerRestarting == 'true';
-  });
-  await FPPGet('/api/plugin/remote-falcon/settings/interruptSchedule', (data) => {
-    INTERRUPT_SCHEDULE = data?.interruptSchedule == 'true';
-  });
-  await FPPGet('/api/plugin/remote-falcon/settings/requestFetchTime', (data) => {
-    REQUEST_FETCH_TIME = parseInt(data?.requestFetchTime);
-  });
-  await FPPGet('/api/plugin/remote-falcon/settings/additionalWaitTime', (data) => {
-    ADDITIONAL_WAIT_TIME = parseInt(data?.additionalWaitTime);
-  });
-  await FPPGet('/api/plugin/remote-falcon/settings/fppStatusCheckTime', (data) => {
-    FPP_STATUS_CHECK_TIME = parseFloat(data?.fppStatusCheckTime);
-  });
-  await FPPGet('/api/plugin/remote-falcon/settings/pluginsApiPath', (data) => {
-    PLUGINS_API_PATH = decodeURIComponent(data?.pluginsApiPath);
-  });
-  await FPPGet('/api/plugin/remote-falcon/settings/verboseLogging', (data) => {
-    VERBOSE_LOGGING = data?.verboseLogging == 'true';
-  });
-   await FPPGet('/api/plugin/remote-falcon/settings/autoSyncMetadata', (data) => {
-    AUTO_SYNC_METADATA = data?.autoSyncMetadata == 'true';
-  });
-  // await FPPGet('/api/plugin/remote-falcon/settings/remotePlaylist', (data) => {
-  //   REMOTE_PLAYLIST = data?.remotePlaylist;
-  // });
+  await Promise.all([
+    FPPGet('/api/plugin/remote-falcon/settings/pluginVersion', (data) => {
+      PLUGIN_VERSION = data?.pluginVersion;
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/remoteToken', (data) => {
+      REMOTE_TOKEN = data?.remoteToken;
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', (data) => {
+      REMOTE_FALCON_LISTENER_ENABLED = data?.remoteFalconListenerEnabled == 'true';
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', (data) => {
+      REMOTE_FALCON_LISTENER_RESTARTING = data?.remoteFalconListenerRestarting == 'true';
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/interruptSchedule', (data) => {
+      INTERRUPT_SCHEDULE = data?.interruptSchedule == 'true';
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/requestFetchTime', (data) => {
+      REQUEST_FETCH_TIME = parseInt(data?.requestFetchTime);
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/additionalWaitTime', (data) => {
+      ADDITIONAL_WAIT_TIME = parseInt(data?.additionalWaitTime);
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/fppStatusCheckTime', (data) => {
+      FPP_STATUS_CHECK_TIME = parseFloat(data?.fppStatusCheckTime);
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/pluginsApiPath', (data) => {
+      PLUGINS_API_PATH = decodeURIComponent(data?.pluginsApiPath);
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/verboseLogging', (data) => {
+      VERBOSE_LOGGING = data?.verboseLogging == 'true';
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/autoSyncMetadata', (data) => {
+      AUTO_SYNC_METADATA = data?.autoSyncMetadata == 'true';
+    }),
+  ]);
   await getRemotePlaylistFromConfig();
 }
 
@@ -95,7 +100,17 @@ async function getRemotePlaylistFromConfig() {
       return;
     }
     const match = data.match(/remotePlaylist\s*=\s*"([^"]*)"/);
-    REMOTE_PLAYLIST = match && match[1] ? normalizePlaylistName(match[1]) : null;
+    if (!match || !match[1]) {
+      REMOTE_PLAYLIST = null;
+      return;
+    }
+    let value = match[1];
+    try {
+      value = decodeURIComponent(value);
+    } catch (e) {
+      // Malformed encoding — fall back to the raw match.
+    }
+    REMOTE_PLAYLIST = normalizePlaylistName(value);
   });
 }
 
@@ -136,25 +151,46 @@ function normalizePlaylistName(name) {
 
 async function restartListener() {
   $.jGrowl("Restarting Listener", { themeState: 'success' });
-  await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerEnabled', 'false', () => {});
-  await FPPPost('/api/plugin/remote-falcon/settings/remoteFalconListenerRestarting', 'true', () => {});
+
+  // Invoke FPP's command system to run the plugin's "Remote Falcon - Restart
+  // Listener" command. That command (commands/restart_remote_falcon.php)
+  // performs a real kill+respawn via postStop.sh + postStart.sh and works
+  // whether or not a listener is currently running. This replaces the
+  // legacy approach of toggling settings flags and waiting for the running
+  // listener loop to reload — that approach only worked when the listener
+  // was already alive and could not pick up new code on disk.
+  try {
+    await $.ajax({
+      url: '/api/command/' + encodeURIComponent('Remote Falcon - Restart Listener'),
+      type: 'GET',
+      timeout: 15000,
+    });
+  } catch (e) {
+    console.error('Restart Listener command failed:', e);
+    $.jGrowl("Failed to invoke Restart Listener command", { themeState: 'danger' });
+    return;
+  }
+
   await getPluginConfig();
-
   await checkPlugin();
-
   $('#remoteFalconStatus').html(getRemoteFalconListenerEnabledStatus(REMOTE_FALCON_LISTENER_ENABLED));
 
+  var listenerCameBack = false;
   var checkListenerStatus = setInterval(async () => {
     await getPluginConfig();
     $('#remoteFalconStatus').html(getRemoteFalconListenerEnabledStatus(REMOTE_FALCON_LISTENER_ENABLED));
     if(REMOTE_FALCON_LISTENER_ENABLED) {
+      listenerCameBack = true;
       $.jGrowl("Listener Restarted", { themeState: 'success' });
       clearInterval(checkListenerStatus);
     }
   }, 1000);
 
-  setTimeout(async () => {
+  setTimeout(() => {
     clearInterval(checkListenerStatus);
+    if (!listenerCameBack) {
+      $.jGrowl("Listener did not restart in time. Try Restart Listener again or check the listener log.", { themeState: 'danger' });
+    }
   }, 5000);
 }
 
@@ -237,43 +273,7 @@ async function FPPPost(url, data, successCallback, errorCallback = null) {
   });
 }
 
-async function RFAPIGet(url, successCallback, errorCallback = null) {
-  await $.ajax({
-    url: PLUGINS_API_PATH + url,
-    type: 'GET',
-    async: true,
-    headers: {'remotetoken': REMOTE_TOKEN},
-    success: (data, statusText, xhr) => {
-      successCallback(data, statusText, xhr);
-    },
-    error: (xhr, status, error) => {
-      if (errorCallback) {
-        errorCallback(xhr, status, error);
-      } else {
-        console.error('RFAPIGet Error:', status, error);
-      }
-    }
-  });
-}
-
-async function RFAPIPost(url, data, successCallback, errorCallback = null) {
-  await $.ajax({
-    url: PLUGINS_API_PATH + url,
-    type: 'POST',
-    contentType: 'application/json',
-    dataType: 'json',
-    data: JSON.stringify(data),
-    async: true,
-    headers: { 'remotetoken': REMOTE_TOKEN },
-    success: (data, statusText, xhr) => {
-      successCallback(data, statusText, xhr);
-    },
-    error: (xhr, status, error) => {
-      if (errorCallback) {
-        errorCallback(xhr, status, error);
-      } else {
-        console.error('RFAPIGet Error:', status, error);
-      }
-    }
-  });
-}
+// Browser -> Remote Falcon API calls have been removed: every RF call the UI
+// used to make from the browser (health check, version report, playlist sync)
+// now runs server-side via plugin.php proxies, so none are subject to Apache's
+// CSP for self-hosted API URLs. See issue #157.

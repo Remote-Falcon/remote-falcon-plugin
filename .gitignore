@@ -106,3 +106,8 @@ dist
 scripts/remote_fpp_test.sh
 
 /.idea
+
+# PHP / Composer / PHPUnit
+/vendor/
+.phpunit.cache/
+.phpunit.result.cache

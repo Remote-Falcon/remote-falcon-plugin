@@ -1,0 +1,19 @@
+# logrotate config for the Remote Falcon listener log.
+# Installed by scripts/fpp_install.sh as a symlink at
+# /etc/logrotate.d/remote-falcon, removed by fpp_uninstall.sh.
+#
+# Without rotation, multi-month show seasons accumulate gigabytes of log
+# data on the SD card — the leading cause of FPP failures during the
+# season. Daily rotation keeps the active file small and bounded.
+
+/home/fpp/media/logs/remote-falcon-listener.log {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su fpp fpp
+    create 0664 fpp fpp
+}

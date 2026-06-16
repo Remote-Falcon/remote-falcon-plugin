@@ -14,7 +14,7 @@ $remotePlaylist = $argv[1];
 
 $remoteToken = urldecode($pluginSettings['remoteToken']);
 $pluginsApiPath = urldecode($pluginSettings['pluginsApiPath']);
-$remoteFppEnabled = urldecode($pluginSettings['remoteFppEnabled']);
+$remoteFalconListenerEnabled = urldecode($pluginSettings['remoteFalconListenerEnabled']);
 
 if(strlen($remoteToken)>1) {
   echo "Updating\n";
@@ -64,8 +64,8 @@ if(strlen($remoteToken)>1) {
   $result = file_get_contents( $url, false, $context );
   $response = json_decode( $result );
   if($response) {
-    WriteSettingToFile("remotePlaylist",$remotePlaylist,$pluginName);
-    if($remoteFppEnabled == 1) {
+    WriteSettingToFile("remotePlaylist",urlencode($remotePlaylist),$pluginName);
+    if($remoteFalconListenerEnabled == "true") {
       WriteSettingToFile("remoteFalconListenerEnabled",urlencode("false"),$pluginName);
       WriteSettingToFile("remoteFalconListenerRestarting",urlencode("true"),$pluginName);
     }
