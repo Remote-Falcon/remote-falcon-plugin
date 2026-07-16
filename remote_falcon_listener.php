@@ -211,16 +211,19 @@ while(true) {
     $autoSyncEnabled = isset($pluginSettings['autoSyncPlaylist'])
         && urldecode($pluginSettings['autoSyncPlaylist']) === "true";
     if ($autoSyncEnabled && $remotePlaylist != "") {
+      $playlistDir = isset($settings['playlistDirectory']) ? $settings['playlistDirectory'] : '/home/fpp/media/playlists';
+      $playlistJson = $playlistDir . '/' . $remotePlaylist . '.json';
       if ($autoSyncPlaylistName !== $remotePlaylist) {
         // Synced playlist switched (UI or command) — start fresh, don't
-        // treat the new file's mtime as a pending change.
+        // treat the new file's mtime as a pending change. Log the watched
+        // path so a wrong playlistDirectory is visible in the first
+        // screenful of the log instead of failing silently.
         $autoSyncPlaylistName = $remotePlaylist;
         $autoSyncLastMtime = null;
         $autoSyncChangedAt = null;
         $autoSyncMissingWarned = false;
+        logEntry("Auto Sync: watching " . $playlistJson);
       }
-      $playlistDir = isset($settings['playlistDirectory']) ? $settings['playlistDirectory'] : '/home/fpp/media/playlists';
-      $playlistJson = $playlistDir . '/' . $remotePlaylist . '.json';
       $currMtime = @filemtime($playlistJson);
       if ($currMtime === false && !$autoSyncMissingWarned) {
         logEntry("WARNING - Auto Sync: playlist file not found: " . $playlistJson);
@@ -232,17 +235,13 @@ while(true) {
       $autoSyncLastMtime = $autoSyncDecision['lastMtime'];
       $autoSyncChangedAt = $autoSyncDecision['changedAt'];
       if ($autoSyncDecision['sync']) {
-        logEntry("Auto Sync: '" . $remotePlaylist . "' changed; re-syncing to Remote Falcon");
-        $autoSyncResult = rf_sync_playlist_to_rf($remotePlaylist, [
-          'remoteToken' => $remoteToken,
-          'pluginsApiPath' => $pluginsApiPath,
-          'raw' => $pluginSettings,
-        ]);
-        if ($autoSyncResult['ok']) {
-          logEntry("Auto Sync: synced " . $autoSyncResult['count'] . " items");
-        } else {
-          logEntry("ERROR - Auto Sync failed: " . $autoSyncResult['error']);
-        }
+        // Dispatch out-of-process so this ~1Hz tick never blocks on the
+        // sync's HTTP round-trips (an in-tick sync could stall status
+        // polling and the 30s heartbeat — 2026-07-16 release review). The
+        // runner logs its own outcome to this log and flock-serializes
+        // itself, so overlapping dispatches skip rather than stack.
+        logEntry("Auto Sync: '" . $remotePlaylist . "' changed; dispatching background sync");
+        exec("php " . escapeshellarg($pluginPath . "auto_sync_runner.php") . " " . escapeshellarg($remotePlaylist) . " > /dev/null 2>&1 &");
       }
     }
 

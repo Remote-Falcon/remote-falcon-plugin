@@ -281,8 +281,12 @@ function hideSyncProgress() {
 async function syncPlaylistToRF() {
   if(REMOTE_TOKEN) {
     const selectedPlaylist = $('#remotePlaylistSelect').val();
+    if(!selectedPlaylist) {
+      $.jGrowl("Select a playlist to sync first", { themeState: 'danger' });
+      return;
+    }
     const shouldSyncMetadata = $('#autoSyncMetadataCheckbox').is(':checked');
-    updateSyncProgress('Syncing with Remote Falcon...', 40);
+    updateSyncProgress('Syncing with Remote Falcon... (large playlists can take a minute)', 40);
 
     try {
       // The payload (types, metadata, ordering) is built server-side by
@@ -309,6 +313,8 @@ async function syncPlaylistToRF() {
             message = "Playlist is Empty";
           } else if (body?.error === 'playlist_fetch_failed') {
             message = "Unable to load playlist";
+          } else if (body?.error === 'invalid_payload') {
+            message = "Select a playlist to sync first";
           }
         } catch (parseError) {
           // keep the generic message

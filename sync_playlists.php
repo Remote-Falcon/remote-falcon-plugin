@@ -45,6 +45,10 @@ if (!is_array($input)) {
 }
 
 // Legacy pass-through: browser-built payload from a cached pre-#158 UI.
+// SUNSET: remote_falcon_ui.html now cache-busts the script by filemtime, so
+// this shape can only arrive from a tab loaded before the upgrade. Remove
+// this branch in the first release after 2026.07 (return invalid_payload;
+// the UI's generic error + a page reload recovers the user).
 if (isset($input['playlists']) && is_array($input['playlists'])) {
     $response = rf_http_request(
         'POST',
