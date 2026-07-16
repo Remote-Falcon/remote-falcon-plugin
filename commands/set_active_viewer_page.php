@@ -44,7 +44,10 @@ if ($result['body'] === null) {
 
 $decoded = json_decode($result['body'], true);
 $message = is_array($decoded) && isset($decoded['message']) ? $decoded['message'] : '';
-if ($result['status'] >= 200 && $result['status'] < 300 && $message === 'Success') {
+// A 2xx from this endpoint is definitionally success — the API's only
+// non-throwing path returns 200. Don't couple to the message wording
+// (2026-07-16 release review): a reworded success must not log as failure.
+if ($result['status'] >= 200 && $result['status'] < 300) {
     echo "Active viewer page set to '" . $pageName . "'\n";
 } else {
     // 4xx bodies (unknown page name, etc.) include the valid names, so the
