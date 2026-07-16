@@ -38,6 +38,19 @@
     ]
   },
   {
+    "name": "Remote Falcon - Set Active Viewer Page",
+    "script": "set_active_viewer_page.php",
+    "args": [
+      {
+        "name": "pageName",
+        "type": "string",
+        "description": "Viewer Page Name",
+        "contentListUrl": "plugin.php?plugin=remote-falcon&page=viewer_pages_list.php&nopage=1",
+        "optional": false
+      }
+    ]
+  },
+  {
     "name": "Remote Falcon - Turn Viewer Control Off",
     "script": "viewer_control_off.php",
     "args": []
