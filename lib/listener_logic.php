@@ -263,4 +263,45 @@ if (!function_exists('rf_get_next_sequence')) {
         $mtime = @filemtime($path);
         return $mtime === false ? null : $mtime;
     }
+
+    /**
+     * Auto Sync Playlist decision (issue #13): should the listener re-sync
+     * the remote playlist to RF on this tick?
+     *
+     * A sync fires only after the playlist file's mtime has changed AND then
+     * held unchanged for the full $quietSeconds window. Every further change
+     * resets the window, so an active editing session in the FPP UI
+     * coalesces into a single sync shortly after the last save — the
+     * listener never syncs mid-edit.
+     *
+     * State machine over ($prevMtime, $changedAt):
+     *   - file missing            -> clear state, never sync
+     *   - first observation       -> baseline (no sync on listener start)
+     *   - mtime changed           -> remember it, (re)start the quiet window
+     *   - stable & window elapsed -> SYNC, close the window
+     *   - otherwise               -> wait
+     *
+     * @param ?int      $prevMtime    Last observed mtime (null = none yet).
+     * @param ?int      $changedAt    Timestamp when the pending change was
+     *                                first observed (null = no pending change).
+     * @param int|false|null $currMtime Current filemtime() result.
+     * @param int       $now          Current unix timestamp.
+     * @param int       $quietSeconds Quiet window; production uses 30.
+     * @return array ['sync' => bool, 'lastMtime' => ?int, 'changedAt' => ?int]
+     */
+    function rf_auto_sync_decision(?int $prevMtime, ?int $changedAt, $currMtime, int $now, int $quietSeconds = 30): array {
+        if ($currMtime === false || $currMtime === null) {
+            return ['sync' => false, 'lastMtime' => null, 'changedAt' => null];
+        }
+        if ($prevMtime === null) {
+            return ['sync' => false, 'lastMtime' => $currMtime, 'changedAt' => null];
+        }
+        if ($currMtime !== $prevMtime) {
+            return ['sync' => false, 'lastMtime' => $currMtime, 'changedAt' => $now];
+        }
+        if ($changedAt !== null && ($now - $changedAt) >= $quietSeconds) {
+            return ['sync' => true, 'lastMtime' => $currMtime, 'changedAt' => null];
+        }
+        return ['sync' => false, 'lastMtime' => $currMtime, 'changedAt' => $changedAt];
+    }
 }

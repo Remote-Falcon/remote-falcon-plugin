@@ -20,6 +20,7 @@ require_once __DIR__ . "/lib/listener_logic.php";
 require_once __DIR__ . "/lib/listener_http.php";
 require_once __DIR__ . "/lib/listener_log.php";
 require_once __DIR__ . "/lib/listener_actions.php";
+require_once __DIR__ . "/lib/sync_builder.php";
 $pluginName = basename(dirname(__FILE__));
 $pluginPath = $settings['pluginDirectory']."/".$pluginName."/";
 $logFile = $settings['logDirectory']."/".$pluginName."-listener.log";
@@ -66,6 +67,9 @@ if (strlen(urldecode($pluginSettings['remoteFalconListenerEnabled']))<1){
 if (strlen(urldecode($pluginSettings['remoteFalconListenerRestarting']))<1){
   WriteSettingToFile("remoteFalconListenerRestarting",urlencode("false"),$pluginName);
 }
+if (!isset($pluginSettings['autoSyncPlaylist']) || strlen(urldecode($pluginSettings['autoSyncPlaylist']))<1){
+  WriteSettingToFile("autoSyncPlaylist",urlencode("false"),$pluginName);
+}
 
 $remoteToken = "";
 $remotePlaylist = "";
@@ -80,6 +84,12 @@ $pluginsApiPath = "";
 $verboseLogging = false;
 $lastQueuedSequence = "";
 $lastQueuedTime = 0;
+
+// Auto Sync Playlist (#13) watcher state.
+$autoSyncPlaylistName = null;
+$autoSyncLastMtime = null;
+$autoSyncChangedAt = null;
+$autoSyncMissingWarned = false;
 
 $pluginsApiPath = urldecode($pluginSettings['pluginsApiPath']);
 logEntry("Plugins API Path: " . $pluginsApiPath);
@@ -191,6 +201,49 @@ while(true) {
     if (($nowTs - $lastHeartbeatTs) >= $heartbeatIntervalSeconds) {
       fppHeartbeat($remoteToken);
       $lastHeartbeatTs = $nowTs;
+    }
+
+    // Auto Sync Playlist (#13): watch the synced playlist's JSON for edits
+    // and re-sync to RF once the file has sat quiet for 30s (every new save
+    // resets the window, so an editing session coalesces into one sync).
+    // Off by default via the autoSyncPlaylist setting. Re-syncs the SAME
+    // playlist, so no listener restart and no remotePlaylist rewrite.
+    $autoSyncEnabled = isset($pluginSettings['autoSyncPlaylist'])
+        && urldecode($pluginSettings['autoSyncPlaylist']) === "true";
+    if ($autoSyncEnabled && $remotePlaylist != "") {
+      if ($autoSyncPlaylistName !== $remotePlaylist) {
+        // Synced playlist switched (UI or command) — start fresh, don't
+        // treat the new file's mtime as a pending change.
+        $autoSyncPlaylistName = $remotePlaylist;
+        $autoSyncLastMtime = null;
+        $autoSyncChangedAt = null;
+        $autoSyncMissingWarned = false;
+      }
+      $playlistDir = isset($settings['playlistDirectory']) ? $settings['playlistDirectory'] : '/home/fpp/media/playlists';
+      $playlistJson = $playlistDir . '/' . $remotePlaylist . '.json';
+      $currMtime = @filemtime($playlistJson);
+      if ($currMtime === false && !$autoSyncMissingWarned) {
+        logEntry("WARNING - Auto Sync: playlist file not found: " . $playlistJson);
+        $autoSyncMissingWarned = true;
+      } else if ($currMtime !== false) {
+        $autoSyncMissingWarned = false;
+      }
+      $autoSyncDecision = rf_auto_sync_decision($autoSyncLastMtime, $autoSyncChangedAt, $currMtime, $nowTs, 30);
+      $autoSyncLastMtime = $autoSyncDecision['lastMtime'];
+      $autoSyncChangedAt = $autoSyncDecision['changedAt'];
+      if ($autoSyncDecision['sync']) {
+        logEntry("Auto Sync: '" . $remotePlaylist . "' changed; re-syncing to Remote Falcon");
+        $autoSyncResult = rf_sync_playlist_to_rf($remotePlaylist, [
+          'remoteToken' => $remoteToken,
+          'pluginsApiPath' => $pluginsApiPath,
+          'raw' => $pluginSettings,
+        ]);
+        if ($autoSyncResult['ok']) {
+          logEntry("Auto Sync: synced " . $autoSyncResult['count'] . " items");
+        } else {
+          logEntry("ERROR - Auto Sync failed: " . $autoSyncResult['error']);
+        }
+      }
     }
 
     // Per-tick "Getting FPP Status" log was previously emitted at verbose

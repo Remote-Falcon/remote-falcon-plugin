@@ -13,6 +13,7 @@ $(document).ready(async () => {
   $('#pluginsApiPathInput').val(PLUGINS_API_PATH);
   $('#verboseLoggingCheckbox').prop('checked', VERBOSE_LOGGING);
   $('#autoSyncMetadataCheckbox').prop('checked', AUTO_SYNC_METADATA);
+  $('#autoSyncPlaylistCheckbox').prop('checked', AUTO_SYNC_PLAYLIST);
 
   //Component Handlers
   $('#remoteTokenInput').blur(async () => {
@@ -114,6 +115,16 @@ $(document).ready(async () => {
     AUTO_SYNC_METADATA = isChecked;
     await FPPPost('/api/plugin/remote-falcon/settings/autoSyncMetadata', isChecked.toString(), () => {
       $.jGrowl(isChecked ? "Metadata sync enabled" : "Metadata sync disabled", { themeState: 'success' });
+    });
+  });
+
+  // The listener re-reads settings each tick (INI mtime watch), so this
+  // toggle takes effect without a listener restart.
+  $('#autoSyncPlaylistCheckbox').change(async () => {
+    const isChecked = $('#autoSyncPlaylistCheckbox').is(':checked');
+    AUTO_SYNC_PLAYLIST = isChecked;
+    await FPPPost('/api/plugin/remote-falcon/settings/autoSyncPlaylist', isChecked.toString(), () => {
+      $.jGrowl(isChecked ? "Auto playlist sync enabled" : "Auto playlist sync disabled", { themeState: 'success' });
     });
   });
 
@@ -526,7 +537,8 @@ additionalWaitTime = "0"
 fppStatusCheckTime = "1"
 pluginsApiPath = "${DEFAULT_PLUGINS_API_PATH}"
 verboseLogging = "false"
-autoSyncMetadata = "false"`;
+autoSyncMetadata = "false"
+autoSyncPlaylist = "false"`;
 
   $('#pluginConfigTextarea').val(defaultConfig);
 
