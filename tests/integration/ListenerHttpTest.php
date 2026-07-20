@@ -178,6 +178,34 @@ final class ListenerHttpTest extends IntegrationTestCase {
         $this->assertNull($result);
     }
 
+    public function testHttpRequestWithStatus_returnsStatusAndBodyOn2xx(): void {
+        $this->rfMock->setRoute('/setActiveViewerPage', ['body' => ['message' => 'Success']]);
+        $result = rf_http_request_with_status('POST', $this->rfMock->getBaseUrl() . '/setActiveViewerPage',
+            ['Content-Type' => 'application/json'], '{"pageName":"Main"}', 5);
+        $this->assertSame(200, $result['status']);
+        $this->assertSame('Success', json_decode($result['body'], true)['message']);
+    }
+
+    public function testHttpRequestWithStatus_preservesErrorBodyOn4xx(): void {
+        // The Set Active Viewer Page command relies on the 400 body reaching
+        // the FPP log (it lists the valid page names) — rf_http_request()
+        // would swallow it, rf_http_request_with_status() must not.
+        $this->rfMock->setRoute('/setActiveViewerPage', [
+            'status' => 400,
+            'body' => ['message' => "No viewer page named 'Easter'. Available: Main, Halloween"],
+        ]);
+        $result = rf_http_request_with_status('POST', $this->rfMock->getBaseUrl() . '/setActiveViewerPage',
+            ['Content-Type' => 'application/json'], '{"pageName":"Easter"}', 5);
+        $this->assertSame(400, $result['status']);
+        $this->assertStringContainsString('Halloween', $result['body']);
+    }
+
+    public function testHttpRequestWithStatus_returnsStatusZeroAndNullBodyOnNetworkFailure(): void {
+        $result = rf_http_request_with_status('GET', 'http://127.0.0.1:1', [], null, 1);
+        $this->assertSame(0, $result['status']);
+        $this->assertNull($result['body']);
+    }
+
     public function testHttpDecodeJson_handlesNullInput(): void {
         $this->assertNull(rf_http_decode_json(null));
     }

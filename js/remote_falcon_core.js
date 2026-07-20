@@ -13,6 +13,7 @@ var REMOTE_PLAYLIST = null;
 var PLUGINS_API_PATH = DEFAULT_PLUGINS_API_PATH;
 var VERBOSE_LOGGING = null;
 var AUTO_SYNC_METADATA = false;
+var AUTO_SYNC_PLAYLIST = false;
 
 async function saveDefaultPluginConfig() {
   await FPPGet('/api/plugin/remote-falcon/settings/init', async (data) => {
@@ -31,6 +32,7 @@ async function saveDefaultPluginConfig() {
         FPPPost('/api/plugin/remote-falcon/settings/pluginsApiPath', PLUGINS_API_PATH, noop),
         FPPPost('/api/plugin/remote-falcon/settings/verboseLogging', 'false', noop),
         FPPPost('/api/plugin/remote-falcon/settings/autoSyncMetadata', 'false', noop),
+        FPPPost('/api/plugin/remote-falcon/settings/autoSyncPlaylist', 'false', noop),
       ]);
       $.jGrowl("Default Config Saved", { themeState: 'success' });
     }
@@ -88,6 +90,9 @@ async function getPluginConfig() {
     }),
     FPPGet('/api/plugin/remote-falcon/settings/autoSyncMetadata', (data) => {
       AUTO_SYNC_METADATA = data?.autoSyncMetadata == 'true';
+    }),
+    FPPGet('/api/plugin/remote-falcon/settings/autoSyncPlaylist', (data) => {
+      AUTO_SYNC_PLAYLIST = data?.autoSyncPlaylist == 'true';
     }),
   ]);
   await getRemotePlaylistFromConfig();

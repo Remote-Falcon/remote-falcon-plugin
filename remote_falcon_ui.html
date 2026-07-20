@@ -2,7 +2,12 @@
 <html>
 <head>
   <link rel="stylesheet" type="text/css" href="./css/remote_falcon_ui.css">
-	<script src="./js/remote_falcon_ui.js"></script>
+	<!-- filemtime cache-buster: this page is include()d by FPP's plugin.php,
+	     so PHP executes here. Guarantees the browser picks up a new
+	     remote_falcon_ui.js on the first page load after a plugin upgrade —
+	     without it, a cached pre-#158 script could keep posting the legacy
+	     sync payload indefinitely (see sync_playlists.php). -->
+	<script src="./js/remote_falcon_ui.js?v=<?php echo @filemtime(__DIR__ . '/js/remote_falcon_ui.js'); ?>"></script>
 </head>
 <body>
 
@@ -85,6 +90,10 @@
             <div class="form-check auto-sync-check">
               <input class="form-check-input" type="checkbox" id="autoSyncMetadataCheckbox">
               <label class="form-check-label" for="autoSyncMetadataCheckbox">Sync metadata (title/artist/comment)</label>
+            </div>
+            <div class="form-check auto-sync-check">
+              <input class="form-check-input" type="checkbox" id="autoSyncPlaylistCheckbox">
+              <label class="form-check-label" for="autoSyncPlaylistCheckbox">Auto sync playlist changes to RF</label>
             </div>
             <button id="syncRemotePlaylistButton" class="buttons btn-outline-success btn-rounded button-margin" type="button">Sync with RF</button>
           </div>

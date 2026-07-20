@@ -243,8 +243,14 @@ if (!function_exists('rf_get_next_sequence')) {
      *
      * Note: WriteSettingToFile always rewrites the file, which bumps mtime.
      * So flag changes via the FPP UI / commands always trigger a re-parse.
+     *
+     * clearstatcache is required: the writes come from OTHER processes
+     * (FPP's apache), and PHP's single-slot stat cache otherwise returns
+     * the first stat result forever when this is the only path the loop
+     * stats — the daemon would never see a settings change.
      */
-    function rf_ini_should_reparse(string $path, ?int $lastMtime): bool {
+    function rf_ini_should_reparse(string $path, ?int $lastMtime, ?int $nowTs = null): bool {
+        clearstatcache(false, $path);
         $mtime = @filemtime($path);
         if ($mtime === false) {
             return true;
@@ -252,7 +258,18 @@ if (!function_exists('rf_get_next_sequence')) {
         if ($lastMtime === null) {
             return true;
         }
-        return $mtime !== $lastMtime;
+        if ($mtime !== $lastMtime) {
+            return true;
+        }
+        // filemtime is second-granular. If the last parse happened within the
+        // current (or previous) second, a writer can still land in that same
+        // second WITHOUT changing the mtime we compare against — so treat the
+        // file as "hot" and keep re-parsing until the granularity window has
+        // safely passed. Costs a couple of extra parses right after a write.
+        if ($nowTs !== null && $nowTs <= $lastMtime + 1) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -260,7 +277,49 @@ if (!function_exists('rf_get_next_sequence')) {
      * Caller stores this and passes it back to rf_ini_should_reparse.
      */
     function rf_ini_current_mtime(string $path): ?int {
+        clearstatcache(false, $path);
         $mtime = @filemtime($path);
         return $mtime === false ? null : $mtime;
+    }
+
+    /**
+     * Auto Sync Playlist decision (issue #13): should the listener re-sync
+     * the remote playlist to RF on this tick?
+     *
+     * A sync fires only after the playlist file's mtime has changed AND then
+     * held unchanged for the full $quietSeconds window. Every further change
+     * resets the window, so an active editing session in the FPP UI
+     * coalesces into a single sync shortly after the last save — the
+     * listener never syncs mid-edit.
+     *
+     * State machine over ($prevMtime, $changedAt):
+     *   - file missing            -> clear state, never sync
+     *   - first observation       -> baseline (no sync on listener start)
+     *   - mtime changed           -> remember it, (re)start the quiet window
+     *   - stable & window elapsed -> SYNC, close the window
+     *   - otherwise               -> wait
+     *
+     * @param ?int      $prevMtime    Last observed mtime (null = none yet).
+     * @param ?int      $changedAt    Timestamp when the pending change was
+     *                                first observed (null = no pending change).
+     * @param int|false|null $currMtime Current filemtime() result.
+     * @param int       $now          Current unix timestamp.
+     * @param int       $quietSeconds Quiet window; production uses 30.
+     * @return array ['sync' => bool, 'lastMtime' => ?int, 'changedAt' => ?int]
+     */
+    function rf_auto_sync_decision(?int $prevMtime, ?int $changedAt, $currMtime, int $now, int $quietSeconds = 30): array {
+        if ($currMtime === false || $currMtime === null) {
+            return ['sync' => false, 'lastMtime' => null, 'changedAt' => null];
+        }
+        if ($prevMtime === null) {
+            return ['sync' => false, 'lastMtime' => $currMtime, 'changedAt' => null];
+        }
+        if ($currMtime !== $prevMtime) {
+            return ['sync' => false, 'lastMtime' => $currMtime, 'changedAt' => $now];
+        }
+        if ($changedAt !== null && ($now - $changedAt) >= $quietSeconds) {
+            return ['sync' => true, 'lastMtime' => $currMtime, 'changedAt' => null];
+        }
+        return ['sync' => false, 'lastMtime' => $currMtime, 'changedAt' => $changedAt];
     }
 }

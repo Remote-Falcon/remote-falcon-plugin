@@ -13,10 +13,13 @@
 if (!function_exists('rf_http_request')) {
 
     /**
-     * Issue a single HTTP request and return the response body, or null
-     * on transport error / timeout / non-2xx response.
+     * Issue a single HTTP request and return ['status' => int, 'body' => ?string].
+     * On transport error / timeout: status 0, body null. Non-2xx responses
+     * return their real status and body — callers that need error bodies
+     * (e.g. a 400 listing valid values) use this directly; everything else
+     * goes through rf_http_request() below.
      */
-    function rf_http_request(string $method, string $url, array $headers = [], ?string $body = null, int $timeout = 10): ?string {
+    function rf_http_request_with_status(string $method, string $url, array $headers = [], ?string $body = null, int $timeout = 10): array {
         $headerLines = [];
         foreach ($headers as $name => $value) {
             $headerLines[] = "$name: $value";
@@ -35,7 +38,7 @@ if (!function_exists('rf_http_request')) {
         $context = stream_context_create($opts);
         $response = @file_get_contents($url, false, $context);
         if ($response === false) {
-            return null;
+            return ['status' => 0, 'body' => null];
         }
         // Read response headers. PHP 8.4+ exposes http_get_last_response_headers();
         // older versions only expose the locally scoped $http_response_header,
@@ -53,10 +56,19 @@ if (!function_exists('rf_http_request')) {
                 $statusCode = (int) $m[1];
             }
         }
-        if ($statusCode < 200 || $statusCode >= 300) {
+        return ['status' => $statusCode, 'body' => $response];
+    }
+
+    /**
+     * Issue a single HTTP request and return the response body, or null
+     * on transport error / timeout / non-2xx response.
+     */
+    function rf_http_request(string $method, string $url, array $headers = [], ?string $body = null, int $timeout = 10): ?string {
+        $result = rf_http_request_with_status($method, $url, $headers, $body, $timeout);
+        if ($result['body'] === null || $result['status'] < 200 || $result['status'] >= 300) {
             return null;
         }
-        return $response;
+        return $result['body'];
     }
 
     /**

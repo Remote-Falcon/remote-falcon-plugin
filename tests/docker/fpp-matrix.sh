@@ -29,11 +29,12 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "$HERE/../.." && pwd)"
 
 # Default matrix: latest stable of each major branch the plugin claims
-# to support. Per CLAUDE.md the plugin spans FPP 2.x-9.x; 4.x and earlier
+# to support. Per CLAUDE.md the plugin spans FPP 2.x-10.x; 4.x and earlier
 # docker images aren't readily available so we start with 5.x. Note that
 # 6.3.1 is a broken docker image (fppd never starts on launch); we use
-# 6.x-master for that slot instead.
-DEFAULT_VERSIONS=(5.5 6.x-master 7.5 8.4 9.4)
+# 6.x-master for that slot instead. FPP 10 has no stable docker tag yet,
+# so its slot rides 10.x-master until one ships.
+DEFAULT_VERSIONS=(5.5 6.x-master 7.5 8.4 9.5.3 10.x-master)
 read -ra VERSIONS <<< "${FPP_VERSIONS:-${DEFAULT_VERSIONS[*]}}"
 
 PORT=${PORT:-18080}

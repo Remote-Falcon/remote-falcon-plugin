@@ -13,6 +13,7 @@ $(document).ready(async () => {
   $('#pluginsApiPathInput').val(PLUGINS_API_PATH);
   $('#verboseLoggingCheckbox').prop('checked', VERBOSE_LOGGING);
   $('#autoSyncMetadataCheckbox').prop('checked', AUTO_SYNC_METADATA);
+  $('#autoSyncPlaylistCheckbox').prop('checked', AUTO_SYNC_PLAYLIST);
 
   //Component Handlers
   $('#remoteTokenInput').blur(async () => {
@@ -114,6 +115,16 @@ $(document).ready(async () => {
     AUTO_SYNC_METADATA = isChecked;
     await FPPPost('/api/plugin/remote-falcon/settings/autoSyncMetadata', isChecked.toString(), () => {
       $.jGrowl(isChecked ? "Metadata sync enabled" : "Metadata sync disabled", { themeState: 'success' });
+    });
+  });
+
+  // The listener re-reads settings each tick (INI mtime watch), so this
+  // toggle takes effect without a listener restart.
+  $('#autoSyncPlaylistCheckbox').change(async () => {
+    const isChecked = $('#autoSyncPlaylistCheckbox').is(':checked');
+    AUTO_SYNC_PLAYLIST = isChecked;
+    await FPPPost('/api/plugin/remote-falcon/settings/autoSyncPlaylist', isChecked.toString(), () => {
+      $.jGrowl(isChecked ? "Auto playlist sync enabled" : "Auto playlist sync disabled", { themeState: 'success' });
     });
   });
 
@@ -222,49 +233,12 @@ function updateLoaderStatus(message) {
   $('#loaderStatus').text(message);
 }
 
-// Strip ONLY the trailing extension from a filename, preserving any
-// other dots in the name (version numbers, decimal-style ordering,
-// etc.). Returns the input unchanged when it has no extension or is
-// empty/null. Issue #137 — splitting on the first dot lost everything
-// after it for names like "Carol of the Bells v1.2.fseq".
-function stripFileExtension(filename) {
-  if (!filename) return filename;
-  return filename.replace(/\.[^.]+$/, '');
-}
-
-function getPlaylistReadableName(playlist) {
-  if (!playlist) {
-    return '';
-  }
-  if (playlist?.sequenceName) {
-    return stripFileExtension(playlist.sequenceName);
-  }
-  if (playlist?.mediaName) {
-    return stripFileExtension(playlist.mediaName);
-  }
-  if (playlist?.note) {
-    return playlist.note;
-  }
-  return '';
-}
-
-function parseAlbumArtUrl(commentTag) {
-  if (!commentTag || typeof commentTag !== 'string') {
-    return '';
-  }
-  let candidate = commentTag.trim();
-  if (candidate.endsWith(',')) {
-    candidate = candidate.slice(0, -1).trim();
-  }
-  if (candidate.startsWith('"') && candidate.endsWith('"')) {
-    candidate = candidate.slice(1, -1).trim();
-  }
-  return isImageUrl(candidate) ? candidate : '';
-}
-
-function isImageUrl(url) {
-  return /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|svg)(\?\S*)?$/i.test(url);
-}
+// NOTE: the payload-building helpers that used to live here
+// (stripFileExtension, getPlaylistReadableName, parseAlbumArtUrl,
+// isImageUrl) moved server-side to lib/sync_builder.php in #158 — the
+// browser no longer builds the sync payload. stripFileExtension's
+// dot-preserving behavior (#137) is covered by rf_strip_file_extension
+// and its tests.
 
 function ensureSyncOverlay() {
   if ($('#rfSyncProgressOverlay').length) {
@@ -304,121 +278,49 @@ function hideSyncProgress() {
   $('#rfSyncProgressOverlay').fadeOut(150);
 }
 
-async function fetchFppData(url) {
-  let result = null;
-  try {
-    await FPPGet(url, (data) => {
-      result = data;
-    });
-  } catch (error) {
-    console.error('FPPGet failed for', url, error);
-  }
-  return result;
-}
-
 async function syncPlaylistToRF() {
   if(REMOTE_TOKEN) {
-    var selectedPlaylist = $('#remotePlaylistSelect').val();
+    const selectedPlaylist = $('#remotePlaylistSelect').val();
+    if(!selectedPlaylist) {
+      $.jGrowl("Select a playlist to sync first", { themeState: 'danger' });
+      return;
+    }
     const shouldSyncMetadata = $('#autoSyncMetadataCheckbox').is(':checked');
-    updateSyncProgress('Loading playlist...', 10);
+    updateSyncProgress('Syncing with Remote Falcon... (large playlists can take a minute)', 40);
 
     try {
-      const data = await fetchFppData('/api/playlist/' + encodeURIComponent(selectedPlaylist));
-      if(!data) {
-        $.jGrowl("Unable to load playlist", { themeState: 'danger' });
-        return;
-      }
-
-      var totalItems = data?.playlistInfo?.total_items;
-      const playlistItems = data?.mainPlaylist || [];
-      const totalCount = playlistItems.length;
-
-      if(PLUGINS_API_PATH.includes("remotefalcon.com") && totalItems > 500) {
-        $.jGrowl("Cannot sync more than 500 items", { themeState: 'danger' });
-        return;
-      }
-
-      var sequences = [];
-      var playlistIndex = 1;
-      var processed = 0;
-
-      for (const playlist of playlistItems) {
-        processed++;
-        const readableName = getPlaylistReadableName(playlist);
-        updateSyncProgress(
-          `Gathering metadata ${processed}/${totalCount}`,
-          totalCount ? (Math.round((processed / totalCount) * 70) + 10) : 30,
-          readableName
-        );
-
-        if(playlist?.type == 'both') {
-          if (shouldSyncMetadata) {
-            const mediaData = await fetchFppData('/api/media/' + encodeURIComponent(playlist?.mediaName) + "/meta");
-            const mediaAlbumUrl = parseAlbumArtUrl(mediaData?.format?.tags?.comment);
-            sequences.push({
-              playlistName: stripFileExtension(playlist?.sequenceName),
-              playlistDuration: playlist?.duration,
-              playlistIndex: playlistIndex,
-              playlistType: 'SEQUENCE',
-              mediaTitle: mediaData?.format?.tags?.title ? mediaData?.format?.tags?.title : '',
-              mediaArtist: mediaData?.format?.tags?.artist ? mediaData?.format?.tags?.artist : '',
-              mediaAlbumUrl: mediaAlbumUrl,
-            });
-          } else {
-            sequences.push({
-              playlistName: stripFileExtension(playlist?.sequenceName),
-              playlistDuration: playlist?.duration,
-              playlistIndex: playlistIndex,
-              playlistType: 'SEQUENCE',
-            });
-          }
-        }else if(playlist?.type === 'sequence') {
-          sequences.push({
-            playlistName: stripFileExtension(playlist?.sequenceName),
-            playlistDuration: playlist?.duration,
-            playlistIndex: playlistIndex,
-            playlistType: 'SEQUENCE',
-          });
-        }else if(playlist?.type === 'media') {
-          sequences.push({
-            playlistName: stripFileExtension(playlist?.mediaName),
-            playlistDuration: 0,
-            playlistIndex: playlistIndex,
-            playlistType: 'MEDIA',
-          });
-        }else if(playlist?.type === 'command' && playlist?.note != null) {
-          sequences.push({
-            playlistName: playlist?.note,
-            playlistDuration: 0,
-            playlistIndex: playlistIndex,
-            playlistType: 'COMMAND',
-          });
-        }
-        playlistIndex++;
-      }
-
-      if(sequences.length === 0) {
-        $.jGrowl("Playlist is Empty", { themeState: 'danger' });
-        return;
-      }
-
-      updateSyncProgress('Syncing with Remote Falcon...', 90, '');
-
-      // Sync server-side (via plugin.php) so the POST isn't blocked by Apache's
-      // CSP for self-hosted API URLs. The browser still builds the full payload
-      // (types + metadata); this is a transparent pass-through. See issue #157.
-      await FPPPost('/plugin.php?plugin=remote-falcon&page=sync_playlists.php&nopage=1', JSON.stringify({playlists: sequences}), async (data, statusText, xhr) => {
+      // The payload (types, metadata, ordering) is built server-side by
+      // lib/sync_builder.php — the same builder the headless "Update Remote
+      // Playlist" FPP command uses, so the two paths cannot drift (#158).
+      // Server-side also keeps the POST clear of Apache's CSP for
+      // self-hosted API URLs (#157).
+      await FPPPost('/plugin.php?plugin=remote-falcon&page=sync_playlists.php&nopage=1', JSON.stringify({playlistName: selectedPlaylist, syncMetadata: shouldSyncMetadata}), async (data, statusText, xhr) => {
         if(xhr?.status === 200) {
           updateSyncProgress('Sync complete', 100);
-          REMOTE_PLAYLIST = $('#remotePlaylistSelect').val();
+          REMOTE_PLAYLIST = selectedPlaylist;
           await FPPPost('/api/plugin/remote-falcon/settings/remotePlaylist', REMOTE_PLAYLIST, async () => {
             $.jGrowl("Remote Playlist Saved", { themeState: 'success' });
             await restartListener();
           });
         }
       }, (xhr, status, error) => {
+        let message = "Error syncing playlists";
+        try {
+          const body = JSON.parse(xhr?.responseText || '{}');
+          if (body?.error === 'too_many_items') {
+            message = "Cannot sync more than 500 items";
+          } else if (body?.error === 'empty_playlist') {
+            message = "Playlist is Empty";
+          } else if (body?.error === 'playlist_fetch_failed') {
+            message = "Unable to load playlist";
+          } else if (body?.error === 'invalid_payload') {
+            message = "Select a playlist to sync first";
+          }
+        } catch (parseError) {
+          // keep the generic message
+        }
         console.error('syncPlaylists failed:', status, error);
-        $.jGrowl("Error syncing playlists", { themeState: 'danger' });
+        $.jGrowl(message, { themeState: 'danger' });
       });
     } catch (error) {
       console.error('Sync to RF failed:', error);
@@ -641,7 +543,8 @@ additionalWaitTime = "0"
 fppStatusCheckTime = "1"
 pluginsApiPath = "${DEFAULT_PLUGINS_API_PATH}"
 verboseLogging = "false"
-autoSyncMetadata = "false"`;
+autoSyncMetadata = "false"
+autoSyncPlaylist = "false"`;
 
   $('#pluginConfigTextarea').val(defaultConfig);
 
