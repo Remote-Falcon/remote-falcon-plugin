@@ -34,6 +34,14 @@ if ($playlistName === '') {
     logEntry("ERROR - Auto Sync runner: no playlist name given");
     exit(1);
 }
+// --set-remote: after a successful sync, persist this playlist as the synced
+// remotePlaylist and flag a listener soft-restart. Used by the "Update Remote
+// Playlist" FPP command, which dispatches here instead of syncing inline: a
+// synchronous fppd command callback doing HTTP round-trips back into FPP's
+// own web stack (the playlist GET via /api) can exhaust the php-fpm pool and
+// hang or die silently — same class of stall as the listener tick fix
+// (2026-07-16 release review, finding 1).
+$setRemote = in_array('--set-remote', $argv, true);
 
 $lockPath = sys_get_temp_dir() . '/remote-falcon-auto-sync.lock';
 $lock = @fopen($lockPath, 'c');
@@ -54,4 +62,16 @@ if ($result['ok']) {
 } else {
     logEntry("ERROR - Auto Sync failed for '" . $playlistName . "': " . $result['error']);
     exit(1);
+}
+
+if ($setRemote) {
+    WriteSettingToFile("remotePlaylist", urlencode($playlistName), $pluginName);
+    $listenerEnabled = isset($cfg['raw']['remoteFalconListenerEnabled'])
+        ? urldecode($cfg['raw']['remoteFalconListenerEnabled']) : '';
+    if ($listenerEnabled == "true") {
+        WriteSettingToFile("remoteFalconListenerEnabled", urlencode("false"), $pluginName);
+        WriteSettingToFile("remoteFalconListenerRestarting", urlencode("true"), $pluginName);
+    }
+    logEntry("Update Remote Playlist: remotePlaylist set to '" . $playlistName . "'"
+        . ($listenerEnabled == "true" ? "; listener restart requested" : ""));
 }

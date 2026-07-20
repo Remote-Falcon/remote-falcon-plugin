@@ -19,6 +19,14 @@ rf_alive() {
     kill -0 "$1" 2>/dev/null || sudo -n kill -0 "$1" 2>/dev/null
 }
 
+# FPPD execs command scripts directly, so a command file that lost its
+# executable bit (zip install, cp, or a 644 blob slipping into git — bit us
+# on set_active_viewer_page.php in the 2026.07.16 cycle) fails with a silent
+# "Permission denied" in fppd.log while the FPP UI still reports "complete".
+# Normalize on every start; _lib.php is an include, not an entry point, but
+# +x on it is harmless.
+chmod +x /home/fpp/media/plugins/remote-falcon/commands/*.php 2>/dev/null || true
+
 if [ -f "$PIDFILE" ]; then
     OLDPID=$(cat "$PIDFILE" 2>/dev/null)
     if [ -n "$OLDPID" ] && rf_alive "$OLDPID"; then

@@ -33,20 +33,16 @@ if ($cfg === null || strlen($cfg['remoteToken']) <= 1) {
     exit(1);
 }
 
-echo "Updating\n";
-$result = rf_sync_playlist_to_rf($remotePlaylist, $cfg);
-
-if ($result['ok']) {
-    WriteSettingToFile("remotePlaylist", urlencode($remotePlaylist), $pluginName);
-    $remoteFalconListenerEnabled = isset($cfg['raw']['remoteFalconListenerEnabled'])
-        ? urldecode($cfg['raw']['remoteFalconListenerEnabled']) : '';
-    if ($remoteFalconListenerEnabled == "true") {
-        WriteSettingToFile("remoteFalconListenerEnabled", urlencode("false"), $pluginName);
-        WriteSettingToFile("remoteFalconListenerRestarting", urlencode("true"), $pluginName);
-    }
-    echo "Done! Synced " . $result['count'] . " items.\n";
-} else {
-    echo "Sync failed: " . $result['error'] . "\n";
-    exit(1);
-}
+// Dispatch the sync out-of-process and return immediately. This callback
+// runs synchronously inside fppd's command path (triggered via /api/command,
+// which itself occupies a php-fpm worker); doing the sync inline means HTTP
+// round-trips back into FPP's own web stack (the playlist GET) from inside
+// that chain — under pool pressure the GET times out and the command dies
+// silently while the FPP UI reports "complete". The runner (same worker the
+// auto-sync watcher uses) syncs, then persists remotePlaylist + the restart
+// flags via --set-remote, and logs its outcome to the listener log.
+$runner = dirname(__DIR__) . '/auto_sync_runner.php';
+exec('php ' . escapeshellarg($runner) . ' ' . escapeshellarg($remotePlaylist)
+    . ' --set-remote > /dev/null 2>&1 &');
+echo "Update dispatched for '" . $remotePlaylist . "' — outcome logs to the listener log\n";
 ?>
