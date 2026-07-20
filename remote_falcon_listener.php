@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2026.06.15.01";
+$PLUGIN_VERSION = "2026.07.16.01";
 
 // /opt/fpp/www/common.php is FPP's PHP "common functions" file, authored
 // for the web-UI context: it emits HTML markup (script tags, settings-
