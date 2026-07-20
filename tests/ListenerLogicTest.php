@@ -410,6 +410,56 @@ final class ListenerLogicTest extends TestCase {
         }
     }
 
+    public function testIniShouldReparse_seesExternalChangeDespiteStatCache(): void {
+        // Regression: the listener stats the same INI path every tick and,
+        // while auto-sync is off, stats nothing else. PHP's stat cache is a
+        // single slot keyed on the last stat'd path, so without an explicit
+        // clearstatcache() the first mtime is returned forever and a setting
+        // written by the FPP UI (a different process) is never picked up.
+        $tmp = tempnam(sys_get_temp_dir(), 'rf-ini-test-');
+        file_put_contents($tmp, "key = \"value\"\n");
+        try {
+            // Launch the external modifier BEFORE priming the cache:
+            // exec() itself clears PHP's stat cache, and in-process
+            // touch()/file_put_contents() invalidate the entry too —
+            // either would mask the bug. sleep() clears nothing.
+            exec('(sleep 1; touch -t 203001010000 ' . escapeshellarg($tmp) . ') > /dev/null 2>&1 &');
+            $first = rf_ini_current_mtime($tmp);
+            $this->assertNotNull($first);
+            // Prime the stat cache exactly like the listener loop does.
+            filemtime($tmp);
+            sleep(2);
+            $this->assertTrue(rf_ini_should_reparse($tmp, $first));
+            $this->assertNotSame($first, rf_ini_current_mtime($tmp));
+        } finally {
+            @unlink($tmp);
+        }
+    }
+
+    public function testIniShouldReparse_hotFileKeepsReparsingWithinGranularityWindow(): void {
+        // Regression: filemtime is second-granular. A write landing in the
+        // same second as the previous parse leaves the mtime "unchanged",
+        // which (combined with WriteSettingToFile's skip-if-same-value
+        // idempotence) sustained an infinite soft-restart loop. While the
+        // last parse is within the granularity window, keep re-parsing.
+        $tmp = tempnam(sys_get_temp_dir(), 'rf-ini-test-');
+        file_put_contents($tmp, "key = \"value\"\n");
+        try {
+            $mtime = rf_ini_current_mtime($tmp);
+            $this->assertNotNull($mtime);
+            // Same second as the parse: hot, must re-parse despite equal mtime.
+            $this->assertTrue(rf_ini_should_reparse($tmp, $mtime, $mtime));
+            // One second later: still within the granularity window.
+            $this->assertTrue(rf_ini_should_reparse($tmp, $mtime, $mtime + 1));
+            // Two seconds later: window passed, equal mtime means unchanged.
+            $this->assertFalse(rf_ini_should_reparse($tmp, $mtime, $mtime + 2));
+            // No clock supplied (legacy callers): behavior unchanged.
+            $this->assertFalse(rf_ini_should_reparse($tmp, $mtime));
+        } finally {
+            @unlink($tmp);
+        }
+    }
+
     public function testIniShouldReparse_trueWhenFileMissing(): void {
         $tmp = sys_get_temp_dir() . '/rf-ini-nonexistent-' . uniqid() . '.ini';
         // Defensive: stat fails → we say re-parse, so the listener's
