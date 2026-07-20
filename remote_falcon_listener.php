@@ -139,7 +139,7 @@ while(true) {
   // is far cheaper than HTTP, but at 1Hz polling for a multi-hour show it
   // adds up. WriteSettingToFile always bumps mtime, so flag changes still
   // trigger a re-parse on the very next tick.
-  if (rf_ini_should_reparse($pluginConfigFile, $lastIniMtime) || !isset($pluginSettings) || $pluginSettings === false) {
+  if (rf_ini_should_reparse($pluginConfigFile, $lastIniMtime, time()) || !isset($pluginSettings) || $pluginSettings === false) {
     $pluginSettings = parse_ini_file($pluginConfigFile);
     if ($pluginSettings === false) {
       logEntry("ERROR - Unable to read plugin config file: " . $pluginConfigFile . ". Retrying in 5 seconds.");
@@ -157,6 +157,15 @@ while(true) {
   if($remoteFppRestarting == 1) {
     WriteSettingToFile("remoteFalconListenerEnabled",urlencode("true"),$pluginName);
     WriteSettingToFile("remoteFalconListenerRestarting",urlencode("false"),$pluginName);
+    // Mirror our own writes into the in-memory copy and force a re-parse on
+    // the next tick. filemtime is second-granular: when the clear-write above
+    // lands in the same second as the parse that saw restarting=true, the
+    // mtime check alone reports "unchanged", the stale in-memory flag re-fires
+    // this branch every tick, and WriteSettingToFile (idempotent, value
+    // already false) never bumps the mtime again — an infinite restart loop.
+    $pluginSettings['remoteFalconListenerEnabled'] = urlencode("true");
+    $pluginSettings['remoteFalconListenerRestarting'] = urlencode("false");
+    $lastIniMtime = null;
 
     logEntry("Restarting Remote Falcon Plugin v" . $PLUGIN_VERSION);
     $pluginsApiPath = urldecode($pluginSettings['pluginsApiPath']);
@@ -224,6 +233,9 @@ while(true) {
         $autoSyncMissingWarned = false;
         logEntry("Auto Sync: watching " . $playlistJson);
       }
+      // Playlist saves come from FPP's apache (another process); clear the
+      // stat cache for this path or a stale cached mtime can hide the edit.
+      clearstatcache(false, $playlistJson);
       $currMtime = @filemtime($playlistJson);
       if ($currMtime === false && !$autoSyncMissingWarned) {
         logEntry("WARNING - Auto Sync: playlist file not found: " . $playlistJson);
