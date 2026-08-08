@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-# Runs on first install and on Reinstall All Plugins, but NOT on a plugin-only
-# upgrade — anything that must happen on every code update lives in
-# postStart.sh instead. Safe to re-run: every step below tolerates already
-# being done.
+# Runs on first install, on plugin Update (FPP re-runs it after git pull when
+# no fpp_upgrade.sh exists), and on Reinstall All Plugins — always as root.
+# Must stay idempotent: every step below tolerates already being done.
+# Per-start work belongs in postStart.sh.
 
 . ${FPPDIR}/scripts/common
 
