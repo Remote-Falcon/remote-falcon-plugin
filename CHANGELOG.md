@@ -35,7 +35,7 @@ FPP 10 readiness release, driven by FPP's plugin-check scan
   linger as ghosts until the next unrelated restart.
 - The listener refuses to run under a web SAPI, so it can no longer be started through
   FPP's `plugin.php` and pin an Apache worker.
-- Removed the commented-out Patreon link and its CSS (FPP plugins may not reference
+- Removed the commented-out donation link and its CSS (FPP plugins may not reference
   donation services).
 
 ## [2026.07.16.01] - 2026-07-20
