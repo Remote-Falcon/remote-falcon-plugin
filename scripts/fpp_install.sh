@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-# Runs once when FPP first installs this plugin. NOT re-run on plugin upgrade
-# (per FPP's install_plugin script), so don't put anything here that needs to
-# happen on every code update — the logrotate config, for that reason, is
-# installed by postStart.sh, which runs on every plugin start.
+# Runs on first install and on Reinstall All Plugins, but NOT on a plugin-only
+# upgrade — anything that must happen on every code update lives in
+# postStart.sh instead. Safe to re-run: every step below tolerates already
+# being done.
 
 . ${FPPDIR}/scripts/common
 
