@@ -1,6 +1,14 @@
 <?php
 $PLUGIN_VERSION = "2026.07.16.01";
 
+// CLI daemon started by scripts/postStart.sh. Refuse to run under a web
+// SAPI: FPP's plugin.php can include arbitrary files from the plugin
+// directory, and the main loop below would pin an Apache worker forever.
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit("remote_falcon_listener.php is a background daemon, not a web page\n");
+}
+
 // /opt/fpp/www/common.php is FPP's PHP "common functions" file, authored
 // for the web-UI context: it emits HTML markup (script tags, settings-
 // as-JS-globals, etc.) as a top-level side effect, and reads $_SERVER

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Runs once when FPP first installs this plugin. NOT re-run on plugin upgrade
 # (per FPP's install_plugin script), so don't put anything here that needs to

@@ -126,45 +126,6 @@
 
 
 
-/* Support Button */
-.support-button {
-  display: inline-block;
-  text-align: center;
-  vertical-align: middle;
-  padding: 12px 24px;
-  border: 1px solid #2a6722;
-  border-radius: 8px;
-  background: #4ec240;
-  background: -webkit-gradient(linear, left top, left bottom, from(#4ec240), to(#2a6722));
-  background: -moz-linear-gradient(top, #4ec240, #2a6722);
-  background: linear-gradient(to bottom, #4ec240, #2a6722);
-  -webkit-box-shadow: #5ee94d 0px 0px 40px 0px;
-  -moz-box-shadow: #5ee94d 0px 0px 40px 0px;
-  box-shadow: #5ee94d 0px 0px 40px 0px;
-  text-shadow: #193d14 1px 1px 1px;
-  font: normal normal bold 20px arial;
-  color: #ffffff;
-  text-decoration: none;
-}
-.support-button:hover,
-.support-button:focus {
-  border: 1px solid #317928;
-  background: #5ee94d;
-  background: -webkit-gradient(linear, left top, left bottom, from(#5ee94d), to(#327c29));
-  background: -moz-linear-gradient(top, #5ee94d, #327c29);
-  background: linear-gradient(to bottom, #5ee94d, #327c29);
-  color: #ffffff;
-  text-decoration: none;
-}
-.support-button:active {
-  background: #2a6722;
-  background: -webkit-gradient(linear, left top, left bottom, from(#2a6722), to(#2a6722));
-  background: -moz-linear-gradient(top, #2a6722, #2a6722);
-  background: linear-gradient(to bottom, #2a6722, #2a6722);
-}
-
-
-
 /* Loader */
 .cssload-dots {
 	width: 0;
