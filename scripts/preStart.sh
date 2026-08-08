@@ -1,23 +1,15 @@
 #!/bin/bash
 
 # Ensure no previous listener is still running before postStart.sh launches a new one.
-#
-# Same cross-user kill story as postStop.sh: an old listener may be owned
-# by a different user than the one running preStart (FPP command system
-# runs as root; manual SSH may run as fpp). Try direct kill first, fall
-# back to passwordless sudo so we don't leave orphans.
+# Lifecycle hooks run as root (per FPP's plugin guidelines), so a plain kill
+# reaches the listener regardless of which user originally spawned it.
 
-PIDFILE=/home/fpp/media/plugins/remote-falcon/remote_falcon_listener.pid
+: "${FPPDIR:=/opt/fpp}"
+. "${FPPDIR}/scripts/common" 2>/dev/null || true
+: "${MEDIADIR:=/home/fpp/media}"
 
-rf_signal() {
-    local sig="$1"
-    local pid="$2"
-    kill -"$sig" "$pid" 2>/dev/null || sudo -n kill -"$sig" "$pid" 2>/dev/null || true
-}
-
-rf_alive() {
-    kill -0 "$1" 2>/dev/null || sudo -n kill -0 "$1" 2>/dev/null
-}
+PLUGINDIR="${MEDIADIR}/plugins/remote-falcon"
+PIDFILE="${PLUGINDIR}/remote_falcon_listener.pid"
 
 # FPPD execs command scripts directly, so a command file that lost its
 # executable bit (zip install, cp, or a 644 blob slipping into git — bit us
@@ -25,18 +17,18 @@ rf_alive() {
 # "Permission denied" in fppd.log while the FPP UI still reports "complete".
 # Normalize on every start; _lib.php is an include, not an entry point, but
 # +x on it is harmless.
-chmod +x /home/fpp/media/plugins/remote-falcon/commands/*.php 2>/dev/null || true
+chmod +x "${PLUGINDIR}"/commands/*.php 2>/dev/null || true
 
 if [ -f "$PIDFILE" ]; then
     OLDPID=$(cat "$PIDFILE" 2>/dev/null)
-    if [ -n "$OLDPID" ] && rf_alive "$OLDPID"; then
-        rf_signal TERM "$OLDPID"
+    if [ -n "$OLDPID" ] && kill -0 "$OLDPID" 2>/dev/null; then
+        kill -TERM "$OLDPID" 2>/dev/null || true
         for i in 1 2 3; do
-            rf_alive "$OLDPID" || break
+            kill -0 "$OLDPID" 2>/dev/null || break
             sleep 1
         done
-        if rf_alive "$OLDPID"; then
-            rf_signal KILL "$OLDPID"
+        if kill -0 "$OLDPID" 2>/dev/null; then
+            kill -KILL "$OLDPID" 2>/dev/null || true
         fi
     fi
     rm -f "$PIDFILE"
