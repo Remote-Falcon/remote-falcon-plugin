@@ -83,8 +83,8 @@ autoSyncMetadata = "false"
 EOF
         sudo chown fpp:fpp /home/fpp/media/config/plugin.remote-falcon
         sudo chmod 664 /home/fpp/media/config/plugin.remote-falcon
-        sudo truncate -s 0 /home/fpp/media/logs/remote-falcon-listener.log 2>/dev/null
-        sudo chown fpp:fpp /home/fpp/media/logs/remote-falcon-listener.log 2>/dev/null'
+        sudo truncate -s 0 /home/fpp/media/logs/plugin-remote-falcon.log 2>/dev/null
+        sudo chown fpp:fpp /home/fpp/media/logs/plugin-remote-falcon.log 2>/dev/null'
 }
 
 pi_start_listener_as_fpp() {

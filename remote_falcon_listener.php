@@ -31,7 +31,7 @@ require_once __DIR__ . "/lib/listener_actions.php";
 require_once __DIR__ . "/lib/sync_builder.php";
 $pluginName = basename(dirname(__FILE__));
 $pluginPath = $settings['pluginDirectory']."/".$pluginName."/";
-$logFile = $settings['logDirectory']."/".$pluginName."-listener.log";
+$logFile = $settings['logDirectory']."/plugin-" . $pluginName . ".log";
 $pluginConfigFile = $settings['configDirectory'] . "/plugin." .$pluginName;
 $pluginSettings = parse_ini_file($pluginConfigFile);
 

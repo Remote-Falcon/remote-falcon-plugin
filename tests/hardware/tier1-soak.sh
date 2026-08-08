@@ -54,7 +54,7 @@ echo "  listener pid: $PID"
 
 # Sample function: prints "rss=NN log_lines=NN"
 sample() {
-    pi "RSS=\$(ps -o rss= -p $PID 2>/dev/null | xargs); LL=\$(wc -l < /home/fpp/media/logs/remote-falcon-listener.log 2>/dev/null); echo \"rss_kb=\${RSS:-0} log_lines=\${LL:-0}\""
+    pi "RSS=\$(ps -o rss= -p $PID 2>/dev/null | xargs); LL=\$(wc -l < /home/fpp/media/logs/plugin-remote-falcon.log 2>/dev/null); echo \"rss_kb=\${RSS:-0} log_lines=\${LL:-0}\""
 }
 
 START_T=$(date +%s)
