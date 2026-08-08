@@ -31,7 +31,7 @@ fi
 # commands linger as ghosts after uninstall until fppd restarts. Ask for one.
 setSetting restartFlag 1 2>/dev/null || true
 
-# Remove the logrotate symlink installed by fpp_install.sh.
+# Remove the logrotate config installed by postStart.sh.
 sudo rm -f /etc/logrotate.d/remote-falcon 2>/dev/null || rm -f /etc/logrotate.d/remote-falcon 2>/dev/null || true
 
 #fpp_uninstall
