@@ -27,6 +27,10 @@ if [ -x "${FPPDIR}/scripts/ManageApacheContentPolicy.sh" ]; then
     ${FPPDIR}/scripts/ManageApacheContentPolicy.sh remove connect-src https://remotefalcon.com 2>/dev/null || true
 fi
 
+# fppd only reads commands/descriptions.json at startup, so our registered
+# commands linger as ghosts after uninstall until fppd restarts. Ask for one.
+setSetting restartFlag 1 2>/dev/null || true
+
 # Remove the logrotate symlink installed by fpp_install.sh.
 sudo rm -f /etc/logrotate.d/remote-falcon 2>/dev/null || rm -f /etc/logrotate.d/remote-falcon 2>/dev/null || true
 
