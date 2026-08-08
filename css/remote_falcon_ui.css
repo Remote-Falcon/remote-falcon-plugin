@@ -48,18 +48,29 @@
 .button-margin {
   margin-left: 1em;
 }
+/* Theme-aware via Bootstrap CSS variables (FPP ships Bootstrap 5.3); the
+   var() fallbacks only apply on old FPP versions without them, which also
+   have no dark theme. */
 .restart-notice {
-  color: red;
+  color: var(--bs-danger, #dc3545);
 }
 .warning {
   padding-top: 1em;
   font-weight: bold;
-  color: red;
+  color: var(--bs-danger, #dc3545);
 }
 .good {
   padding-top: 1em;
   font-weight: bold;
-  color: green;
+  color: var(--bs-success, #198754);
+}
+.rf-log-tail {
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bs-tertiary-bg, #f5f5f5);
+  color: var(--bs-body-color, #212529);
+  padding: 10px;
+  border-radius: 4px;
 }
 
 /* Sync overlay */
@@ -77,12 +88,14 @@
 }
 
 .rf-sync-dialog {
-  background: #fff;
+  background: var(--bs-body-bg, #fff);
+  color: var(--bs-body-color, #212529);
+  border: 1px solid var(--bs-border-color, #dee2e6);
   padding: 18px 20px;
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-  width: 360px;
-  max-width: 90%;
+  width: 100%;
+  max-width: 360px;
   text-align: center;
 }
 
@@ -92,26 +105,26 @@
 }
 
 .rf-sync-text {
-  color: #444;
+  color: var(--bs-secondary-color, #444);
   margin-bottom: 12px;
 }
 
 .rf-sync-item {
-  color: #666;
+  color: var(--bs-secondary-color, #666);
   font-size: 0.95rem;
   margin-bottom: 12px;
   word-break: break-word;
 }
 
 .rf-sync-bar {
-  background: #eef0f2;
+  background: var(--bs-secondary-bg, #eef0f2);
   border-radius: 6px;
   height: 10px;
   overflow: hidden;
 }
 
 .rf-sync-bar-fill {
-  background: #28a745;
+  background: var(--bs-success, #198754);
   height: 100%;
   width: 0;
   transition: width 0.2s ease;
@@ -120,7 +133,7 @@
 .loader-status {
   margin-top: 140px;
   text-align: center;
-  color: #333;
+  color: var(--bs-body-color, #333);
   font-weight: 600;
 }
 

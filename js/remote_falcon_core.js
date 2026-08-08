@@ -121,15 +121,15 @@ async function getRemotePlaylistFromConfig() {
 
 function getRemoteFalconListenerEnabledStatus(remoteFalconListenerEnabled) {
   if(remoteFalconListenerEnabled) {
-    return '<h4 style="color:green;">Remote Falcon Listener is Running</h4>';
+    return '<h4 class="text-success">Remote Falcon Listener is Running</h4>';
   }
-  return '<h4 style="color:red;">Remote Falcon Listener is Stopped</h4>';
+  return '<h4 class="text-danger">Remote Falcon Listener is Stopped</h4>';
 }
 
 async function checkPluginUpdates() {
   await FPPPost('/api/plugin/remote-falcon/updates', {}, (data) => {
     if(data?.updatesAvailable === 1) {
-      $('#updatesAvailable').html('<h4 style="color:red;">A Plugin Update is Available</h4>');
+      $('#updatesAvailable').html('<h4 class="text-danger">A Plugin Update is Available</h4>');
     }
   })
 }
