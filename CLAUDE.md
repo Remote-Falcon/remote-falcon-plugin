@@ -84,7 +84,7 @@ Most listener logic is pure code that can be tested locally without FPP. Real ha
 
 **Layer 1 — PHPUnit unit tests (run anywhere, <2s).** For any pure function — sequence selection, dedup logic, cache behavior, settings parsing, value clamping. Functions in `lib/` MUST have unit tests in `tests/`. Run with `vendor/bin/phpunit` after `composer install`.
 
-**Layer 2 — Integration tests with mock servers (run anywhere, ~30s).** For end-to-end listener flow using mock FPP and RF backends. Add a test when changing the listener's loop or HTTP behavior. (Layer 2 harness lands in a follow-up branch.)
+**Layer 2 — Integration tests with mock servers (run anywhere, ~30s).** For end-to-end listener flow using mock FPP and RF backends. Add a test when changing the listener's loop or HTTP behavior. Harness lives in `tests/integration/` (MockServer + IntegrationTestCase).
 
 **Layer 3 — Browser smoke (manual, optional).** UI changes (`remote_falcon_ui.html`, `js/`) can be sanity-checked locally with a mock backend before pushing.
 
@@ -92,7 +92,7 @@ Most listener logic is pure code that can be tested locally without FPP. Real ha
 1. Make changes locally on a feature branch.
 2. Layers 1+2 must be green in CI.
 3. Push the branch, install on a real FPP via the Plugin Manager.
-4. Monitor `/home/fpp/media/logs/remote-falcon-listener.log` and run the smoke checklist.
+4. Monitor `/home/fpp/media/logs/plugin-remote-falcon.log` and run the smoke checklist.
 5. Merge to master.
 
 CI runs Layers 1+2 on every push (`.github/workflows/test.yml`).
@@ -115,14 +115,14 @@ Functions that take inputs and produce outputs (no I/O, no global mutation, no l
 
 ### Logs
 
-The listener logs to `/home/fpp/media/logs/remote-falcon-listener.log` with timestamps. `scripts/postStart.sh` also redirects the daemon's stdout/stderr to the same file, so fatal PHP errors that bypass `logEntry` still get captured. Enable verbose logging for detailed API call timing and execution flow.
+The listener logs to `/home/fpp/media/logs/plugin-remote-falcon.log` (FPP's `plugin-<repoName>.log` convention; FPP rotates it via its own `fpp_other_logs` logrotate config — the plugin must NOT ship its own rotation). `scripts/postStart.sh` also redirects the daemon's stdout/stderr to the same file, so fatal PHP errors that bypass `logEntry` still get captured, and migrates any pre-rename `remote-falcon-listener.log` on first start. Enable verbose logging for detailed API call timing and execution flow.
 
 ## Deployment & Updates
 
 FPP's plugin manager controls install and upgrade:
 
 - **Install**: FPP runs `git clone --single-branch --branch <branch> <srcURL>` into `/home/fpp/media/plugins/remote-falcon/`, then executes `scripts/fpp_install.sh` once.
-- **Upgrade**: FPP runs the equivalent of `git pull` against the configured branch. **`fpp_install.sh` is NOT re-run on upgrade** — anything that needs to happen on every code change must live in `postStart.sh` or in the plugin code itself.
+- **Upgrade**: FPP runs `git pull` against the configured branch and then **re-runs `fpp_install.sh`** when no `fpp_upgrade.sh` exists (verified in FPP 9.5's `UpgradePlugin()` and stated for FPP 10 in PLUGIN_GUIDELINES.md §2.7 — an earlier version of this doc claimed otherwise). Reinstall All Plugins re-runs it too, always as root via `$SUDO`. So `fpp_install.sh` must be idempotent; per-start work still belongs in `postStart.sh`.
 - **Uninstall**: FPP runs `scripts/fpp_uninstall.sh` (which kills the listener via PID file and removes the CSP entry) and then deletes the plugin directory.
 
 The lifecycle scripts (`preStart.sh`, `postStart.sh`, `preStop.sh`, `postStop.sh`) run on plugin start/stop. FPP does not supervise the listener daemon — the plugin owns its own process via the PID file.
