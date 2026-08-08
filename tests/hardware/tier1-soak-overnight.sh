@@ -102,7 +102,7 @@ SUMMARY_PATH="$SUMMARY_PATH"
 PIDFILE_PATH="$PIDFILE_PATH"
 
 PLUGIN_DIR=/home/fpp/media/plugins/remote-falcon
-LISTENER_LOG=/home/fpp/media/logs/remote-falcon-listener.log
+LISTENER_LOG=/home/fpp/media/logs/plugin-remote-falcon.log
 PLUGIN_PIDFILE=\$PLUGIN_DIR/remote_falcon_listener.pid
 
 log_d() {

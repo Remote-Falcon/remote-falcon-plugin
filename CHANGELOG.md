@@ -5,6 +5,39 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
+## [2026.08.08.01] - 2026-08-08
+
+FPP 10 readiness release, driven by FPP's plugin-check scan
+(FalconChristmas/fpp-data#207) and the new PLUGIN_GUIDELINES.md.
+
+### Added
+- 256x256 `icon.png` so the Plugin Manager shows the RF mark instead of initials.
+- GitHub issue-template config routing bug reports to the central issue tracker.
+- `tier1-log-migration.sh` hardware test covering the log rename migration.
+- CI now tests PHP 8.4 (the FPP 10 runtime).
+
+### Changed
+- **Listener log renamed to `plugin-remote-falcon.log`** (FPP's `plugin-<repoName>.log`
+  convention, picked up by FPP's log viewer and Support Zip). Existing logs are migrated
+  automatically on first start after upgrade.
+- Log rotation is now left to FPP (which rotates all plugin logs itself); the
+  plugin-owned logrotate config is removed, including the legacy copy under
+  `/etc/logrotate.d/` on upgraded installs.
+- Lifecycle scripts resolve FPP's media/logs directories via `${FPPDIR}/scripts/common`
+  instead of hardcoding `/home/fpp/media`, and no longer use `sudo` (hooks run as root).
+- Plugin UI is theme-aware: status text, sync dialog, and log tail follow FPP's
+  light/dark theme via Bootstrap CSS variables; sync dialog is responsive at phone widths.
+- Single Help menu entry (FPP allows one entry per menu area); the remotefalcon.com link
+  lives inside the Help page.
+
+### Fixed
+- Uninstall now requests an fppd restart so the plugin's registered commands don't
+  linger as ghosts until the next unrelated restart.
+- The listener refuses to run under a web SAPI, so it can no longer be started through
+  FPP's `plugin.php` and pin an Apache worker.
+- Removed the commented-out Patreon link and its CSS (FPP plugins may not reference
+  donation services).
+
 ## [2026.07.16.01] - 2026-07-20
 
 ### Added

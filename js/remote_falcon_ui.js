@@ -456,7 +456,7 @@ async function tailListenerLog() {
   }
 
   try {
-    await FPPGet('/api/file/Logs/remote-falcon-listener.log?tail=50', (data) => {
+    await FPPGet('/api/file/Logs/plugin-remote-falcon.log?tail=50', (data) => {
       if($output.length) {
         $output.text(data);
       }

@@ -27,7 +27,7 @@ require_once __DIR__ . '/lib/sync_builder.php';
 require_once __DIR__ . '/commands/_lib.php';
 
 $pluginName = basename(__DIR__);
-$logFile = $settings['logDirectory'] . "/" . $pluginName . "-listener.log";
+$logFile = $settings['logDirectory'] . "/plugin-" . $pluginName . ".log";
 
 $playlistName = isset($argv[1]) ? $argv[1] : '';
 if ($playlistName === '') {

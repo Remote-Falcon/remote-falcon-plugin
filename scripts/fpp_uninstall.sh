@@ -4,9 +4,11 @@
 # FPP's plugin manager removes the plugin directory itself after this script exits;
 # we should only undo our system-level side effects here.
 
-. ${FPPDIR}/scripts/common 2>/dev/null || true
+: "${FPPDIR:=/opt/fpp}"
+. "${FPPDIR}/scripts/common" 2>/dev/null || true
+: "${MEDIADIR:=/home/fpp/media}"
 
-PIDFILE=/home/fpp/media/plugins/remote-falcon/remote_falcon_listener.pid
+PIDFILE="${MEDIADIR}/plugins/remote-falcon/remote_falcon_listener.pid"
 
 if [ -f "$PIDFILE" ]; then
     PID=$(cat "$PIDFILE" 2>/dev/null)
@@ -27,7 +29,12 @@ if [ -x "${FPPDIR}/scripts/ManageApacheContentPolicy.sh" ]; then
     ${FPPDIR}/scripts/ManageApacheContentPolicy.sh remove connect-src https://remotefalcon.com 2>/dev/null || true
 fi
 
-# Remove the logrotate symlink installed by fpp_install.sh.
-sudo rm -f /etc/logrotate.d/remote-falcon 2>/dev/null || rm -f /etc/logrotate.d/remote-falcon 2>/dev/null || true
+# fppd only reads commands/descriptions.json at startup, so our registered
+# commands linger as ghosts after uninstall until fppd restarts. Ask for one.
+setSetting restartFlag 1 2>/dev/null || true
+
+# Remove the logrotate config installed by earlier plugin versions (FPP
+# rotates plugin logs itself; we no longer ship our own config).
+rm -f /etc/logrotate.d/remote-falcon 2>/dev/null || true
 
 #fpp_uninstall

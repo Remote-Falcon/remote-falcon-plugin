@@ -70,7 +70,7 @@ else
     fail "listener process not running"
 fi
 
-if docker exec "$FPP_CONTAINER" grep -q "Starting Remote Falcon Plugin" /home/fpp/media/logs/remote-falcon-listener.log; then
+if docker exec "$FPP_CONTAINER" grep -q "Starting Remote Falcon Plugin" /home/fpp/media/logs/plugin-remote-falcon.log; then
     ok "listener log shows startup banner"
 else
     fail "listener log missing startup banner"
@@ -125,7 +125,7 @@ else
     fail "no new listener after restart (old=$OLD_PID, new=${NEW_PID:-<none>})"
 fi
 
-if docker exec "$FPP_CONTAINER" grep -q "Starting Remote Falcon Plugin" /home/fpp/media/logs/remote-falcon-listener.log; then
+if docker exec "$FPP_CONTAINER" grep -q "Starting Remote Falcon Plugin" /home/fpp/media/logs/plugin-remote-falcon.log; then
     ok "listener log shows fresh startup banner from respawn"
 else
     fail "listener log missing startup banner after restart"

@@ -14,16 +14,13 @@ $menuEntries = Array(
         'page' => 'remote_falcon_ui.html',
         'wrap' => 1
     ),
+    # FPP plugin guidelines allow at most one entry per menu area, so the
+    # remotefalcon.com link lives inside the help page instead of a second
+    # 'help' entry here.
     Array(
         'text' => 'Remote Falcon - Help',
         'type' => 'help',
         'page' => 'help/help.php',
-        'wrap' => 1
-    ),
-    Array(
-        'text' => 'Remote Falcon - Home',
-        'type' => 'help',
-        'page' => 'https://remotefalcon.com',
         'wrap' => 1
     )
 );

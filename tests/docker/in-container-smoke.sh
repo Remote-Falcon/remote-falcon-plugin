@@ -27,7 +27,7 @@ fail() { echo "  FAIL  $1"; FAIL=$((FAIL+1)); }
 
 PLUGIN_DIR=/home/fpp/media/plugins/remote-falcon
 CONFIG_FILE=/home/fpp/media/config/plugin.remote-falcon
-LISTENER_LOG=/home/fpp/media/logs/remote-falcon-listener.log
+LISTENER_LOG=/home/fpp/media/logs/plugin-remote-falcon.log
 PID_FILE=$PLUGIN_DIR/remote_falcon_listener.pid
 
 echo "=== environment ==="
