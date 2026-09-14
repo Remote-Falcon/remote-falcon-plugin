@@ -5,7 +5,14 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
-## [Unreleased]
+## [2026.09.14.01] - 2026-09-14
+
+"Next scheduled" fixes for playlists with repeated sequences and for shows restarted
+without restarting the listener.
+
+### Added
+- `iconURL` in `pluginInfo.json`, so FPP's plugin list shows the Remote Falcon icon
+  (reached `master` just after 2026.08.08.01 was tagged).
 
 ### Fixed
 - "Next scheduled" is correct on playlists that repeat a sequence. The listener now uses
