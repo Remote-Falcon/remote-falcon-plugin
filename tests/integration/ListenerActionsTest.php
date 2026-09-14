@@ -264,6 +264,167 @@ final class ListenerActionsTest extends IntegrationTestCase {
         $this->assertCount(1, $fppHits, 'FPP playlist endpoint should be hit once across 3 calls within TTL');
     }
 
+    public function testUpdateNextScheduledSequence_usesFppIndexForRepeatedSequence(): void {
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'x', 'b', 'x', 'c'])],
+        ]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+
+        // Second 'x' is playing.
+        updateNextScheduledSequence($this->playingStatus('x', 4, 5), 'x', '', 'tok');
+
+        $this->assertSame(['c'], $this->nextScheduledPosted());
+        $this->assertSame('c', $GLOBALS['nextScheduledInRF']);
+    }
+
+    /**
+     * fppd flattens sub-playlists into current_playlist.index, so the JSON has
+     * to be fetched flattened the same way for the index to line up.
+     */
+    public function testUpdateNextScheduledSequence_requestsPlaylistWithSubPlaylistsMerged(): void {
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'b'])],
+        ]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+
+        updateNextScheduledSequence($this->playingStatus('a', 1, 2), 'a', '', 'tok');
+
+        $recordings = $this->fppMock->getRecordings();
+        $this->assertCount(1, $recordings);
+        $this->assertSame('mergeSubs=1', $recordings[0]['query']);
+    }
+
+    // -------- syncShowStateToRf --------
+
+    /**
+     * Reported bug: stopping the show and starting it again from the top left
+     * "next scheduled" blank for the whole first song. Going idle cleared it
+     * in RF, but the listener still remembered the pre-stop value, and the
+     * first song computed that same value, so the repost was deduped away.
+     */
+    public function testSyncShowState_republishesStateAfterStopAndRestartAtSamePosition(): void {
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'b', 'c'])],
+        ]);
+        $this->rfMock->setRoute('/updateWhatsPlaying', ['body' => ['ok' => true]]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+
+        $cleared = syncShowStateToRf($this->playingStatus('a', 1, 3), 'tok', false);
+        $this->assertFalse($cleared);
+        $this->assertSame(['a'], $this->whatsPlayingPosted());
+        $this->assertSame(['b'], $this->nextScheduledPosted());
+
+        // Show stopped: both cleared in RF, once.
+        $this->rfMock->clearRecordings();
+        $cleared = syncShowStateToRf($this->idleStatus(), 'tok', $cleared);
+        $cleared = syncShowStateToRf($this->idleStatus(), 'tok', $cleared);
+        $this->assertTrue($cleared);
+        $this->assertSame([''], $this->whatsPlayingPosted());
+        $this->assertSame([''], $this->nextScheduledPosted());
+
+        // Restarted from the top: RF must get both values again.
+        $this->rfMock->clearRecordings();
+        $cleared = syncShowStateToRf($this->playingStatus('a', 1, 3), 'tok', $cleared);
+        $this->assertFalse($cleared);
+        $this->assertSame(['a'], $this->whatsPlayingPosted());
+        $this->assertSame(['b'], $this->nextScheduledPosted());
+    }
+
+    public function testSyncShowState_doesNotRepostUnchangedStateWhilePlaying(): void {
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'b'])],
+        ]);
+        $this->rfMock->setRoute('/updateWhatsPlaying', ['body' => ['ok' => true]]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+
+        $status = $this->playingStatus('a', 1, 2);
+        $cleared = syncShowStateToRf($status, 'tok', false);
+        $cleared = syncShowStateToRf($status, 'tok', $cleared);
+        syncShowStateToRf($status, 'tok', $cleared);
+
+        $this->assertSame(['a'], $this->whatsPlayingPosted());
+        $this->assertSame(['b'], $this->nextScheduledPosted());
+    }
+
+    /**
+     * Whatever the listener remembers as "last sent" must match what RF was
+     * told, or its dedup suppresses a post RF needs. After every step of a
+     * show with stops, repeats and a restart, the remembered values must
+     * equal the most recent values actually posted.
+     */
+    public function testSyncShowState_rememberedValuesAlwaysMatchLastPosted(): void {
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'x', 'b', 'x'])],
+        ]);
+        $this->rfMock->setRoute('/updateWhatsPlaying', ['body' => ['ok' => true]]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+
+        $steps = [
+            $this->playingStatus('a', 1, 4),
+            $this->playingStatus('x', 2, 4),
+            $this->idleStatus(),
+            $this->playingStatus('a', 1, 4),
+            $this->playingStatus('x', 2, 4),
+            $this->playingStatus('b', 3, 4),
+            $this->playingStatus('x', 4, 4),
+            $this->idleStatus(),
+            $this->playingStatus('x', 4, 4),
+        ];
+        $cleared = false;
+        foreach ($steps as $i => $status) {
+            $cleared = syncShowStateToRf($status, 'tok', $cleared);
+            $playing = $this->whatsPlayingPosted();
+            $next = $this->nextScheduledPosted();
+            $this->assertSame(trim($GLOBALS['currentlyPlayingInRF']), end($playing), "step $i: currently playing");
+            $this->assertSame(trim($GLOBALS['nextScheduledInRF']), end($next), "step $i: next scheduled");
+        }
+    }
+
+    // -------- helpers for playlist-position scenarios --------
+
+    private function sequenceEntries(array $names): array {
+        return array_map(function ($n) {
+            return ['type' => 'sequence', 'sequenceName' => $n . '.fseq'];
+        }, $names);
+    }
+
+    /** FPP status mid-playlist; index is 1-based, as FPP reports it. */
+    private function playingStatus(string $sequence, int $index, int $count, string $playlist = 'OtherPlaylist'): stdClass {
+        $s = $this->makeFppStatus($sequence . '.fseq', 30, $playlist);
+        $s->current_playlist->index = (string) $index;
+        $s->current_playlist->count = (string) $count;
+        return $s;
+    }
+
+    /** FPP status between shows, per Playlist::GetCurrentStatus. */
+    private function idleStatus(): stdClass {
+        return (object) [
+            'status_name' => 'idle',
+            'current_sequence' => '',
+            'current_song' => '',
+            'seconds_remaining' => '0',
+            'current_playlist' => (object) ['playlist' => '', 'index' => '0', 'count' => '0'],
+        ];
+    }
+
+    private function postedValues(string $path, string $field): array {
+        $values = [];
+        foreach ($this->rfMock->getRecordings() as $r) {
+            if ($r['path'] === $path) {
+                $values[] = json_decode($r['body'], true)[$field];
+            }
+        }
+        return $values;
+    }
+
+    private function whatsPlayingPosted(): array {
+        return $this->postedValues('/updateWhatsPlaying', 'playlist');
+    }
+
+    private function nextScheduledPosted(): array {
+        return $this->postedValues('/updateNextScheduledSequence', 'sequence');
+    }
+
     public function testUpdateNextScheduledSequence_skipsFppFetchWhenPlayingRemotePlaylist(): void {
         // Perf 2.1 optimization: when current playlist == remote playlist,
         // we skip the FPP /api/playlist fetch entirely (it would have been
