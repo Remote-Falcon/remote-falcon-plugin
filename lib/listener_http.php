@@ -94,8 +94,13 @@ if (!function_exists('rf_http_request')) {
         return $decoded instanceof stdClass ? $decoded : null;
     }
 
-    function rf_http_fpp_get_playlist(string $fppBaseUrl, string $playlistEncoded, int $timeout = 1): ?stdClass {
-        $url = $fppBaseUrl . '/api/playlist/' . $playlistEncoded;
+    /**
+     * $mergeSubs asks FPP to flatten sub-playlists into their parent sections,
+     * matching how fppd lays out current_playlist.index. FPP versions without
+     * the flag ignore it and return the playlist as saved.
+     */
+    function rf_http_fpp_get_playlist(string $fppBaseUrl, string $playlistEncoded, int $timeout = 1, bool $mergeSubs = false): ?stdClass {
+        $url = $fppBaseUrl . '/api/playlist/' . $playlistEncoded . ($mergeSubs ? '?mergeSubs=1' : '');
         $body = rf_http_request('GET', $url, [], null, $timeout);
         $decoded = rf_http_decode_json($body);
         return $decoded instanceof stdClass ? $decoded : null;

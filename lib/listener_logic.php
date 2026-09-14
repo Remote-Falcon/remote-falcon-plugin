@@ -13,6 +13,9 @@ if (!function_exists('rf_get_next_sequence')) {
      * Wraps to the first sequence if $currentlyPlaying is the last entry.
      * Matches by base filename (no path, no extension).
      *
+     * A repeated sequence matches its FIRST occurrence, so this is only the
+     * fallback for when rf_main_playlist_position can't pin down the entry.
+     *
      * @param array $mainPlaylist Array of stdClass items each with a
      *                            ->sequenceName property.
      * @param string $currentlyPlaying Base filename to look for.
@@ -27,19 +30,93 @@ if (!function_exists('rf_get_next_sequence')) {
             if (pathinfo($mainPlaylist[$i]->sequenceName, PATHINFO_FILENAME) !== $currentlyPlaying) {
                 continue;
             }
-            // Found the current sequence. Scan forward (wrapping) past entries
-            // with no sequenceName (pauses, etc.) so NEXT_PLAYLIST stays
-            // populated even when a pause immediately follows the current
-            // sequence.
-            for ($step = 1; $step <= $count; $step++) {
-                $j = ($i + $step) % $count;
-                if (isset($mainPlaylist[$j]->sequenceName)) {
-                    return pathinfo($mainPlaylist[$j]->sequenceName, PATHINFO_FILENAME);
-                }
-            }
-            return "";
+            return rf_next_sequence_after($mainPlaylist, $i);
         }
         return "";
+    }
+
+    /**
+     * The sequence that follows $mainPlaylist[$position]. Scans forward
+     * (wrapping) past entries with no sequenceName (pauses, etc.) so
+     * NEXT_PLAYLIST stays populated even when a pause immediately follows
+     * the current sequence.
+     *
+     * @return string Base filename of the next sequence, or "" if none.
+     */
+    function rf_next_sequence_after(array $mainPlaylist, int $position): string {
+        $count = count($mainPlaylist);
+        for ($step = 1; $step <= $count; $step++) {
+            $j = ($position + $step) % $count;
+            if (isset($mainPlaylist[$j]->sequenceName)) {
+                return pathinfo($mainPlaylist[$j]->sequenceName, PATHINFO_FILENAME);
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Resolve which mainPlaylist entry is playing from FPP's status, so a
+     * sequence that appears more than once maps to the right occurrence.
+     *
+     * FPP's current_playlist.index is 1-based and counts leadIn, mainPlaylist
+     * and leadOut as one list (Playlist::GetPosition in fppd). It describes
+     * fppd's in-memory playlist, which can differ from the JSON copy, so the
+     * index is only trusted when:
+     *  - current_playlist.count equals the JSON's total entries (fppd trims
+     *    scheduled start/end ranges and drops entries that fail to load, and
+     *    the listener's cached JSON can predate an edit);
+     *  - the playlist isn't random (fppd shuffles mainPlaylist in memory);
+     *  - no "playlist" entries remain (fppd flattens sub-playlists into its
+     *    index; fetch the JSON with ?mergeSubs=1 to match);
+     *  - the entry at that position is the sequence FPP says is playing.
+     *
+     * @param stdClass  $playlistDetails       Playlist JSON from /api/playlist.
+     * @param ?stdClass $currentPlaylistStatus current_playlist from /api/system/status.
+     * @param string    $currentlyPlaying      Base filename FPP reports playing.
+     * @return ?int 0-based mainPlaylist position, or null if it can't be trusted.
+     */
+    function rf_main_playlist_position(stdClass $playlistDetails, ?stdClass $currentPlaylistStatus, string $currentlyPlaying): ?int {
+        if ($currentPlaylistStatus === null
+            || !isset($currentPlaylistStatus->index, $currentPlaylistStatus->count)) {
+            return null;
+        }
+        $index = filter_var($currentPlaylistStatus->index, FILTER_VALIDATE_INT);
+        $count = filter_var($currentPlaylistStatus->count, FILTER_VALIDATE_INT);
+        if ($index === false || $count === false || $index < 1) {
+            return null;
+        }
+        if (!empty($playlistDetails->random)) {
+            return null;
+        }
+
+        $sections = [];
+        foreach (['leadIn', 'mainPlaylist', 'leadOut'] as $name) {
+            $section = $playlistDetails->$name ?? [];
+            $sections[$name] = is_array($section) ? $section : [];
+        }
+        $total = 0;
+        foreach ($sections as $section) {
+            foreach ($section as $entry) {
+                if (isset($entry->type) && $entry->type === 'playlist') {
+                    return null;
+                }
+            }
+            $total += count($section);
+        }
+        if ($count !== $total) {
+            return null;
+        }
+
+        $position = $index - 1 - count($sections['leadIn']);
+        $mainPlaylist = $sections['mainPlaylist'];
+        if ($position < 0 || $position >= count($mainPlaylist)) {
+            return null;
+        }
+        if (!isset($mainPlaylist[$position]->sequenceName)
+            || pathinfo($mainPlaylist[$position]->sequenceName, PATHINFO_FILENAME) !== $currentlyPlaying) {
+            return null;
+        }
+        return $position;
     }
 
     /**
@@ -79,6 +156,9 @@ if (!function_exists('rf_get_next_sequence')) {
      *  - FPP is currently playing the user's Remote Falcon playlist (we don't
      *    track "next scheduled" while RF is in control of sequencing).
      *
+     * The current entry is located by FPP's playlist index when that can be
+     * trusted (see rf_main_playlist_position), else by name.
+     *
      * The caller is responsible for making the HTTP fetch of $playlistDetails
      * and for updating any cached state after a successful post.
      */
@@ -87,7 +167,8 @@ if (!function_exists('rf_get_next_sequence')) {
         string $currentPlaylist,
         string $currentlyPlaying,
         string $nextScheduledInRF,
-        string $remotePlaylist
+        string $remotePlaylist,
+        ?stdClass $currentPlaylistStatus = null
     ): ?string {
         if ($playlistDetails === null) {
             return null;
@@ -100,7 +181,10 @@ if (!function_exists('rf_get_next_sequence')) {
             return null;
         }
 
-        $nextScheduled = rf_get_next_sequence($mainPlaylist, $currentlyPlaying);
+        $position = rf_main_playlist_position($playlistDetails, $currentPlaylistStatus, $currentlyPlaying);
+        $nextScheduled = $position !== null
+            ? rf_next_sequence_after($mainPlaylist, $position)
+            : rf_get_next_sequence($mainPlaylist, $currentlyPlaying);
 
         if ($nextScheduled === $nextScheduledInRF) {
             return null;
