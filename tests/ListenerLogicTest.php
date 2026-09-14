@@ -37,10 +37,10 @@ final class ListenerLogicTest extends TestCase {
     }
 
     /**
-     * Regression test for the missing-break bug fixed in the cleanup branch.
-     * Before the fix, this would return 'd' (the neighbor of the SECOND 'b'
-     * occurrence — the loop's last match). After the fix, it returns 'c'
-     * (the neighbor of the FIRST 'b' occurrence).
+     * A name alone can't say which occurrence of a repeated sequence is
+     * playing, so the name scan settles on the first. This is only the
+     * fallback: rf_decide_next_scheduled_update resolves the real position
+     * from FPP's current_playlist.index first (see the position tests below).
      */
     public function testGetNextSequence_duplicateSequenceReturnsFirstMatchNeighbor(): void {
         $playlist = [
@@ -80,6 +80,145 @@ final class ListenerLogicTest extends TestCase {
     public function testGetNextSequence_singleSequenceWrapsToItself(): void {
         $playlist = [$this->seq('only.fseq')];
         $this->assertSame('only', rf_get_next_sequence($playlist, 'only'));
+    }
+
+    // -------- rf_next_sequence_after --------
+
+    public function testNextSequenceAfter_returnsFollowingEntry(): void {
+        $playlist = [$this->seq('a.fseq'), $this->seq('b.fseq'), $this->seq('c.fseq')];
+        $this->assertSame('b', rf_next_sequence_after($playlist, 0));
+        $this->assertSame('c', rf_next_sequence_after($playlist, 1));
+    }
+
+    public function testNextSequenceAfter_wrapsAndSkipsEntriesWithoutSequenceName(): void {
+        $playlist = [$this->seq('a.fseq'), new stdClass(), $this->seq('b.fseq'), new stdClass()];
+        $this->assertSame('b', rf_next_sequence_after($playlist, 0));
+        $this->assertSame('a', rf_next_sequence_after($playlist, 2));
+    }
+
+    public function testNextSequenceAfter_returnsEmptyWhenNoSequencesAtAll(): void {
+        $this->assertSame('', rf_next_sequence_after([new stdClass(), new stdClass()], 0));
+        $this->assertSame('', rf_next_sequence_after([], 0));
+    }
+
+    // -------- rf_main_playlist_position --------
+
+    /**
+     * Playlist JSON as returned by FPP's /api/playlist/{name}. $mainPlaylist
+     * items are sequence filenames, or null for a pause.
+     */
+    private function fppPlaylist(array $mainPlaylist, array $leadIn = [], array $leadOut = []): stdClass {
+        $toEntries = function (array $names): array {
+            return array_map(function ($name) {
+                return $name === null
+                    ? (object) ['type' => 'pause', 'duration' => 5]
+                    : (object) ['type' => 'sequence', 'sequenceName' => $name];
+            }, $names);
+        };
+        return (object) [
+            'leadIn' => $toEntries($leadIn),
+            'mainPlaylist' => $toEntries($mainPlaylist),
+            'leadOut' => $toEntries($leadOut),
+        ];
+    }
+
+    /**
+     * current_playlist as FPP's /api/system/status reports it: string values,
+     * index 1-based across leadIn + mainPlaylist + leadOut (Playlist::GetPosition).
+     */
+    private function currentPlaylist($index, $count, string $name = 'MyShow'): stdClass {
+        return (object) ['index' => (string) $index, 'count' => (string) $count, 'playlist' => $name];
+    }
+
+    public function testMainPlaylistPosition_indexIsOneBased(): void {
+        $details = $this->fppPlaylist(['a.fseq', 'b.fseq', 'c.fseq']);
+        $this->assertSame(0, rf_main_playlist_position($details, $this->currentPlaylist(1, 3), 'a'));
+        $this->assertSame(2, rf_main_playlist_position($details, $this->currentPlaylist(3, 3), 'c'));
+    }
+
+    public function testMainPlaylistPosition_distinguishesRepeatedSequence(): void {
+        $details = $this->fppPlaylist(['a.fseq', 'x.fseq', 'b.fseq', 'x.fseq', 'c.fseq']);
+        $this->assertSame(1, rf_main_playlist_position($details, $this->currentPlaylist(2, 5), 'x'));
+        $this->assertSame(3, rf_main_playlist_position($details, $this->currentPlaylist(4, 5), 'x'));
+    }
+
+    public function testMainPlaylistPosition_subtractsLeadIn(): void {
+        $details = $this->fppPlaylist(['a.fseq', 'b.fseq'], ['intro.fseq', 'welcome.fseq']);
+        $this->assertSame(0, rf_main_playlist_position($details, $this->currentPlaylist(3, 4), 'a'));
+        $this->assertSame(1, rf_main_playlist_position($details, $this->currentPlaylist(4, 4), 'b'));
+    }
+
+    public function testMainPlaylistPosition_nullWhileInLeadInOrLeadOut(): void {
+        $details = $this->fppPlaylist(['a.fseq'], ['intro.fseq'], ['outro.fseq']);
+        $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist(1, 3), 'intro'));
+        $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist(3, 3), 'outro'));
+    }
+
+    public function testMainPlaylistPosition_nullWhenIdleOrMissing(): void {
+        $details = $this->fppPlaylist(['a.fseq']);
+        // FPP reports index "0" / count "0" when idle.
+        $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist(0, 0), 'a'));
+        $this->assertNull(rf_main_playlist_position($details, null, 'a'));
+        $this->assertNull(rf_main_playlist_position($details, (object) ['playlist' => 'MyShow'], 'a'));
+    }
+
+    public function testMainPlaylistPosition_nullOnNonNumericIndex(): void {
+        $details = $this->fppPlaylist(['a.fseq']);
+        $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist('abc', 1), 'a'));
+        $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist('1.5', 1), 'a'));
+    }
+
+    public function testMainPlaylistPosition_nullWhenIndexPastEnd(): void {
+        $details = $this->fppPlaylist(['a.fseq']);
+        $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist(2, 1), 'a'));
+    }
+
+    /**
+     * fppd loads a trimmed playlist for scheduled start/end ranges, drops
+     * entries that fail to load, and a 60s-cached copy can predate an edit.
+     * In each case its count stops matching the JSON, so the index would
+     * point at the wrong entry.
+     */
+    public function testMainPlaylistPosition_nullWhenCountDisagreesWithJson(): void {
+        $details = $this->fppPlaylist(['a.fseq', 'x.fseq', 'b.fseq', 'x.fseq']);
+        $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist(2, 3), 'x'));
+    }
+
+    /**
+     * fppd shuffles mainPlaylist in memory, so its index follows the shuffled
+     * order, not the JSON order.
+     */
+    public function testMainPlaylistPosition_nullForRandomPlaylists(): void {
+        foreach ([1, 2, '1', true] as $random) {
+            $details = $this->fppPlaylist(['a.fseq', 'b.fseq']);
+            $details->random = $random;
+            $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist(1, 2), 'a'), var_export($random, true));
+        }
+        foreach ([0, '0', false] as $random) {
+            $details = $this->fppPlaylist(['a.fseq', 'b.fseq']);
+            $details->random = $random;
+            $this->assertSame(0, rf_main_playlist_position($details, $this->currentPlaylist(1, 2), 'a'), var_export($random, true));
+        }
+    }
+
+    /**
+     * fppd flattens sub-playlists into its index. A JSON copy that still holds
+     * a "playlist" entry (FPP ignored ?mergeSubs=1) is offset from it.
+     */
+    public function testMainPlaylistPosition_nullWhenJsonHasUnmergedSubPlaylist(): void {
+        $details = $this->fppPlaylist(['a.fseq', 'x.fseq']);
+        $details->mainPlaylist[0] = (object) ['type' => 'playlist', 'name' => 'PSA'];
+        $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist(2, 2), 'x'));
+    }
+
+    public function testMainPlaylistPosition_nullWhenEntryAtIndexIsNotWhatIsPlaying(): void {
+        $details = $this->fppPlaylist(['a.fseq', 'b.fseq']);
+        $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist(1, 2), 'b'));
+    }
+
+    public function testMainPlaylistPosition_nullWhenEntryAtIndexHasNoSequence(): void {
+        $details = $this->fppPlaylist(['a.fseq', null]);
+        $this->assertNull(rf_main_playlist_position($details, $this->currentPlaylist(2, 2), ''));
     }
 
     // -------- rf_clamp_status_check_time --------
@@ -189,6 +328,52 @@ final class ListenerLogicTest extends TestCase {
         $details = $this->playlistDetails(['a.fseq', 'b.fseq', 'c.fseq']);
         // Currently playing 'c' (last item) → wraps to 'a'.
         $this->assertSame('a', rf_decide_next_scheduled_update($details, 'MyShow', 'c', '', 'Other'));
+    }
+
+    /**
+     * Reported bug: once playback reached a later occurrence of a repeated
+     * sequence, "next scheduled" showed what follows the FIRST occurrence.
+     */
+    public function testDecideNextScheduledUpdate_usesFppIndexForRepeatedSequence(): void {
+        $details = $this->fppPlaylist(['a.fseq', 'x.fseq', 'b.fseq', 'x.fseq', 'c.fseq']);
+        $this->assertSame('c', rf_decide_next_scheduled_update($details, 'MyShow', 'x', '', 'Other', $this->currentPlaylist(4, 5)));
+    }
+
+    /**
+     * Walks every position of a playlist that mixes a lead-in, pauses and
+     * repeats (the same sequence back to back, and again at the wrap point)
+     * and checks each one against the answer read straight off the list.
+     * A positional bug anywhere in the mapping fails at least one step.
+     */
+    public function testDecideNextScheduledUpdate_everyPositionOfPlaylistWithRepeats(): void {
+        $leadIn = ['intro.fseq'];
+        $main = ['psa.fseq', 'a.fseq', 'psa.fseq', null, 'b.fseq', 'psa.fseq', 'psa.fseq', 'c.fseq', 'psa.fseq'];
+        $details = $this->fppPlaylist($main, $leadIn);
+        $count = count($leadIn) + count($main);
+
+        // What should follow each mainPlaylist position (pause skipped, wraps).
+        $expected = ['a', 'psa', 'b', null, 'psa', 'psa', 'c', 'psa', 'psa'];
+
+        foreach ($main as $pos => $name) {
+            if ($name === null) {
+                continue;  // FPP reports no sequence while a pause plays
+            }
+            $playing = pathinfo($name, PATHINFO_FILENAME);
+            $status = $this->currentPlaylist(count($leadIn) + $pos + 1, $count);
+            $this->assertSame(
+                $expected[$pos],
+                rf_decide_next_scheduled_update($details, 'MyShow', $playing, '', 'Other', $status),
+                "mainPlaylist position $pos ($playing)"
+            );
+        }
+    }
+
+    public function testDecideNextScheduledUpdate_fallsBackToNameScanWhenIndexUnusable(): void {
+        $details = $this->fppPlaylist(['a.fseq', 'x.fseq', 'b.fseq', 'x.fseq', 'c.fseq']);
+        $details->random = 1;
+        // Index can't be trusted for a random playlist; name scan still
+        // produces an answer rather than nothing.
+        $this->assertSame('b', rf_decide_next_scheduled_update($details, 'MyShow', 'x', '', 'Other', $this->currentPlaylist(4, 5)));
     }
 
     // -------- rf_extract_currently_playing --------

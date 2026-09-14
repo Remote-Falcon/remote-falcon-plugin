@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2026.08.08.01";
+$PLUGIN_VERSION = "2026.09.14.01";
 
 // CLI daemon started by scripts/postStart.sh. Refuse to run under a web
 // SAPI: FPP's plugin.php can include arbitrary files from the plugin
@@ -273,26 +273,12 @@ while(true) {
     if($fppStatus != null && $fppStatus != false) {
       $statusName = $fppStatus->status_name;
       $sleepSeconds = rf_next_poll_seconds((string) $statusName, (float) $fppStatusCheckTime);
+      $rfSequencesCleared = syncShowStateToRf($fppStatus, $remoteToken, $rfSequencesCleared);
       if($statusName != "idle") {
-        $rfSequencesCleared = false;
-        $currentlyPlaying = pathinfo($fppStatus->current_sequence, PATHINFO_FILENAME);
-        if($currentlyPlaying == "") {
-          //Might be media only, so check for current song
-          $currentlyPlaying = pathinfo($fppStatus->current_song, PATHINFO_FILENAME);
-        }
-        updateCurrentlyPlaying($currentlyPlaying, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
-        updateNextScheduledSequence($fppStatus, $currentlyPlaying, $GLOBALS['nextScheduledInRF'], $remoteToken);
-
         if($interruptSchedule != 1) {
           doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $additionalWaitTime, $remotePlaylist, $remoteToken);
         }else {
           doInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $additionalWaitTime, $remotePlaylist, $remoteToken);
-        }
-      }else {
-        if($rfSequencesCleared == 0) {
-          updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
-          clearNextScheduledSequence($remoteToken);
-          $rfSequencesCleared = true;
         }
       }
     }else {

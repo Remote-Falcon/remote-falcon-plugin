@@ -39,7 +39,7 @@ if (!function_exists('rf_fpp_base_url')) {
     }
 
     function getPlaylistDetails($remotePlaylistEncoded) {
-        $result = rf_http_fpp_get_playlist(rf_fpp_base_url(), $remotePlaylistEncoded);
+        $result = rf_http_fpp_get_playlist(rf_fpp_base_url(), $remotePlaylistEncoded, 1, true);
         if ($result === null) {
             logEntry_verbose("ERROR - Failed to get playlist details for: " . rawurldecode($remotePlaylistEncoded));
         }
@@ -193,7 +193,8 @@ if (!function_exists('rf_fpp_base_url')) {
             (string) $currentPlaylist,
             (string) $currentlyPlaying,
             (string) $nextScheduledInRF,
-            (string) $GLOBALS['remotePlaylist']
+            (string) $GLOBALS['remotePlaylist'],
+            $fppStatus->current_playlist
         );
         if ($nextScheduled !== null) {
             updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
@@ -203,7 +204,38 @@ if (!function_exists('rf_fpp_base_url')) {
     }
 
     function clearNextScheduledSequence($remoteToken) {
-        updateNextScheduledSequenceInRf(" ", $remoteToken);
+        // Forget what was last sent along with clearing it in RF. Otherwise a
+        // show restarted at the same spot computes the same "next" as before
+        // the stop, updateNextScheduledSequence dedups it against the stale
+        // memory, and RF stays blank until the song changes. "" is what a
+        // freshly started listener holds (posts are trimmed, so " " and ""
+        // reach RF identically).
+        if (updateNextScheduledSequenceInRf(" ", $remoteToken)) {
+            $GLOBALS['nextScheduledInRF'] = "";
+        }
+    }
+
+    /**
+     * Push what FPP is doing to RF's "currently playing" / "next scheduled"
+     * for one listener tick. While playing, posts whatever changed. On the
+     * first idle tick after playing, clears both in RF.
+     *
+     * @param bool $rfSequencesCleared Whether RF was already cleared for the
+     *                                 current idle stretch.
+     * @return bool The new $rfSequencesCleared for the next tick.
+     */
+    function syncShowStateToRf($fppStatus, $remoteToken, $rfSequencesCleared) {
+        if ($fppStatus->status_name != "idle") {
+            $currentlyPlaying = rf_extract_currently_playing($fppStatus);
+            updateCurrentlyPlaying($currentlyPlaying, $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+            updateNextScheduledSequence($fppStatus, $currentlyPlaying, $GLOBALS['nextScheduledInRF'], $remoteToken);
+            return false;
+        }
+        if (!$rfSequencesCleared) {
+            updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+            clearNextScheduledSequence($remoteToken);
+        }
+        return true;
     }
 
     // -------- Queueing orchestration --------
