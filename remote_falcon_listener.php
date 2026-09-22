@@ -142,6 +142,11 @@ $lastIniMtime = null;
 $lastHeartbeatTs = 0;
 $heartbeatIntervalSeconds = 30;
 
+// Consecutive failed FPP status probes. One failure is a blip (a slow
+// localhost round-trip), not an outage, so fppd is only reported down once
+// this crosses RF_FPP_DOWN_THRESHOLD. Reset on any successful probe.
+$fppProbeFailures = 0;
+
 while(true) {
   // Re-parse the settings INI only when its mtime has changed. parse_ini_file
   // is far cheaper than HTTP, but at 1Hz polling for a multi-hour show it
@@ -271,6 +276,10 @@ while(true) {
     // cadence is implicit in the timestamps of the lines that DO fire.
     $fppStatus = getFppStatus();
     if($fppStatus != null && $fppStatus != false) {
+      if ($fppProbeFailures >= RF_FPP_DOWN_THRESHOLD) {
+        logEntry("FPPD is responding again (recovered after " . $fppProbeFailures . " consecutive failed status checks)");
+      }
+      $fppProbeFailures = 0;
       $statusName = $fppStatus->status_name;
       $sleepSeconds = rf_next_poll_seconds((string) $statusName, (float) $fppStatusCheckTime);
       $rfSequencesCleared = syncShowStateToRf($fppStatus, $remoteToken, $rfSequencesCleared);
@@ -282,9 +291,18 @@ while(true) {
         }
       }
     }else {
-      logEntry("FPPD is not running!");
-      sleep(5);
-      continue;
+      // A failed probe is not proof fppd is down, so don't say so, and don't
+      // blanket-sleep 5s: that sleep is longer than the whole request-fetch
+      // window (requestFetchTime defaults to 3), so a single false alarm
+      // deterministically skipped the queue check and landed a viewer's
+      // request a sequence late. Hold the normal cadence until enough
+      // consecutive failures to actually mean something.
+      $fppProbeFailures++;
+      $failure = rf_fpp_failure_response($fppProbeFailures, (float) $fppStatusCheckTime);
+      if ($failure['logDown']) {
+        logEntry("FPPD is not running! (" . $fppProbeFailures . " consecutive failed status checks)");
+      }
+      $sleepSeconds = $failure['sleepSeconds'];
     }
   }
 

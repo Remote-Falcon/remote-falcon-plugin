@@ -30,12 +30,41 @@ if (!function_exists('rf_fpp_base_url')) {
 
     // -------- HTTP wrappers (FPP) --------
 
+    /**
+     * Fetch fppd's status, retrying briefly before giving up.
+     *
+     * A single probe failure is almost never fppd being down — far more
+     * often it's a slow localhost round-trip (a reaped Apache worker paying
+     * fork+init on a small controller). Two quick retries turn that into a
+     * non-event instead of a scary log line and a skipped queue check.
+     * The reason from the probe is logged so a real problem is still
+     * diagnosable: "unreachable" is a genuine connection failure, while
+     * http_error/bad_body mean fppd answered and is therefore running.
+     */
     function getFppStatus() {
-        $result = rf_http_fpp_get_status(rf_fpp_base_url());
-        if ($result === null) {
-            logEntry_verbose("ERROR - Failed to get FPP status");
+        $attempts = 3;
+        $backoffMicros = [250000, 500000]; // 250ms, then 500ms
+        $lastReason = 'unreachable';
+
+        for ($i = 0; $i < $attempts; $i++) {
+            $probe = rf_http_fpp_get_status_result(rf_fpp_base_url());
+            if ($probe['ok']) {
+                if ($i > 0) {
+                    logEntry_verbose("FPP status probe succeeded on attempt " . ($i + 1));
+                }
+                return $probe['status'];
+            }
+            $lastReason = $probe['reason'];
+            if ($probe['reason'] === 'http_error') {
+                $lastReason .= ' (HTTP ' . $probe['httpStatus'] . ')';
+            }
+            if ($i < count($backoffMicros)) {
+                usleep($backoffMicros[$i]);
+            }
         }
-        return $result;
+
+        logEntry_verbose("WARNING - FPP status probe failed after " . $attempts . " attempts (" . $lastReason . ")");
+        return null;
     }
 
     function getPlaylistDetails($remotePlaylistEncoded) {

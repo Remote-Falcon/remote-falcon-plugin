@@ -87,11 +87,44 @@ if (!function_exists('rf_http_request')) {
 
     // --- FPP localhost API ---
 
-    function rf_http_fpp_get_status(string $fppBaseUrl, int $timeout = 1): ?stdClass {
+    /**
+     * Probe fppd's status endpoint and report WHY it failed, not just that
+     * it did.
+     *
+     * The old 1s timeout could not tell "localhost was slow" from "fppd is
+     * dead": both surfaced as null, and the listener reported the latter.
+     * On a small controller an Apache/mod_php worker reaped during idle can
+     * take over a second just to fork and initialise, so a slow-but-healthy
+     * response was routinely announced as "FPPD is not running!". 3s clears
+     * that cold start without making a genuinely down fppd take meaningfully
+     * longer to notice, since the caller retries before escalating.
+     *
+     * @return array{ok: bool, status: ?stdClass, reason: string, httpStatus: int}
+     *         reason is one of: ok, unreachable, http_error, bad_body
+     */
+    function rf_http_fpp_get_status_result(string $fppBaseUrl, int $timeout = 3): array {
         $url = $fppBaseUrl . '/api/system/status';
-        $body = rf_http_request('GET', $url, [], null, $timeout);
-        $decoded = rf_http_decode_json($body);
-        return $decoded instanceof stdClass ? $decoded : null;
+        $result = rf_http_request_with_status('GET', $url, [], null, $timeout);
+
+        // status 0 is the only signal that actually means "could not talk to
+        // fppd" (connect refused, timeout, DNS). Any real HTTP status means
+        // fppd answered, so it is by definition running.
+        if ($result['status'] === 0) {
+            return ['ok' => false, 'status' => null, 'reason' => 'unreachable', 'httpStatus' => 0];
+        }
+        if ($result['status'] < 200 || $result['status'] >= 300) {
+            return ['ok' => false, 'status' => null, 'reason' => 'http_error', 'httpStatus' => $result['status']];
+        }
+        $decoded = rf_http_decode_json($result['body']);
+        if (!($decoded instanceof stdClass)) {
+            return ['ok' => false, 'status' => null, 'reason' => 'bad_body', 'httpStatus' => $result['status']];
+        }
+        return ['ok' => true, 'status' => $decoded, 'reason' => 'ok', 'httpStatus' => $result['status']];
+    }
+
+    function rf_http_fpp_get_status(string $fppBaseUrl, int $timeout = 3): ?stdClass {
+        $result = rf_http_fpp_get_status_result($fppBaseUrl, $timeout);
+        return $result['ok'] ? $result['status'] : null;
     }
 
     /**
