@@ -278,6 +278,42 @@ if (!function_exists('rf_get_next_sequence')) {
     }
 
     /**
+     * How many consecutive failed status probes before the listener is
+     * willing to say fppd is down. One failed probe is a blip, not an
+     * outage.
+     */
+    if (!defined('RF_FPP_DOWN_THRESHOLD')) {
+        define('RF_FPP_DOWN_THRESHOLD', 3);
+    }
+
+    /**
+     * Decide what to do after an FPP status probe came back empty.
+     *
+     * Previously any single failure logged "FPPD is not running!" and slept
+     * 5s. That 5s is longer than the whole request-fetch window (default
+     * requestFetchTime is 3s), so one false alarm deterministically skipped
+     * the queue check for that sequence and a viewer's request landed a
+     * sequence late. Here a transient miss keeps the normal cadence so the
+     * fetch window survives, and only a sustained run of failures backs off
+     * and reports fppd as down.
+     *
+     * 'logDown' fires only on the transition into the down state so a truly
+     * dead fppd produces one line rather than one per poll.
+     *
+     * @return array{confirmedDown: bool, sleepSeconds: float, logDown: bool}
+     */
+    function rf_fpp_failure_response(int $consecutiveFailures, float $configuredSeconds, int $downThreshold = RF_FPP_DOWN_THRESHOLD): array {
+        $confirmedDown = $consecutiveFailures >= $downThreshold;
+        return [
+            'confirmedDown' => $confirmedDown,
+            // Keep the normal cadence while it's still just a blip; back off
+            // to 5s only once it looks like a real outage.
+            'sleepSeconds'  => $confirmedDown ? max(5.0, $configuredSeconds) : $configuredSeconds,
+            'logDown'       => $consecutiveFailures === $downThreshold,
+        ];
+    }
+
+    /**
      * In-memory cache for FPP playlist details. The listener fetches the
      * playlist every poll (~1 Hz) but FPP playlists almost never change
      * mid-show; caching by name with a TTL of 60s typically removes

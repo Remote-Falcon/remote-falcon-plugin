@@ -50,6 +50,65 @@ final class ListenerHttpTest extends IntegrationTestCase {
         $this->assertLessThan(1.4, $elapsed, 'Timeout should bail before mock delay completes');
     }
 
+    // -------- probe reasons: "couldn't reach fppd" vs "fppd answered" --------
+    // The listener used to collapse every failure mode into "FPPD is not
+    // running!". These pin the distinction that claim now rests on.
+
+    public function testFppGetStatusResult_okCarriesDecodedStatus(): void {
+        $this->fppMock->setRoute('/api/system/status', [
+            'body' => ['status_name' => 'playing'],
+        ]);
+        $result = rf_http_fpp_get_status_result($this->fppMock->getBaseUrl());
+        $this->assertTrue($result['ok']);
+        $this->assertSame('ok', $result['reason']);
+        $this->assertSame('playing', $result['status']->status_name);
+    }
+
+    public function testFppGetStatusResult_httpErrorMeansFppdIsAnswering(): void {
+        // No route configured → 404. Something replied, so fppd is up; this
+        // must never be reported as fppd being down.
+        $result = rf_http_fpp_get_status_result($this->fppMock->getBaseUrl());
+        $this->assertFalse($result['ok']);
+        $this->assertSame('http_error', $result['reason']);
+        $this->assertSame(404, $result['httpStatus']);
+    }
+
+    public function testFppGetStatusResult_badBodyMeansFppdIsAnswering(): void {
+        $this->fppMock->setRoute('/api/system/status', [
+            'body' => 'not valid json',
+            'contentType' => 'text/plain',
+        ]);
+        $result = rf_http_fpp_get_status_result($this->fppMock->getBaseUrl());
+        $this->assertFalse($result['ok']);
+        $this->assertSame('bad_body', $result['reason']);
+        $this->assertSame(200, $result['httpStatus']);
+    }
+
+    public function testFppGetStatusResult_timeoutIsUnreachableNotDown(): void {
+        // The reported bug's actual shape: a slow-but-healthy localhost
+        // response. Classified 'unreachable' (retryable) rather than down.
+        $this->fppMock->setRoute('/api/system/status', [
+            'body' => ['status_name' => 'playing'],
+            'delayMs' => 1500,
+        ]);
+        $result = rf_http_fpp_get_status_result($this->fppMock->getBaseUrl(), 1);
+        $this->assertFalse($result['ok']);
+        $this->assertSame('unreachable', $result['reason']);
+        $this->assertSame(0, $result['httpStatus']);
+    }
+
+    public function testFppGetStatusResult_defaultTimeoutToleratesSlowColdStart(): void {
+        // A reaped Apache worker on a small controller can take >1s just to
+        // fork and initialise. The old 1s default called that "not running".
+        $this->fppMock->setRoute('/api/system/status', [
+            'body' => ['status_name' => 'idle'],
+            'delayMs' => 1200,
+        ]);
+        $result = rf_http_fpp_get_status_result($this->fppMock->getBaseUrl());
+        $this->assertTrue($result['ok'], 'a 1.2s response must still count as healthy');
+        $this->assertSame('idle', $result['status']->status_name);
+    }
+
     public function testFppGetPlaylist_returnsDecodedObject(): void {
         $this->fppMock->setRoute('/api/playlist/MyShow', [
             'body' => [

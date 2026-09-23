@@ -498,6 +498,56 @@ final class ListenerLogicTest extends TestCase {
         $this->assertSame(5.0, rf_next_poll_seconds('idle', 5.0));
     }
 
+    // -------- rf_fpp_failure_response (false "FPPD is not running") --------
+
+    public function testFppFailure_singleMissIsNotTreatedAsDown(): void {
+        // The whole point: one failed probe is a slow localhost round-trip,
+        // not an outage. Nothing is logged and nothing is declared down.
+        $r = rf_fpp_failure_response(1, 1.0);
+        $this->assertFalse($r['confirmedDown']);
+        $this->assertFalse($r['logDown']);
+    }
+
+    public function testFppFailure_transientKeepsNormalCadence(): void {
+        // Regression guard for the reported bug: the old code slept 5s on
+        // any miss, which is longer than the default 3s request-fetch
+        // window, so one false alarm skipped a queue check entirely.
+        // A transient miss must not stretch the poll interval.
+        foreach ([1, 2] as $failures) {
+            $r = rf_fpp_failure_response($failures, 1.0);
+            $this->assertSame(1.0, $r['sleepSeconds'], "failure $failures should hold cadence");
+            $this->assertLessThan(3.0, $r['sleepSeconds'], 'must stay inside the request-fetch window');
+        }
+    }
+
+    public function testFppFailure_declaresDownAtThreshold(): void {
+        $r = rf_fpp_failure_response(RF_FPP_DOWN_THRESHOLD, 1.0);
+        $this->assertTrue($r['confirmedDown']);
+        $this->assertTrue($r['logDown']);
+        $this->assertSame(5.0, $r['sleepSeconds']);
+    }
+
+    public function testFppFailure_logsOnceNotEveryPollWhileDown(): void {
+        // Sustained outage should produce one line, not one per poll.
+        $this->assertTrue(rf_fpp_failure_response(RF_FPP_DOWN_THRESHOLD, 1.0)['logDown']);
+        for ($n = RF_FPP_DOWN_THRESHOLD + 1; $n <= RF_FPP_DOWN_THRESHOLD + 5; $n++) {
+            $r = rf_fpp_failure_response($n, 1.0);
+            $this->assertTrue($r['confirmedDown']);
+            $this->assertFalse($r['logDown'], "failure $n should not re-log");
+        }
+    }
+
+    public function testFppFailure_downBackoffNeverFasterThanConfigured(): void {
+        // Mirrors rf_next_poll_seconds: backoff must not poll harder than asked.
+        $this->assertSame(10.0, rf_fpp_failure_response(RF_FPP_DOWN_THRESHOLD, 10.0)['sleepSeconds']);
+    }
+
+    public function testFppFailure_respectsCustomThreshold(): void {
+        $this->assertFalse(rf_fpp_failure_response(1, 1.0, 2)['confirmedDown']);
+        $this->assertTrue(rf_fpp_failure_response(2, 1.0, 2)['confirmedDown']);
+        $this->assertTrue(rf_fpp_failure_response(2, 1.0, 2)['logDown']);
+    }
+
     // -------- rf_playlist_cache_* (perf 2.2) --------
 
     private function fakePlaylistDetails(string $marker): stdClass {

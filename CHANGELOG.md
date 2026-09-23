@@ -5,6 +5,30 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
+## [2026.09.23.01] - 2026-09-23
+
+Stops a healthy FPPD being reported as down, and stops a false alarm costing a
+viewer request. Also fixes listeners leaking on restart.
+
+### Fixed
+- **"FPPD is not running!" no longer fires when FPPD is running.** The status check
+  gave up after 1 second and treated every kind of failure the same, so a slow reply
+  from a perfectly healthy FPPD was announced as FPPD being down. On smaller
+  controllers this fired hundreds to thousands of times a day, mostly while nothing
+  was playing. The check now waits longer, retries a couple of times before
+  complaining, and only reports FPPD as down after several checks in a row fail. It
+  logs once when that happens and once when it recovers, rather than on every poll.
+- **A false "FPPD is not running!" could delay a viewer's request by a whole song.**
+  The listener paused 5 seconds after any failed status check, which is longer than
+  the window it uses to pick up the next request, so a single false alarm skipped
+  that song's request check entirely. A brief failure now keeps the normal timing.
+- **Restarting the listener could leave the old one running.** If the stop step
+  couldn't signal the old process, it was recorded as stopped anyway and kept running
+  in the background, with another added on every restart. Each leftover listener
+  polled and logged independently, multiplying both log noise and load. The stop step
+  now confirms the process is actually gone before clearing it, and retries with
+  elevated permissions first.
+
 ## [2026.09.14.01] - 2026-09-14
 
 "Next scheduled" fixes for playlists with repeated sequences and for shows restarted
