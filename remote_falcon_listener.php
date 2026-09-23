@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2026.09.14.01";
+$PLUGIN_VERSION = "2026.09.23.01";
 
 // CLI daemon started by scripts/postStart.sh. Refuse to run under a web
 // SAPI: FPP's plugin.php can include arbitrary files from the plugin

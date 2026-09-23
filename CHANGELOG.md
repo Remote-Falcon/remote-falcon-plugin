@@ -5,7 +5,10 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
-## [Unreleased]
+## [2026.09.23.01] - 2026-09-23
+
+Stops a healthy FPPD being reported as down, and stops a false alarm costing a
+viewer request. Also fixes listeners leaking on restart.
 
 ### Fixed
 - **"FPPD is not running!" no longer fires when FPPD is running.** The status check
