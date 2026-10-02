@@ -114,6 +114,13 @@ pi_restore() {
     local cfg_path="${snap##*:}"
     # No literal "remote_falcon_listener" pkill here — postStop.sh handles
     # PID-file cleanup and has its own pkill fallback. See pi_stop_listener.
+    # Refuse to touch the installed tree if the snapshot is gone (a reboot
+    # clears /tmp). Deleting first and then failing the extract left a Pi
+    # with no plugin at all on 2026-10-02.
+    if ! pi "sudo test -f $tar_path && sudo test -f $cfg_path"; then
+        echo "pi_restore: snapshot $snap missing on the Pi; NOT restoring (plugin tree left as is)" >&2
+        return 1
+    fi
     pi "sudo /home/fpp/media/plugins/remote-falcon/scripts/postStop.sh 2>/dev/null || true
         sleep 1
         sudo rm -f /etc/logrotate.d/remote-falcon
