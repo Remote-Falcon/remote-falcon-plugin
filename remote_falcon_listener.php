@@ -105,15 +105,23 @@ $remoteToken = urldecode($pluginSettings['remoteToken']);
 $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
 logEntry("Remote Playlist: ".$remotePlaylist);
 
-// Safely fetch remote preferences with error handling
-$remotePreferences = remotePreferences($remoteToken);
-if ($remotePreferences === null || !isset($remotePreferences->viewerControlMode)) {
-  logEntry("WARNING - Unable to fetch remote preferences. Using default 'jukebox' mode.");
-  logEntry("Please verify your Remote Token is correct and the API is accessible.");
-  $viewerControlMode = "jukebox"; // Default to jukebox mode
+// Nothing leaves the device until a Show Token is set (#194). Saving the
+// token on the plugin page runs the Restart Listener command, so the new
+// process picks it up here.
+if (!rf_has_token($remoteToken)) {
+  logEntry("No Show Token set. Not contacting Remote Falcon until one is saved on the plugin page.");
+  $viewerControlMode = "jukebox";
 } else {
-  $viewerControlMode = $remotePreferences->viewerControlMode;
-  logEntry("Viewer Control Mode: " . $viewerControlMode);
+  // Safely fetch remote preferences with error handling
+  $remotePreferences = remotePreferences($remoteToken);
+  if ($remotePreferences === null || !isset($remotePreferences->viewerControlMode)) {
+    logEntry("WARNING - Unable to fetch remote preferences. Using default 'jukebox' mode.");
+    logEntry("Please verify your Remote Token is correct and the API is accessible.");
+    $viewerControlMode = "jukebox"; // Default to jukebox mode
+  } else {
+    $viewerControlMode = $remotePreferences->viewerControlMode;
+    logEntry("Viewer Control Mode: " . $viewerControlMode);
+  }
 }
 
 $interruptSchedule = urldecode($pluginSettings['interruptSchedule']);
@@ -187,15 +195,20 @@ while(true) {
     $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
     logEntry("Remote Playlist: ".$remotePlaylist);
 
-    // Safely fetch remote preferences with error handling
-    $remotePreferences = remotePreferences($remoteToken);
-    if ($remotePreferences === null || !isset($remotePreferences->viewerControlMode)) {
-      logEntry("WARNING - Unable to fetch remote preferences. Using default 'jukebox' mode.");
-      logEntry("Please verify your Remote Token is correct and the API is accessible.");
-      $viewerControlMode = "jukebox"; // Default to jukebox mode
+    if (!rf_has_token($remoteToken)) {
+      logEntry("No Show Token set. Not contacting Remote Falcon until one is saved on the plugin page.");
+      $viewerControlMode = "jukebox";
     } else {
-      $viewerControlMode = $remotePreferences->viewerControlMode;
-      logEntry("Viewer Control Mode: " . $viewerControlMode);
+      // Safely fetch remote preferences with error handling
+      $remotePreferences = remotePreferences($remoteToken);
+      if ($remotePreferences === null || !isset($remotePreferences->viewerControlMode)) {
+        logEntry("WARNING - Unable to fetch remote preferences. Using default 'jukebox' mode.");
+        logEntry("Please verify your Remote Token is correct and the API is accessible.");
+        $viewerControlMode = "jukebox"; // Default to jukebox mode
+      } else {
+        $viewerControlMode = $remotePreferences->viewerControlMode;
+        logEntry("Viewer Control Mode: " . $viewerControlMode);
+      }
     }
 
     $interruptSchedule = urldecode($pluginSettings['interruptSchedule']);
@@ -218,7 +231,9 @@ while(true) {
 
   $sleepSeconds = $fppStatusCheckTime;
 
-  if($remoteFppEnabled == 1) {
+  // Without a token there is nothing to do: every branch below talks to the
+  // Plugins API (heartbeat, auto sync, now-playing, request fetch).
+  if($remoteFppEnabled == 1 && rf_has_token($remoteToken)) {
     $nowTs = time();
     if (($nowTs - $lastHeartbeatTs) >= $heartbeatIntervalSeconds) {
       fppHeartbeat($remoteToken);

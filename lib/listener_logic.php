@@ -136,6 +136,18 @@ if (!function_exists('rf_get_next_sequence')) {
     }
 
     /**
+     * Whether a Show Token has been entered. The listener makes no request
+     * to the Plugins API until this is true, which is what lets the FPP 10
+     * privacy disclosure declare every send as alwaysOn: false (#194).
+     * Same threshold as the commands/_lib.php callers (strlen <= 1 = unset).
+     *
+     * @param mixed $token Raw remoteToken setting (already urldecoded).
+     */
+    function rf_has_token($token): bool {
+        return strlen(trim((string) $token)) > 1;
+    }
+
+    /**
      * Decide whether to push an "updateWhatsPlaying" to RF.
      * Returns the value to post (echoes $currentlyPlaying) when the listener's
      * cached "what RF thinks is playing" disagrees with what FPP actually plays.

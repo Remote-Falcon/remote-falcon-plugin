@@ -8,6 +8,58 @@
 	"srcURL": "https://github.com/remote-falcon/remote-falcon-plugin.git",
 	"bugURL": "https://github.com/remote-falcon/remote-falcon-issue-tracker/issues",
 	"allowUpdates": 1,
+	"privacy": {
+		"summary": "Connects your show to Remote Falcon so visitors can request or vote for songs from your phone-friendly viewer page. Sends your song list and what's playing to remotefalcon.com.",
+		"sends": [
+			{
+				"to": "remotefalcon.com",
+				"what": "your Show Token and the names of the songs playing now and next",
+				"why": "so your viewer page shows what's playing and the plugin can fetch the next request or vote",
+				"alwaysOn": false
+			},
+			{
+				"to": "remotefalcon.com",
+				"what": "your remote playlist's song names, lengths and order",
+				"why": "so visitors can pick from your song list",
+				"alwaysOn": false
+			},
+			{
+				"to": "remotefalcon.com",
+				"what": "song title, artist and album art link from your media tags",
+				"why": "to show song details on your viewer page (only with Sync metadata on)",
+				"alwaysOn": false
+			},
+			{
+				"to": "remotefalcon.com",
+				"what": "the plugin and FPP version numbers",
+				"why": "so Remote Falcon can tell which versions are in use",
+				"alwaysOn": false
+			}
+		],
+		"collects": [
+			{
+				"what": "a log of which songs were requested, voted for and played",
+				"about": "operator",
+				"keptDays": null,
+				"canDelete": true,
+				"where": "plugin log"
+			}
+		],
+		"sensors": [],
+		"remoteAccess": "none",
+		"systemChanges": [
+			{
+				"kind": "service",
+				"what": "runs a background listener while FPP is running, which checks Remote Falcon for the next request or vote"
+			},
+			{
+				"kind": "core-settings",
+				"what": "flags FPP for a restart after install and uninstall"
+			}
+		],
+		"closedCode": false,
+		"other": "Nothing is sent until you enter a Show Token. FPP commands you can run or schedule change your Remote Falcon account: viewer control on/off, managed PSA on/off, set the active viewer page, clear the queue or votes, and re-sync the remote playlist. Visitor requests and votes are handled by Remote Falcon's service, not stored on this device. The plugin log is rotated by FPP's own log rotation. Self-hosters can point the plugin at their own server under Developer Settings."
+	},
 	"versions": [
 		{
 			"minFPPVersion": "2.0",
