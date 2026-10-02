@@ -719,4 +719,25 @@ final class ListenerLogicTest extends TestCase {
             @unlink($tmp);
         }
     }
+    // -------- rf_has_token --------
+
+    public function testHasToken_realTokenIsSet(): void {
+        $this->assertTrue(rf_has_token('abc123DEF456ghi789JKL012m'));
+    }
+
+    public function testHasToken_emptyOrNullIsUnset(): void {
+        $this->assertFalse(rf_has_token(''));
+        $this->assertFalse(rf_has_token(null));
+    }
+
+    public function testHasToken_whitespaceOnlyIsUnset(): void {
+        $this->assertFalse(rf_has_token('   '));
+        $this->assertFalse(rf_has_token("\n"));
+    }
+
+    public function testHasToken_singleCharacterIsUnset(): void {
+        // Same threshold as commands/_lib.php callers (strlen <= 1 = no token).
+        $this->assertFalse(rf_has_token('x'));
+        $this->assertTrue(rf_has_token('xy'));
+    }
 }

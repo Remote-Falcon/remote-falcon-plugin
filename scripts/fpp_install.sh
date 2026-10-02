@@ -8,9 +8,15 @@ set -e
 
 . ${FPPDIR}/scripts/common
 
-# Add required Apache CSP (Content-Security-Policy) allowed domain.
-# Tolerate failure in case the entry already exists from a previous install.
-${FPPDIR}/scripts/ManageApacheContentPolicy.sh add connect-src https://remotefalcon.com 2>/dev/null || true
+# Earlier versions whitelisted connect-src https://remotefalcon.com in FPP's
+# Apache CSP for browser-side API calls. Those calls now run server-side
+# (issue #157), so the entry only widens FPP's CSP for nothing (#194). FPP
+# re-runs this script on upgrade, so remove it here to clean existing
+# installs. The script only exists on FPP 9+; tolerate failure when the
+# entry is already gone.
+if [ -x "${FPPDIR}/scripts/ManageApacheContentPolicy.sh" ]; then
+    ${FPPDIR}/scripts/ManageApacheContentPolicy.sh remove connect-src https://remotefalcon.com 2>/dev/null || true
+fi
 
 setSetting restartFlag 1
 

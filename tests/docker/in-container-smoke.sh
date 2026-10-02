@@ -114,6 +114,38 @@ fi
 # Reset for clean listener start
 sed -i 's/^interruptSchedule = .*/interruptSchedule = "false"/' $CONFIG_FILE
 
+# --- Check 3b: upgrade removes the CSP entry older versions added (#194) ---
+# ManageApacheContentPolicy.sh only exists on FPP 9+; older images skip.
+CSP_SCRIPT=/opt/fpp/scripts/ManageApacheContentPolicy.sh
+CSP_JSON=/home/fpp/media/config/csp_allowed_domains.json
+if [ -x $CSP_SCRIPT ]; then
+    echo
+    echo "=== CSP cleanup on upgrade ==="
+    $CSP_SCRIPT add connect-src https://remotefalcon.com > /dev/null 2>&1 || true
+    FPPDIR=/opt/fpp bash $PLUGIN_DIR/scripts/fpp_install.sh > /dev/null 2>&1
+    if grep -q "remotefalcon.com" $CSP_JSON 2>/dev/null; then
+        fail "fpp_install.sh left connect-src https://remotefalcon.com in $CSP_JSON"
+    else
+        ok "fpp_install.sh removed the legacy remotefalcon.com CSP entry"
+    fi
+fi
+
+# Mock Plugins API on the pluginsApiPath seeded above. Records every request
+# path so the token gate can be asserted from the outside (#194).
+MOCK_DIR=$(mktemp -d)
+MOCK_HITS=$MOCK_DIR/hits.log
+touch $MOCK_HITS
+chmod 666 $MOCK_HITS
+cat > $MOCK_DIR/router.php <<PHP
+<?php
+file_put_contents('$MOCK_HITS', \$_SERVER['REQUEST_URI'] . "\\n", FILE_APPEND);
+header('Content-Type: application/json');
+echo '{}';
+PHP
+php -S 127.0.0.1:9999 $MOCK_DIR/router.php > /dev/null 2>&1 &
+MOCK_PID=$!
+sleep 1
+
 # --- Check 4: listener starts via postStart.sh ---
 echo
 echo "=== listener boot ==="
@@ -144,6 +176,23 @@ else
     ok "listener log clean (no common.php HTML pollution)"
 fi
 
+# Token gate (#194): with remoteToken empty the listener must not call the
+# Plugins API at all. The heartbeat fires on the first tick, so 3s is enough.
+if grep -q "No Show Token set" $LISTENER_LOG 2>/dev/null; then
+    ok "listener logs that it is idle without a Show Token"
+else
+    fail "no 'No Show Token set' line in listener log"
+fi
+if [ -s $MOCK_HITS ]; then
+    fail "listener called the Plugins API with no token: $(tr '\n' ' ' < $MOCK_HITS)"
+else
+    ok "no Plugins API requests without a Show Token"
+fi
+
+# Save a token the way the UI does, then restart via the command below.
+curl -sf -X POST -H 'Content-Type: text/plain' --data 'smokeTestToken1234567890a' \
+    http://127.0.0.1/api/plugin/remote-falcon/settings/remoteToken > /dev/null 2>&1
+
 # --- Check 5: Restart Listener via /api/command (POST JSON) ---
 echo
 echo "=== /api/command Restart Listener ==="
@@ -167,8 +216,15 @@ else
     fail "no live listener pid after restart (pid file: $NEW_PID)"
 fi
 
+if grep -q "/fppHeartbeat" $MOCK_HITS 2>/dev/null; then
+    ok "listener contacts the Plugins API once a token is saved (no fppd restart)"
+else
+    fail "no heartbeat after saving a token and restarting the listener (hits: $(tr '\n' ' ' < $MOCK_HITS))"
+fi
+
 # --- Cleanup: stop listener so the container can exit cleanly ---
 $PLUGIN_DIR/scripts/postStop.sh > /dev/null 2>&1 || true
+kill $MOCK_PID 2>/dev/null || true
 
 echo
 echo "=== summary ==="

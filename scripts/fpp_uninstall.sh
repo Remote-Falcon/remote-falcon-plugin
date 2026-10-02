@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Cleanly stop the listener and remove the Apache CSP entry that fpp_install.sh added.
+# Cleanly stop the listener and remove the Apache CSP entry older versions added.
 # FPP's plugin manager removes the plugin directory itself after this script exits;
 # we should only undo our system-level side effects here.
 

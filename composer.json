@@ -2,7 +2,7 @@
     "name": "remote-falcon/remote-falcon-plugin",
     "description": "FPP plugin for Remote Falcon viewer-controlled light shows",
     "type": "project",
-    "license": "MIT",
+    "license": "GPL-3.0-only",
     "homepage": "https://remotefalcon.com",
     "require": {
         "php": ">=7.4"

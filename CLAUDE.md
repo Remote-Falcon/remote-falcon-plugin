@@ -123,7 +123,7 @@ FPP's plugin manager controls install and upgrade:
 
 - **Install**: FPP runs `git clone --single-branch --branch <branch> <srcURL>` into `/home/fpp/media/plugins/remote-falcon/`, then executes `scripts/fpp_install.sh` once.
 - **Upgrade**: FPP runs `git pull` against the configured branch and then **re-runs `fpp_install.sh`** when no `fpp_upgrade.sh` exists (verified in FPP 9.5's `UpgradePlugin()` and stated for FPP 10 in PLUGIN_GUIDELINES.md §2.7 — an earlier version of this doc claimed otherwise). Reinstall All Plugins re-runs it too, always as root via `$SUDO`. So `fpp_install.sh` must be idempotent; per-start work still belongs in `postStart.sh`.
-- **Uninstall**: FPP runs `scripts/fpp_uninstall.sh` (which kills the listener via PID file and removes the CSP entry) and then deletes the plugin directory.
+- **Uninstall**: FPP runs `scripts/fpp_uninstall.sh` (which kills the listener via PID file and removes the legacy CSP entry) and then deletes the plugin directory.
 
 The lifecycle scripts (`preStart.sh`, `postStart.sh`, `preStop.sh`, `postStop.sh`) run on plugin start/stop. FPP does not supervise the listener daemon — the plugin owns its own process via the PID file.
 
@@ -151,6 +151,10 @@ logEntry($data);           // Always logs
 logEntry_verbose($data);   // Only logs when verboseLogging enabled
 ```
 
+### Show Token gate
+
+The listener makes no request to the Plugins API until a Show Token is set (`rf_has_token()` in `lib/listener_logic.php`). This is what lets `pluginInfo.json`'s `privacy` block declare every send as `alwaysOn: false` (FPP 10 install dialog, issue-tracker #194). Any new off-box call must stay behind a token check, and must be reflected in the `privacy` block. Validate with fpp-data's `.github/scripts/lint_plugin.py`.
+
 ### Listener Control
 
 The listener checks two control flags each iteration:
@@ -174,7 +178,7 @@ Interrupt mode:
 
 ## Plugin Installation Hooks
 
-- `fpp_install.sh` - Adds required Content-Security-Policy for remotefalcon.com, marks for FPP reboot
+- `fpp_install.sh` - Removes the legacy `connect-src https://remotefalcon.com` CSP entry older versions added (no browser code calls RF any more), marks for FPP reboot
 - `preStart.sh` - Empty (reserved for future use)
 - `postStart.sh` - Runs after plugin starts
 - `preStop.sh` - Runs before plugin stops
