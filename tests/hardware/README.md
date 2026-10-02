@@ -25,6 +25,7 @@ release.
 | `tier1-soak.sh` | Listener doesn't crash, leak memory, or explode the log under sustained load. Default 5 min, override with `SOAK_MINUTES`. | 5–15 min |
 | `tier1-connectivity.sh` | cURL+TLS transport works against real `remotefalcon.com` infrastructure. 3 sequential read-only `/remotePreferences` calls; observes keep-alive speedup on warm calls. | <1 min |
 | `tier1-restart-storm.sh` | 10 rapid restarts don't leave duplicate listeners or PID file corruption. Catches lifecycle race conditions. | <1 min |
+| `tier1-token-gate.sh` | No traffic to remotefalcon.com without a Show Token (tcpdump, after a restart and a **reboot**), the real token reconnects on restart, and upgrade removes the legacy CSP entry (#194). Needs `TEST_BRANCH`; `SKIP_REBOOT=1` skips the reboot. Not part of `tier1.sh`. | ~4 min |
 
 Run all of Tier 1:
 

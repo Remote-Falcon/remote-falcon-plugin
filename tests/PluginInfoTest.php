@@ -85,4 +85,27 @@ class PluginInfoTest extends TestCase {
         $this->assertCount(1, $unbounded, 'Exactly one unbounded (maxFPPVersion "0") entry expected');
         $this->assertSame('10.0', $unbounded[0]['minFPPVersion']);
     }
+
+    public function testPrivacyBlockIsPresentAndComplete(): void {
+        // FPP 10 builds the install dialog from this block; without it users
+        // see "No privacy disclosure" and the listing check blocks updates
+        // (privacy-missing, issue-tracker #194). All eight keys are required.
+        $privacy = $this->pluginInfo()['privacy'] ?? null;
+        $this->assertIsArray($privacy, 'pluginInfo.json must carry a privacy block');
+        foreach (['summary', 'sends', 'collects', 'sensors', 'remoteAccess', 'systemChanges', 'closedCode', 'other'] as $key) {
+            $this->assertArrayHasKey($key, $privacy, "privacy.$key is required");
+        }
+        $this->assertLessThanOrEqual(200, strlen($privacy['summary']));
+    }
+
+    public function testNoSendIsAlwaysOn(): void {
+        // The listener sends nothing until a Show Token is set (rf_has_token),
+        // so every send is alwaysOn: false. A send that fires before the token
+        // gate must flip this to true, which FPP shows as a red light.
+        foreach ($this->pluginInfo()['privacy']['sends'] as $send) {
+            $this->assertFalse($send['alwaysOn'], "send to {$send['to']} ({$send['what']}) must stay behind the token gate");
+            $this->assertLessThanOrEqual(100, strlen($send['what']));
+            $this->assertLessThanOrEqual(100, strlen($send['why']));
+        }
+    }
 }

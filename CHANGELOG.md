@@ -5,6 +5,27 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
+## [2026.10.02.01] - 2026-10-02
+
+FPP 10 privacy disclosure, so the install dialog stops warning "No privacy
+disclosure" (remote-falcon-issue-tracker#194).
+
+### Added
+- A privacy disclosure in `pluginInfo.json`. FPP 10's Plugin Manager now shows what
+  the plugin sends to remotefalcon.com, what it keeps on the device and what it changes,
+  instead of a red "No privacy disclosure" warning and all-red lights. FPP's listing
+  check also requires this block for updates to listed plugins.
+
+### Changed
+- The plugin no longer contacts Remote Falcon until a Show Token is entered. A fresh
+  install used to send a heartbeat to remotefalcon.com every 30 seconds on every boot,
+  with no token. Saving a token on the plugin page restarts the listener, so it connects
+  straight away with no FPP restart.
+- Install and upgrade now remove the `connect-src https://remotefalcon.com` entry that
+  older versions added to FPP's Content-Security-Policy. No browser code has called
+  Remote Falcon since issue #157.
+- `composer.json` now declares GPL-3.0-only, matching `LICENSE`.
+
 ## [2026.09.23.01] - 2026-09-23
 
 Stops a healthy FPPD being reported as down, and stops a false alarm costing a
