@@ -5,7 +5,7 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
-## [Unreleased]
+## [2026.10.02.01] - 2026-10-02
 
 FPP 10 privacy disclosure, so the install dialog stops warning "No privacy
 disclosure" (remote-falcon-issue-tracker#194).
