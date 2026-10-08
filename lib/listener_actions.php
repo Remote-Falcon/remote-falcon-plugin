@@ -38,8 +38,9 @@ if (!function_exists('rf_fpp_base_url')) {
      * fork+init on a small controller). Two quick retries turn that into a
      * non-event instead of a scary log line and a skipped queue check.
      * The reason from the probe is logged so a real problem is still
-     * diagnosable: "unreachable" is a genuine connection failure, while
-     * http_error/bad_body mean fppd answered and is therefore running.
+     * diagnosable: "unreachable" is a genuine connection failure (including
+     * Apache's proxy failing to reach fppd), while http_error/bad_body mean
+     * fppd answered and is therefore running.
      */
     function getFppStatus() {
         $attempts = 3;
@@ -210,11 +211,13 @@ if (!function_exists('rf_fpp_base_url')) {
         $cacheKey = (string) $currentPlaylist;
         $now = microtime(true);
         $playlistDetails = rf_playlist_cache_get($cacheKey, $now, 60.0);
-        if ($playlistDetails === null) {
+        if ($playlistDetails === null && !rf_playlist_cache_has($cacheKey, $now, 60.0)) {
             $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
-            if ($playlistDetails !== null) {
-                rf_playlist_cache_put($cacheKey, $playlistDetails, $now);
-            }
+            // Cache a miss too. A sequence or media file played on its own
+            // reports itself as the current playlist ("song.fseq"), FPP has no
+            // playlist by that name, and an uncached miss was looked up again
+            // on every poll for the whole song.
+            rf_playlist_cache_put($cacheKey, $playlistDetails, $now);
         }
 
         $nextScheduled = rf_decide_next_scheduled_update(

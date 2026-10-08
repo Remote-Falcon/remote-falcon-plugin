@@ -5,6 +5,26 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
+## [Unreleased]
+
+### Changed
+- The listener now polls FPP's status from `/api/fppd/status`, which Apache hands
+  straight to fppd, instead of `/api/system/status`. The listener only reads fppd's
+  own fields, and the PHP endpoint spent hundreds of milliseconds per call gathering
+  host details on top of them on a single-core controller -- every second during a
+  show. Every FPP version since 2.6 serves this path.
+
+### Fixed
+- A stopped fppd is now reported as down. `/api/system/status` answered with a
+  normal-looking "stopped" status, so the listener carried on as if fppd were
+  running; Apache's 502/503/504 for `/api/fppd/status` now counts as unreachable,
+  and three consecutive failures log "FPPD is not running!" as intended.
+- Playing a sequence or media file on its own (not from a playlist) no longer looks up
+  a playlist on every poll. FPP reports the file as the current playlist and has no
+  playlist by that name, and that miss was never cached, so the next-scheduled lookup
+  made a PHP request every second for the whole song. Misses are now cached for 60
+  seconds like hits.
+
 ## [2026.10.02.01] - 2026-10-02
 
 FPP 10 privacy disclosure, so the install dialog stops warning "No privacy

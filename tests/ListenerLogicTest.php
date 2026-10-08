@@ -123,7 +123,7 @@ final class ListenerLogicTest extends TestCase {
     }
 
     /**
-     * current_playlist as FPP's /api/system/status reports it: string values,
+     * current_playlist as FPP's /api/fppd/status reports it: string values,
      * index 1-based across leadIn + mainPlaylist + leadOut (Playlist::GetPosition).
      */
     private function currentPlaylist($index, $count, string $name = 'MyShow'): stdClass {
@@ -559,6 +559,15 @@ final class ListenerLogicTest extends TestCase {
     public function testPlaylistCache_missReturnsNull(): void {
         rf_playlist_cache_clear();
         $this->assertNull(rf_playlist_cache_get('NoSuchPlaylist', 100.0, 60.0));
+        $this->assertFalse(rf_playlist_cache_has('NoSuchPlaylist', 100.0, 60.0));
+    }
+
+    public function testPlaylistCache_remembersAMissUntilTtl(): void {
+        rf_playlist_cache_clear();
+        rf_playlist_cache_put('song.fseq', null, 100.0);
+        $this->assertNull(rf_playlist_cache_get('song.fseq', 130.0, 60.0));
+        $this->assertTrue(rf_playlist_cache_has('song.fseq', 130.0, 60.0));
+        $this->assertFalse(rf_playlist_cache_has('song.fseq', 161.0, 60.0));
     }
 
     public function testPlaylistCache_hitWithinTtl(): void {

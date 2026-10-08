@@ -71,7 +71,7 @@ if (!function_exists('rf_get_next_sequence')) {
      *  - the entry at that position is the sequence FPP says is playing.
      *
      * @param stdClass  $playlistDetails       Playlist JSON from /api/playlist.
-     * @param ?stdClass $currentPlaylistStatus current_playlist from /api/system/status.
+     * @param ?stdClass $currentPlaylistStatus current_playlist from /api/fppd/status.
      * @param string    $currentlyPlaying      Base filename FPP reports playing.
      * @return ?int 0-based mainPlaylist position, or null if it can't be trusted.
      */
@@ -350,7 +350,17 @@ if (!function_exists('rf_get_next_sequence')) {
         return $cache[$key]['value'];
     }
 
-    function rf_playlist_cache_put(string $key, stdClass $value, float $now): void {
+    /**
+     * Whether $key has an entry within the TTL -- including one recording that
+     * FPP had no such playlist, which rf_playlist_cache_get() also returns as
+     * null.
+     */
+    function rf_playlist_cache_has(string $key, float $now, float $maxAgeSeconds): bool {
+        $cache = &_rf_playlist_cache_ref();
+        return isset($cache[$key]) && ($now - $cache[$key]['at']) <= $maxAgeSeconds;
+    }
+
+    function rf_playlist_cache_put(string $key, ?stdClass $value, float $now): void {
         $cache = &_rf_playlist_cache_ref();
         $cache[$key] = ['at' => $now, 'value' => $value];
     }
