@@ -8,11 +8,17 @@ and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 ## [Unreleased]
 
 ### Changed
-- The listener's FPP status poll now asks FPP to leave out the network, system-info
-  and plugin-indicator details it doesn't use (`?nonetwork&simple&noplugins`). The
-  poll runs every second during a show, and on a single-core controller those
-  details are most of what each request costs. FPP versions without these flags
-  ignore them.
+- The listener now polls FPP's status from `/api/fppd/status`, which Apache hands
+  straight to fppd, instead of `/api/system/status`. The listener only reads fppd's
+  own fields, and the PHP endpoint spent hundreds of milliseconds per call gathering
+  host details on top of them on a single-core controller -- every second during a
+  show. Every FPP version since 2.6 serves this path.
+
+### Fixed
+- A stopped fppd is now reported as down. `/api/system/status` answered with a
+  normal-looking "stopped" status, so the listener carried on as if fppd were
+  running; Apache's 502/503/504 for `/api/fppd/status` now counts as unreachable,
+  and three consecutive failures log "FPPD is not running!" as intended.
 
 ## [2026.10.02.01] - 2026-10-02
 

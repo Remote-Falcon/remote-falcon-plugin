@@ -10,7 +10,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     // -------- FPP localhost API --------
 
     public function testFppGetStatus_returnsDecodedObject(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => [
                 'status_name' => 'playing',
                 'current_sequence' => 'song.fseq',
@@ -24,18 +24,17 @@ final class ListenerHttpTest extends IntegrationTestCase {
         $this->assertSame(12, $result->seconds_remaining);
     }
 
-    public function testFppGetStatus_asksFppToSkipHostDetails(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+    public function testFppGetStatus_asksFppdDirectlyNotThePhpStatus(): void {
+        // /api/system/status is the same payload plus host details PHP spends
+        // hundreds of milliseconds gathering on a small controller; the poll
+        // must go to fppd's own endpoint.
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => ['status_name' => 'idle'],
         ]);
         rf_http_fpp_get_status($this->fppMock->getBaseUrl());
         $recordings = $this->fppMock->getRecordings();
         $this->assertCount(1, $recordings);
-        $this->assertSame('/api/system/status', $recordings[0]['path']);
-        parse_str($recordings[0]['query'], $flags);
-        foreach (['nonetwork', 'simple', 'noplugins'] as $flag) {
-            $this->assertArrayHasKey($flag, $flags, "status poll should send ?$flag");
-        }
+        $this->assertSame('/api/fppd/status', $recordings[0]['path']);
     }
 
     public function testFppGetStatus_returnsNullOn404(): void {
@@ -44,7 +43,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     }
 
     public function testFppGetStatus_returnsNullOnInvalidJson(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => 'not valid json',
             'contentType' => 'text/plain',
         ]);
@@ -52,7 +51,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     }
 
     public function testFppGetStatus_returnsNullOnTimeout(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => ['status_name' => 'playing'],
             'delayMs' => 1500,
         ]);
@@ -69,7 +68,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     // running!". These pin the distinction that claim now rests on.
 
     public function testFppGetStatusResult_okCarriesDecodedStatus(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => ['status_name' => 'playing'],
         ]);
         $result = rf_http_fpp_get_status_result($this->fppMock->getBaseUrl());
@@ -87,8 +86,25 @@ final class ListenerHttpTest extends IntegrationTestCase {
         $this->assertSame(404, $result['httpStatus']);
     }
 
+    public function testFppGetStatusResult_proxyGatewayErrorIsUnreachable(): void {
+        // Apache proxies /api/fppd/* to fppd, so with fppd down Apache itself
+        // answers 503 (502/504 for a refused or hung backend). That is the
+        // proxy failing to reach fppd, not fppd answering.
+        foreach ([502, 503, 504] as $code) {
+            $this->fppMock->setRoute('/api/fppd/status', [
+                'status' => $code,
+                'body' => 'Service Unavailable',
+                'contentType' => 'text/html',
+            ]);
+            $result = rf_http_fpp_get_status_result($this->fppMock->getBaseUrl());
+            $this->assertFalse($result['ok']);
+            $this->assertSame('unreachable', $result['reason'], "HTTP $code from the proxy");
+            $this->assertSame($code, $result['httpStatus']);
+        }
+    }
+
     public function testFppGetStatusResult_badBodyMeansFppdIsAnswering(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => 'not valid json',
             'contentType' => 'text/plain',
         ]);
@@ -101,7 +117,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     public function testFppGetStatusResult_timeoutIsUnreachableNotDown(): void {
         // The reported bug's actual shape: a slow-but-healthy localhost
         // response. Classified 'unreachable' (retryable) rather than down.
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => ['status_name' => 'playing'],
             'delayMs' => 1500,
         ]);
@@ -114,7 +130,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     public function testFppGetStatusResult_defaultTimeoutToleratesSlowColdStart(): void {
         // A reaped Apache worker on a small controller can take >1s just to
         // fork and initialise. The old 1s default called that "not running".
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => ['status_name' => 'idle'],
             'delayMs' => 1200,
         ]);

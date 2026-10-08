@@ -71,7 +71,7 @@ if (!function_exists('rf_get_next_sequence')) {
      *  - the entry at that position is the sequence FPP says is playing.
      *
      * @param stdClass  $playlistDetails       Playlist JSON from /api/playlist.
-     * @param ?stdClass $currentPlaylistStatus current_playlist from /api/system/status.
+     * @param ?stdClass $currentPlaylistStatus current_playlist from /api/fppd/status.
      * @param string    $currentlyPlaying      Base filename FPP reports playing.
      * @return ?int 0-based mainPlaylist position, or null if it can't be trusted.
      */

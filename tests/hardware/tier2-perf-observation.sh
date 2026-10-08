@@ -2,7 +2,7 @@
 # Tier 2 #1 — empirically observe perf 2.1 idle backoff on real hardware.
 #
 # Uses tcpdump on the Pi's loopback interface to count actual HTTP requests
-# the listener makes to FPP's /api/system/status endpoint over a 30-second
+# the listener makes to FPP's /api/fppd/status endpoint over a 30-second
 # window while FPP is idle.
 #
 # Expected:
@@ -88,7 +88,7 @@ echo "Capture complete. Analyzing..."
 # Count requests. Note: `grep -c` returns exit 1 when the count is 0,
 # which used to trip a `|| echo 0` fallback and produce "00". We just
 # wrap with `|| true` so a no-match exit doesn't double-emit a count.
-STATUS_HITS=$(pi "grep -c 'HTTP: GET /api/system/status' $CAP_FILE 2>/dev/null || true")
+STATUS_HITS=$(pi "grep -c 'HTTP: GET /api/fppd/status' $CAP_FILE 2>/dev/null || true")
 PLAYLIST_HITS=$(pi "grep -c 'HTTP: GET /api/playlist/' $CAP_FILE 2>/dev/null || true")
 TOTAL_HITS=$(pi "wc -l < $CAP_FILE 2>/dev/null || echo 0")
 
@@ -98,7 +98,7 @@ PLAYLIST_HITS=$(echo "$PLAYLIST_HITS" | tr -d ' \n\r')
 TOTAL_HITS=$(echo "$TOTAL_HITS" | tr -d ' \n\r')
 
 echo
-echo "  /api/system/status hits: $STATUS_HITS  (expected: ~6 with idle backoff at 5s, vs ~30 without)"
+echo "  /api/fppd/status hits: $STATUS_HITS  (expected: ~6 with idle backoff at 5s, vs ~30 without)"
 echo "  /api/playlist/* hits:    $PLAYLIST_HITS  (expected: 0 — FPP is idle, no playlist to fetch)"
 echo "  Total /api/ requests:    $TOTAL_HITS"
 

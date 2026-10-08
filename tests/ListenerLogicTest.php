@@ -123,7 +123,7 @@ final class ListenerLogicTest extends TestCase {
     }
 
     /**
-     * current_playlist as FPP's /api/system/status reports it: string values,
+     * current_playlist as FPP's /api/fppd/status reports it: string values,
      * index 1-based across leadIn + mainPlaylist + leadOut (Playlist::GetPosition).
      */
     private function currentPlaylist($index, $count, string $name = 'MyShow'): stdClass {
