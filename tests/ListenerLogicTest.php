@@ -740,4 +740,159 @@ final class ListenerLogicTest extends TestCase {
         $this->assertFalse(rf_has_token('x'));
         $this->assertTrue(rf_has_token('xy'));
     }
+
+    // -------- rf_parse_viewer_control_mode --------
+
+    private function prefs(?string $mode): stdClass {
+        $o = new stdClass();
+        if ($mode !== null) {
+            $o->viewerControlMode = $mode;
+        }
+        return $o;
+    }
+
+    public function testParseMode_knownModes(): void {
+        $this->assertSame('voting', rf_parse_viewer_control_mode($this->prefs('voting')));
+        $this->assertSame('jukebox', rf_parse_viewer_control_mode($this->prefs('jukebox')));
+    }
+
+    public function testParseMode_isCaseAndWhitespaceTolerant(): void {
+        $this->assertSame('voting', rf_parse_viewer_control_mode($this->prefs(' VOTING ')));
+    }
+
+    public function testParseMode_failedOrUnknownIsNull(): void {
+        // A failed fetch must read as "unknown", never as a mode: the old
+        // listener turned a failed fetch into jukebox for the whole session.
+        $this->assertNull(rf_parse_viewer_control_mode(null));
+        $this->assertNull(rf_parse_viewer_control_mode($this->prefs(null)));
+        $this->assertNull(rf_parse_viewer_control_mode($this->prefs('')));
+        $this->assertNull(rf_parse_viewer_control_mode($this->prefs('party')));
+        $this->assertNull(rf_parse_viewer_control_mode('voting'));
+    }
+
+    // -------- rf_should_refresh_mode --------
+
+    public function testShouldRefreshMode_unconfirmedRetriesEvery30s(): void {
+        $this->assertTrue(rf_should_refresh_mode(false, false, 1000, 0));
+        $this->assertFalse(rf_should_refresh_mode(false, false, 1029, 1000));
+        $this->assertTrue(rf_should_refresh_mode(false, false, 1030, 1000));
+    }
+
+    public function testShouldRefreshMode_confirmedNeverRefreshesWithoutAnEmptyFetch(): void {
+        // A busy, working show (every fetch returns a song) never re-asks.
+        $this->assertFalse(rf_should_refresh_mode(true, false, 100000, 0));
+    }
+
+    public function testShouldRefreshMode_confirmedRefreshesAfterEmptyFetchAtMostEvery5Min(): void {
+        $this->assertFalse(rf_should_refresh_mode(true, true, 1299, 1000));
+        $this->assertTrue(rf_should_refresh_mode(true, true, 1300, 1000));
+    }
+
+    public function testShouldRefreshMode_intervalsAreOverridable(): void {
+        $this->assertTrue(rf_should_refresh_mode(false, false, 1005, 1000, 5, 60));
+        $this->assertTrue(rf_should_refresh_mode(true, true, 1060, 1000, 5, 60));
+    }
+
+    // -------- rf_heartbeat_payload --------
+
+    public function testHeartbeatPayload_shape(): void {
+        $this->assertSame([
+            'pluginVersion' => '2026.10.08.01',
+            'viewerControlMode' => 'voting',
+            'modeConfirmed' => true,
+            'lastControlFetchAt' => 1760000000,
+        ], rf_heartbeat_payload('2026.10.08.01', 'voting', true, 1760000000));
+    }
+
+    public function testHeartbeatPayload_neverFetchedIsNull(): void {
+        $payload = rf_heartbeat_payload('v', 'jukebox', false, null);
+        $this->assertNull($payload['lastControlFetchAt']);
+        $this->assertFalse($payload['modeConfirmed']);
+    }
+
+    // -------- rf_remote_playlist_warning --------
+
+    public function testRemotePlaylistWarning_emptyName(): void {
+        $this->assertStringContainsString('No remote playlist is set', rf_remote_playlist_warning('', false));
+        $this->assertStringContainsString('No remote playlist is set', rf_remote_playlist_warning('  ', true));
+    }
+
+    public function testRemotePlaylistWarning_missingFromFpp(): void {
+        $w = rf_remote_playlist_warning('Halloween 2026', false);
+        $this->assertStringContainsString("'Halloween 2026'", $w);
+        $this->assertStringContainsString('not found', $w);
+    }
+
+    public function testRemotePlaylistWarning_foundIsNull(): void {
+        $this->assertNull(rf_remote_playlist_warning('Halloween 2026', true));
+    }
+
+    // -------- rf_is_quiet_moment --------
+
+    private function status(string $name, ?int $secondsRemaining = null): stdClass {
+        $o = new stdClass();
+        $o->status_name = $name;
+        if ($secondsRemaining !== null) {
+            $o->seconds_remaining = $secondsRemaining;
+        }
+        return $o;
+    }
+
+    public function testQuietMoment_idleIsQuiet(): void {
+        $this->assertTrue(rf_is_quiet_moment($this->status('idle')));
+    }
+
+    public function testQuietMoment_notNearTheSongEnd(): void {
+        // Blocking calls (mode re-check, playlist check) must never land in
+        // the request/vote fetch window at the end of a song.
+        $this->assertFalse(rf_is_quiet_moment($this->status('playing', 9)));
+        $this->assertTrue(rf_is_quiet_moment($this->status('playing', 10)));
+        $this->assertFalse(rf_is_quiet_moment($this->status('playing')));
+    }
+
+    // -------- rf_should_check_remote_playlist --------
+
+    public function testShouldCheckRemotePlaylist_firstCheckRunsAtAQuietMoment(): void {
+        $this->assertTrue(rf_should_check_remote_playlist(false, 0, 1000, $this->status('idle')));
+        $this->assertFalse(rf_should_check_remote_playlist(false, 0, 1000, $this->status('playing', 2)));
+    }
+
+    public function testShouldCheckRemotePlaylist_stopsOnceThePlaylistIsFound(): void {
+        $this->assertFalse(rf_should_check_remote_playlist(true, 900, 100000, $this->status('idle')));
+    }
+
+    public function testShouldCheckRemotePlaylist_retriesAMissingOrUnansweredCheckEveryMinute(): void {
+        // FPP didn't answer, or the playlist was missing: try again so a fix
+        // (or a still-loading fppd) is picked up without a listener restart.
+        $this->assertFalse(rf_should_check_remote_playlist(false, 1000, 1059, $this->status('idle')));
+        $this->assertTrue(rf_should_check_remote_playlist(false, 1000, 1060, $this->status('idle')));
+    }
+
+    // -------- rf_should_write_fetch_status --------
+
+    private function fetch(?string $sequence, int $at, bool $error = false, string $kind = 'request'): array {
+        return ['at' => $at, 'kind' => $kind, 'sequence' => $sequence, 'error' => $error];
+    }
+
+    public function testWriteFetchStatus_firstFetchIsWritten(): void {
+        $this->assertTrue(rf_should_write_fetch_status(null, $this->fetch(null, 1000)));
+    }
+
+    public function testWriteFetchStatus_repeatedEmptyFetchesAreThrottled(): void {
+        // Interrupt mode polls an empty queue about once a second; rewriting
+        // the status file each time would wear a Pi's SD card.
+        $this->assertFalse(rf_should_write_fetch_status($this->fetch(null, 1000), $this->fetch(null, 1059)));
+        $this->assertTrue(rf_should_write_fetch_status($this->fetch(null, 1000), $this->fetch(null, 1060)));
+    }
+
+    public function testWriteFetchStatus_anyChangeIsWrittenImmediately(): void {
+        $prev = $this->fetch(null, 1000);
+        $this->assertTrue(rf_should_write_fetch_status($prev, $this->fetch('Monster', 1001)));
+        $this->assertTrue(rf_should_write_fetch_status($prev, $this->fetch(null, 1001, true)));
+        $this->assertTrue(rf_should_write_fetch_status($prev, $this->fetch(null, 1001, false, 'vote')));
+    }
+
+    public function testWriteFetchStatus_aRealSongIsAlwaysWritten(): void {
+        $this->assertTrue(rf_should_write_fetch_status($this->fetch('Monster', 1000), $this->fetch('Monster', 1001)));
+    }
 }

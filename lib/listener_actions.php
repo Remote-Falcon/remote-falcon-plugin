@@ -97,22 +97,23 @@ if (!function_exists('rf_fpp_base_url')) {
 
     // -------- HTTP wrappers (Remote Falcon plugins API) --------
 
-    function remotePreferences($remoteToken) {
-        $result = rf_http_rf_get_preferences($GLOBALS['pluginsApiPath'], $remoteToken);
-        if ($result === null) {
-            logEntry("ERROR - Failed to fetch remote preferences from: " . $GLOBALS['pluginsApiPath'] . "/remotePreferences");
-        }
-        return $result;
-    }
-
     // V17 heartbeat — fire-and-forget liveness POST to the RF plugins API.
     // Failures are logged at verbose level only; a missed heartbeat must never
-    // disrupt the show loop.
+    // disrupt the show loop. The body carries the listener's mode and when it
+    // last asked for a request/vote, so RF can spot "connected but not taking
+    // votes" (PRD-026).
     function fppHeartbeat($remoteToken) {
-        $ok = rf_http_rf_heartbeat($GLOBALS['pluginsApiPath'], $remoteToken);
+        $payload = rf_heartbeat_payload(
+            (string) ($GLOBALS['PLUGIN_VERSION'] ?? ''),
+            (string) ($GLOBALS['viewerControlMode'] ?? ''),
+            !empty($GLOBALS['modeConfirmed']),
+            isset($GLOBALS['lastControlFetchAt']) ? (int) $GLOBALS['lastControlFetchAt'] : null
+        );
+        $ok = rf_http_rf_heartbeat($GLOBALS['pluginsApiPath'], $remoteToken, 5, $payload);
         if (!$ok) {
             logEntry_verbose("WARNING - Heartbeat post failed to: " . $GLOBALS['pluginsApiPath'] . "/fppHeartbeat");
         }
+        rf_status_update(['lastHeartbeat' => ['at' => time(), 'ok' => $ok]]);
         return $ok;
     }
 
@@ -146,7 +147,7 @@ if (!function_exists('rf_fpp_base_url')) {
         $result = rf_http_rf_get_highest_voted($GLOBALS['pluginsApiPath'], $remoteToken);
         if ($result === null) {
             logEntry("ERROR - Failed to fetch highest voted sequence from: " . $GLOBALS['pluginsApiPath'] . "/highestVotedPlaylist");
-            return (object)['winningPlaylist' => null, 'playlistIndex' => null];
+            return (object)['winningPlaylist' => null, 'playlistIndex' => null, 'error' => true];
         }
         logEntry_verbose("SUCCESS - Calling Plugins API to fetch highest voted sequence. Execution time: " . ((microtime(true) - $start_time) * 1000) . " ms");
         return $result;
@@ -158,10 +159,180 @@ if (!function_exists('rf_fpp_base_url')) {
         $result = rf_http_rf_get_next_in_queue($GLOBALS['pluginsApiPath'], $remoteToken);
         if ($result === null) {
             logEntry("ERROR - Failed to fetch next playlist in queue from: " . $GLOBALS['pluginsApiPath'] . "/nextPlaylistInQueue");
-            return (object)['nextPlaylist' => null, 'playlistIndex' => null];
+            return (object)['nextPlaylist' => null, 'playlistIndex' => null, 'error' => true];
         }
         logEntry_verbose("SUCCESS - Calling Plugins API to fetch next requested sequence. Execution time: " . ((microtime(true) - $start_time) * 1000) . " ms");
         return $result;
+    }
+
+    // -------- Listener status file --------
+
+    /**
+     * Where the listener writes its status for the plugin page (status.php).
+     * Lives next to the PID file in the plugin directory; gitignored.
+     * Tests override with $GLOBALS['rfStatusFile'].
+     */
+    function rf_status_file(): string {
+        return $GLOBALS['rfStatusFile'] ?? (dirname(__DIR__) . '/remote_falcon_status.json');
+    }
+
+    /**
+     * Merge $patch into the listener status and rewrite the status file.
+     * Written via a temp file + rename so the plugin page never reads a
+     * half-written file. Never throws: status is best-effort and must not
+     * disrupt the show loop. A failed write is logged once per failure
+     * streak so an empty Listener Status panel has an explanation.
+     */
+    function rf_status_update(array $patch): void {
+        $status = array_replace($GLOBALS['rfStatus'] ?? [], $patch);
+        $status['updatedAt'] = time();
+        $GLOBALS['rfStatus'] = $status;
+
+        $json = json_encode($status, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            return;
+        }
+        $path = rf_status_file();
+        $tmp = $path . '.tmp';
+        $ok = @file_put_contents($tmp, $json) !== false && @rename($tmp, $path);
+        if (!$ok && empty($GLOBALS['rfStatusWriteFailed'])) {
+            logEntry("WARNING - Could not write listener status to " . $path . ". The Listener Status panel on the plugin page will stay empty. Check that the plugin folder is writable.");
+        }
+        $GLOBALS['rfStatusWriteFailed'] = !$ok;
+    }
+
+    // -------- Viewer control mode --------
+
+    /**
+     * Mark the mode unconfirmed on listener (re)start so it is read again.
+     * Until it is, the listener uses $fallbackMode: jukebox on a cold start
+     * (as before), or the mode it had already confirmed when this is a
+     * restart, so one failed read during a settings save can't knock a
+     * working voting show back to jukebox.
+     */
+    function rf_reset_mode_state(string $fallbackMode = 'jukebox'): void {
+        $GLOBALS['viewerControlMode'] = $fallbackMode;
+        $GLOBALS['modeConfirmed'] = false;
+        $GLOBALS['modeLastAttemptAt'] = 0;
+        $GLOBALS['modeReadFailures'] = 0;
+        $GLOBALS['emptyFetchSinceModeRead'] = false;
+        rf_status_update([
+            'viewerControlMode' => $fallbackMode,
+            'modeConfirmed' => false,
+            'modeCheckedAt' => null,
+            'modeError' => null,
+        ]);
+    }
+
+    /**
+     * Read the viewer control mode from RF and apply it. On failure the
+     * current mode is kept (jukebox if never read) and the failure is logged
+     * once per streak, not on every retry.
+     *
+     * @param int $timeout Seconds. The main loop passes a short one; it only
+     *                     calls this at a quiet moment (rf_is_quiet_moment).
+     * @return bool True when the mode was read.
+     */
+    function refreshViewerControlMode($remoteToken, int $timeout = 10): bool {
+        $now = time();
+        $GLOBALS['modeLastAttemptAt'] = $now;
+        $GLOBALS['emptyFetchSinceModeRead'] = false;
+
+        $current = (string) ($GLOBALS['viewerControlMode'] ?? 'jukebox');
+        $confirmed = !empty($GLOBALS['modeConfirmed']);
+        $mode = rf_parse_viewer_control_mode(rf_http_rf_get_preferences($GLOBALS['pluginsApiPath'], $remoteToken, $timeout));
+
+        if ($mode === null) {
+            $failures = (int) ($GLOBALS['modeReadFailures'] ?? 0) + 1;
+            $GLOBALS['modeReadFailures'] = $failures;
+            if ($failures === 1) {
+                if ($confirmed) {
+                    logEntry("WARNING - Unable to re-check viewer control mode with Remote Falcon. Keeping '" . $current . "'.");
+                } else {
+                    logEntry("WARNING - Unable to fetch remote preferences. Using '" . $current . "' mode until Remote Falcon can be reached; retrying every " . RF_MODE_RETRY_SECONDS . " seconds.");
+                    logEntry("Please verify your Remote Token is correct and the API is accessible.");
+                }
+            }
+            rf_status_update(['modeError' => ['at' => $now, 'failures' => $failures]]);
+            return false;
+        }
+
+        $failures = (int) ($GLOBALS['modeReadFailures'] ?? 0);
+        $GLOBALS['modeReadFailures'] = 0;
+        if (!$confirmed) {
+            $retried = $failures === 0 ? "" : " (read after " . $failures . " failed attempt" . ($failures === 1 ? "" : "s") . ")";
+            logEntry("Viewer Control Mode: " . $mode . $retried);
+        } elseif ($mode !== $current) {
+            logEntry("Viewer control mode changed: " . $current . " -> " . $mode);
+        }
+        $GLOBALS['viewerControlMode'] = $mode;
+        $GLOBALS['modeConfirmed'] = true;
+        rf_status_update([
+            'viewerControlMode' => $mode,
+            'modeConfirmed' => true,
+            'modeCheckedAt' => $now,
+            'modeError' => null,
+        ]);
+        return true;
+    }
+
+    /**
+     * Note the outcome of a request/vote fetch: feeds the heartbeat, the
+     * mode re-check trigger and the plugin page status.
+     *
+     * @param string $kind   "vote" or "request".
+     * @param object $result Response from highestVotedSequence/nextPlaylistInQueue.
+     */
+    function rf_record_control_fetch(string $kind, $result): void {
+        $now = time();
+        $sequence = $kind === 'vote' ? ($result->winningPlaylist ?? null) : ($result->nextPlaylist ?? null);
+        $GLOBALS['lastControlFetchAt'] = $now;
+        if ($sequence === null) {
+            $GLOBALS['emptyFetchSinceModeRead'] = true;
+        }
+        $fetch = [
+            'at' => $now,
+            'kind' => $kind,
+            'sequence' => $sequence,
+            'error' => !empty($result->error),
+        ];
+        if (rf_should_write_fetch_status($GLOBALS['rfStatus']['lastFetch'] ?? null, $fetch)) {
+            rf_status_update(['lastFetch' => $fetch]);
+        }
+    }
+
+    function rf_record_insert(string $sequence, bool $ok): void {
+        rf_status_update(['lastInsert' => ['at' => time(), 'sequence' => $sequence, 'ok' => $ok]]);
+    }
+
+    // -------- Remote playlist sanity check --------
+
+    /**
+     * Check that the remote playlist is set and exists in FPP, so a broken
+     * setup is a clear line in the log instead of an insert error on every
+     * song. The listener repeats this until the playlist is found
+     * (rf_should_check_remote_playlist); each warning is logged once, and the
+     * status panel's warning clears as soon as the playlist turns up.
+     *
+     * @return bool|null true when found, false when unset or missing, null
+     *                   when FPP didn't answer (nothing logged or changed).
+     */
+    function checkRemotePlaylist(string $remotePlaylist): ?bool {
+        $found = false;
+        if (trim($remotePlaylist) !== '') {
+            $names = rf_http_fpp_get_playlist_names(rf_fpp_base_url());
+            if ($names === null) {
+                return null;
+            }
+            $found = in_array($remotePlaylist, $names, true);
+        }
+        $warning = rf_remote_playlist_warning($remotePlaylist, $found);
+        if ($warning !== null && $warning !== ($GLOBALS['remotePlaylistWarningLogged'] ?? null)) {
+            logEntry($warning);
+        }
+        $GLOBALS['remotePlaylistWarningLogged'] = $warning;
+        rf_status_update(['remotePlaylist' => $remotePlaylist, 'remotePlaylistWarning' => $warning]);
+        return $found;
     }
 
     // -------- Compatibility wrapper for legacy call sites --------
@@ -295,22 +466,26 @@ if (!function_exists('rf_fpp_base_url')) {
         if ($viewerControlMode == "voting") {
             logEntry($requestFetchTime . " seconds remaining. Getting highest voted sequence.");
             $highestVotedSequence = highestVotedSequence($remoteToken);
+            rf_record_control_fetch('vote', $highestVotedSequence);
             $winningSequence = $highestVotedSequence->winningPlaylist;
             $winningSequenceIndex = $highestVotedSequence->playlistIndex;
             if ($winningSequence != null) {
                 logEntry("Queuing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
-                insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $winningSequenceIndex);
+                $inserted = insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $winningSequenceIndex);
+                rf_record_insert((string) $winningSequence, $inserted);
             } else {
                 logEntry("No votes");
             }
         } else {
             logEntry($requestFetchTime . " seconds remaining. Getting next request.");
             $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
+            rf_record_control_fetch('request', $nextPlaylistInQueue);
             $nextSequence = $nextPlaylistInQueue->nextPlaylist;
             $nextSequenceIndex = $nextPlaylistInQueue->playlistIndex;
             if ($nextSequence != null) {
                 logEntry("Queuing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
-                insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $nextSequenceIndex);
+                $inserted = insertPlaylistAfterCurrent(rawurlencode($remotePlaylist), $nextSequenceIndex);
+                rf_record_insert((string) $nextSequence, $inserted);
             } else {
                 logEntry("No requests");
             }
@@ -356,10 +531,12 @@ if (!function_exists('rf_fpp_base_url')) {
 
         if ($viewerControlMode == "voting") {
             $highestVotedSequence = highestVotedSequence($remoteToken);
+            rf_record_control_fetch('vote', $highestVotedSequence);
             $winningSequence = $highestVotedSequence->winningPlaylist;
             $winningSequenceIndex = $highestVotedSequence->playlistIndex;
             if ($winningSequence != null) {
-                insertPlaylistImmediate(rawurlencode($remotePlaylist), $winningSequenceIndex);
+                $inserted = insertPlaylistImmediate(rawurlencode($remotePlaylist), $winningSequenceIndex);
+                rf_record_insert((string) $winningSequence, $inserted);
                 logEntry("Playing winning sequence " . $winningSequence . " at index " . $winningSequenceIndex);
                 $GLOBALS['lastQueuedSequence'] = $winningSequence;
                 $GLOBALS['lastQueuedTime'] = time();
@@ -369,10 +546,12 @@ if (!function_exists('rf_fpp_base_url')) {
             }
         } else {
             $nextPlaylistInQueue = nextPlaylistInQueue($remoteToken);
+            rf_record_control_fetch('request', $nextPlaylistInQueue);
             $nextSequence = $nextPlaylistInQueue->nextPlaylist;
             $nextSequenceIndex = $nextPlaylistInQueue->playlistIndex;
             if ($nextSequence != null) {
-                insertPlaylistImmediate(rawurlencode($remotePlaylist), $nextSequenceIndex);
+                $inserted = insertPlaylistImmediate(rawurlencode($remotePlaylist), $nextSequenceIndex);
+                rf_record_insert((string) $nextSequence, $inserted);
                 logEntry("Playing requested sequence " . $nextSequence . " at index " . $nextSequenceIndex);
                 $GLOBALS['lastQueuedSequence'] = $nextSequence;
                 $GLOBALS['lastQueuedTime'] = time();

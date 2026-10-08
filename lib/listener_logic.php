@@ -148,6 +148,149 @@ if (!function_exists('rf_get_next_sequence')) {
     }
 
     /**
+     * Seconds between attempts to read the viewer control mode while it is
+     * still unknown (startup fetch failed, e.g. FPP booted before Wi-Fi).
+     */
+    if (!defined('RF_MODE_RETRY_SECONDS')) {
+        define('RF_MODE_RETRY_SECONDS', 30);
+    }
+
+    /**
+     * Minimum seconds between re-reads of a known mode. Re-reads are only
+     * triggered by an empty request/vote fetch (see rf_should_refresh_mode).
+     */
+    if (!defined('RF_MODE_REFRESH_SECONDS')) {
+        define('RF_MODE_REFRESH_SECONDS', 300);
+    }
+
+    /**
+     * Extract the viewer control mode from a /remotePreferences response.
+     * Returns null for a failed fetch or an unrecognised value, so callers
+     * can tell "unknown" apart from a real mode.
+     *
+     * @param mixed $prefs Decoded response (stdClass) or null.
+     * @return string|null "voting", "jukebox" or null.
+     */
+    function rf_parse_viewer_control_mode($prefs): ?string {
+        if (!($prefs instanceof stdClass) || !isset($prefs->viewerControlMode)) {
+            return null;
+        }
+        $mode = strtolower(trim((string) $prefs->viewerControlMode));
+        return in_array($mode, ['voting', 'jukebox'], true) ? $mode : null;
+    }
+
+    /**
+     * Whether the listener should (re)read the viewer control mode now.
+     *
+     * The mode used to be read once at startup and cached forever, so a
+     * failed boot-time fetch or a mode change in the control panel left the
+     * plugin asking the wrong endpoint all night (votes or requests never
+     * consumed). Now:
+     *  - unknown mode: retry every $retrySeconds until it can be read;
+     *  - known mode: re-read only after a fetch came back empty, at most
+     *    every $refreshSeconds. A busy, working show never pays for it, and
+     *    a mismatched plugin always gets empty answers, so it self-corrects.
+     *
+     * @param bool $confirmed           Mode has been read successfully.
+     * @param bool $emptyFetchSinceLast A request/vote fetch came back empty
+     *                                  since the last mode read.
+     * @param int  $lastAttemptAt       Unix time of the last read attempt.
+     */
+    function rf_should_refresh_mode(
+        bool $confirmed,
+        bool $emptyFetchSinceLast,
+        int $now,
+        int $lastAttemptAt,
+        int $retrySeconds = RF_MODE_RETRY_SECONDS,
+        int $refreshSeconds = RF_MODE_REFRESH_SECONDS
+    ): bool {
+        if (!$confirmed) {
+            return ($now - $lastAttemptAt) >= $retrySeconds;
+        }
+        return $emptyFetchSinceLast && ($now - $lastAttemptAt) >= $refreshSeconds;
+    }
+
+    /**
+     * Body for the /fppHeartbeat POST. Lets Remote Falcon tell a plugin that
+     * is connected but not taking requests or votes apart from a healthy one.
+     *
+     * @param int|null $lastControlFetchAt Unix time of the last request/vote
+     *                                     fetch, or null if none yet.
+     */
+    function rf_heartbeat_payload(string $pluginVersion, string $mode, bool $modeConfirmed, ?int $lastControlFetchAt): array {
+        return [
+            'pluginVersion' => $pluginVersion,
+            'viewerControlMode' => $mode,
+            'modeConfirmed' => $modeConfirmed,
+            'lastControlFetchAt' => $lastControlFetchAt,
+        ];
+    }
+
+    /**
+     * Warning to log when the remote playlist can't work, or null when fine.
+     * Callers only ask once FPP has answered (see checkRemotePlaylist).
+     */
+    function rf_remote_playlist_warning(string $remotePlaylist, bool $foundInFpp): ?string {
+        if (trim($remotePlaylist) === '') {
+            return "WARNING - No remote playlist is set. Viewer requests and votes can't play until you pick one on the plugin page and sync it.";
+        }
+        if (!$foundInFpp) {
+            return "WARNING - Remote playlist '" . $remotePlaylist . "' was not found in FPP. Viewer requests and votes can't play until it exists and is synced.";
+        }
+        return null;
+    }
+
+    /**
+     * Whether now is a safe moment for a blocking call (mode re-check,
+     * remote playlist check). Those can take seconds, so never run them close
+     * to the end of a song, where the request/vote fetch has to happen.
+     */
+    function rf_is_quiet_moment(stdClass $fppStatus, int $minSecondsRemaining = 10): bool {
+        if (($fppStatus->status_name ?? '') === 'idle') {
+            return true;
+        }
+        return isset($fppStatus->seconds_remaining) && (int) $fppStatus->seconds_remaining >= $minSecondsRemaining;
+    }
+
+    /**
+     * Whether to (re)check that the remote playlist exists in FPP. Stops once
+     * it has been found; a missing playlist or an FPP that didn't answer is
+     * retried every $retrySeconds, so a fix or a still-loading fppd is picked
+     * up without a listener restart.
+     *
+     * @param int $lastCheckAt Unix time of the last check, 0 if never.
+     */
+    function rf_should_check_remote_playlist(bool $found, int $lastCheckAt, int $now, stdClass $fppStatus, int $retrySeconds = 60): bool {
+        if ($found) {
+            return false;
+        }
+        if ($lastCheckAt > 0 && ($now - $lastCheckAt) < $retrySeconds) {
+            return false;
+        }
+        return rf_is_quiet_moment($fppStatus);
+    }
+
+    /**
+     * Whether a request/vote fetch result is worth rewriting the status file
+     * for. Interrupt mode polls an empty queue about once a second, so a run
+     * of identical empty results is written at most every $minSeconds; any
+     * change, and every real song, is written straight away.
+     *
+     * @param array|null $prev Last written ['at','kind','sequence','error'].
+     */
+    function rf_should_write_fetch_status(?array $prev, array $next, int $minSeconds = 60): bool {
+        if ($prev === null || $next['sequence'] !== null) {
+            return true;
+        }
+        foreach (['kind', 'sequence', 'error'] as $key) {
+            if (($prev[$key] ?? null) !== ($next[$key] ?? null)) {
+                return true;
+            }
+        }
+        return ($next['at'] - ($prev['at'] ?? 0)) >= $minSeconds;
+    }
+
+    /**
      * Decide whether to push an "updateWhatsPlaying" to RF.
      * Returns the value to post (echoes $currentlyPlaying) when the listener's
      * cached "what RF thinks is playing" disagrees with what FPP actually plays.

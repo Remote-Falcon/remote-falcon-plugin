@@ -11,3 +11,6 @@ require_once __DIR__ . '/../lib/listener_actions.php';
 require_once __DIR__ . '/../lib/sync_builder.php';
 require_once __DIR__ . '/integration/MockServer.php';
 require_once __DIR__ . '/integration/IntegrationTestCase.php';
+
+// Listener status writes (rf_status_update) go to a temp file, not the repo.
+$GLOBALS['rfStatusFile'] = sys_get_temp_dir() . '/rf-test-status-' . getmypid() . '.json';

@@ -20,6 +20,19 @@ jobs:
           fi
           echo "OK: vendor/ is not committed."
 
+  js:
+    name: JS unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax-check plugin page scripts
+        run: for f in js/*.js; do node --check "$f"; done
+      - name: Run JS tests
+        run: node --test tests/js/*.test.js
+
   phpunit:
     name: PHPUnit (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest

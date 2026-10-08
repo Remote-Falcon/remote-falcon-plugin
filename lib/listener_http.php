@@ -139,6 +139,20 @@ if (!function_exists('rf_http_request')) {
         return $decoded instanceof stdClass ? $decoded : null;
     }
 
+    /**
+     * Names of the playlists FPP knows about, or null if FPP didn't answer.
+     * Used to check the remote playlist exists: GET /api/playlist/<missing>
+     * returns HTTP 200 with an empty body on FPP 10, so it can't say "missing".
+     */
+    function rf_http_fpp_get_playlist_names(string $fppBaseUrl, int $timeout = 3): ?array {
+        $body = rf_http_request('GET', $fppBaseUrl . '/api/playlists', [], null, $timeout);
+        $decoded = rf_http_decode_json($body);
+        if (!is_array($decoded)) {
+            return null;
+        }
+        return array_values(array_filter($decoded, 'is_string'));
+    }
+
     function rf_http_fpp_insert_immediate(string $fppBaseUrl, string $playlistEncoded, int $index, int $timeout = 1): bool {
         $url = $fppBaseUrl . '/api/command/Insert%20Playlist%20Immediate/' . $playlistEncoded . '/' . $index . '/' . $index;
         $body = rf_http_request('GET', $url, [], null, $timeout);
@@ -184,14 +198,20 @@ if (!function_exists('rf_http_request')) {
         return $body !== null;
     }
 
-    function rf_http_rf_heartbeat(string $rfBaseUrl, string $token, int $timeout = 5): bool {
+    /**
+     * @param array|null $payload Listener status sent as the JSON body. The
+     *                            Plugins API ignores unknown body fields, so
+     *                            older servers accept it unchanged.
+     */
+    function rf_http_rf_heartbeat(string $rfBaseUrl, string $token, int $timeout = 5, ?array $payload = null): bool {
         $url = $rfBaseUrl . '/fppHeartbeat';
         $headers = [
             'Content-Type' => 'application/json; charset=UTF-8',
             'Accept' => 'application/json',
             'remotetoken' => $token,
         ];
-        $body = _rf_http_rf_curl('POST', $url, $headers, '{}', $timeout);
+        $json = empty($payload) ? '{}' : json_encode($payload);
+        $body = _rf_http_rf_curl('POST', $url, $headers, $json === false ? '{}' : $json, $timeout);
         return $body !== null;
     }
 

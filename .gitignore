@@ -111,3 +111,7 @@ scripts/remote_fpp_test.sh
 /vendor/
 .phpunit.cache/
 .phpunit.result.cache
+
+# Listener status for the plugin page (written at runtime)
+/remote_falcon_status.json
+/remote_falcon_status.json.tmp

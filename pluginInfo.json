@@ -31,6 +31,12 @@
 			},
 			{
 				"to": "remotefalcon.com",
+				"what": "the listener's viewer control mode and when it last checked for a request or vote",
+				"why": "so Remote Falcon can spot a plugin that is connected but not playing requests or votes",
+				"alwaysOn": false
+			},
+			{
+				"to": "remotefalcon.com",
 				"what": "the plugin and FPP version numbers",
 				"why": "so Remote Falcon can tell which versions are in use",
 				"alwaysOn": false
@@ -43,6 +49,13 @@
 				"keptDays": null,
 				"canDelete": true,
 				"where": "plugin log"
+			},
+			{
+				"what": "the listener's current status: mode, last request or vote check, last queued song",
+				"about": "operator",
+				"keptDays": null,
+				"canDelete": true,
+				"where": "plugin folder (shown on the plugin page)"
 			}
 		],
 		"sensors": [],

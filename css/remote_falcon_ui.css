@@ -64,6 +64,16 @@
   font-weight: bold;
   color: var(--bs-success, #198754);
 }
+.rf-listener-status div {
+  margin-bottom: 4px;
+}
+.rf-listener-status .rf-status-warn {
+  font-weight: bold;
+  color: var(--bs-danger, #dc3545);
+}
+.rf-listener-status .rf-status-ok {
+  color: var(--bs-success, #198754);
+}
 .rf-log-tail {
   max-height: 200px;
   overflow-y: auto;
