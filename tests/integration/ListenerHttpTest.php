@@ -24,6 +24,20 @@ final class ListenerHttpTest extends IntegrationTestCase {
         $this->assertSame(12, $result->seconds_remaining);
     }
 
+    public function testFppGetStatus_asksFppToSkipHostDetails(): void {
+        $this->fppMock->setRoute('/api/system/status', [
+            'body' => ['status_name' => 'idle'],
+        ]);
+        rf_http_fpp_get_status($this->fppMock->getBaseUrl());
+        $recordings = $this->fppMock->getRecordings();
+        $this->assertCount(1, $recordings);
+        $this->assertSame('/api/system/status', $recordings[0]['path']);
+        parse_str($recordings[0]['query'], $flags);
+        foreach (['nonetwork', 'simple', 'noplugins'] as $flag) {
+            $this->assertArrayHasKey($flag, $flags, "status poll should send ?$flag");
+        }
+    }
+
     public function testFppGetStatus_returnsNullOn404(): void {
         // No route configured → router returns 404
         $this->assertNull(rf_http_fpp_get_status($this->fppMock->getBaseUrl()));

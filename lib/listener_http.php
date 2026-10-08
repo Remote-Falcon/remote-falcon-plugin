@@ -99,11 +99,19 @@ if (!function_exists('rf_http_request')) {
      * that cold start without making a genuinely down fppd take meaningfully
      * longer to notice, since the caller retries before escalating.
      *
+     * The listener reads only fppd's own fields (status_name, current_playlist,
+     * current_sequence, current_song, seconds_remaining). nonetwork, simple
+     * and noplugins tell FPP's PHP to skip the host details it would
+     * otherwise add -- wifi and interface lists, the full system-info block,
+     * plugin header indicators -- which this poll runs often enough to make
+     * worth avoiding on a single-core controller. FPP versions that don't
+     * know a flag ignore it, so the response is never less than before.
+     *
      * @return array{ok: bool, status: ?stdClass, reason: string, httpStatus: int}
      *         reason is one of: ok, unreachable, http_error, bad_body
      */
     function rf_http_fpp_get_status_result(string $fppBaseUrl, int $timeout = 3): array {
-        $url = $fppBaseUrl . '/api/system/status';
+        $url = $fppBaseUrl . '/api/system/status?nonetwork&simple&noplugins';
         $result = rf_http_request_with_status('GET', $url, [], null, $timeout);
 
         // status 0 is the only signal that actually means "could not talk to
