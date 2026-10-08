@@ -211,11 +211,13 @@ if (!function_exists('rf_fpp_base_url')) {
         $cacheKey = (string) $currentPlaylist;
         $now = microtime(true);
         $playlistDetails = rf_playlist_cache_get($cacheKey, $now, 60.0);
-        if ($playlistDetails === null) {
+        if ($playlistDetails === null && !rf_playlist_cache_has($cacheKey, $now, 60.0)) {
             $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
-            if ($playlistDetails !== null) {
-                rf_playlist_cache_put($cacheKey, $playlistDetails, $now);
-            }
+            // Cache a miss too. A sequence or media file played on its own
+            // reports itself as the current playlist ("song.fseq"), FPP has no
+            // playlist by that name, and an uncached miss was looked up again
+            // on every poll for the whole song.
+            rf_playlist_cache_put($cacheKey, $playlistDetails, $now);
         }
 
         $nextScheduled = rf_decide_next_scheduled_update(

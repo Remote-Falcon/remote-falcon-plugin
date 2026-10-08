@@ -19,6 +19,11 @@ and this project uses date-based versioning (`YYYY.MM.DD.NN`).
   normal-looking "stopped" status, so the listener carried on as if fppd were
   running; Apache's 502/503/504 for `/api/fppd/status` now counts as unreachable,
   and three consecutive failures log "FPPD is not running!" as intended.
+- Playing a sequence or media file on its own (not from a playlist) no longer looks up
+  a playlist on every poll. FPP reports the file as the current playlist and has no
+  playlist by that name, and that miss was never cached, so the next-scheduled lookup
+  made a PHP request every second for the whole song. Misses are now cached for 60
+  seconds like hits.
 
 ## [2026.10.02.01] - 2026-10-02
 

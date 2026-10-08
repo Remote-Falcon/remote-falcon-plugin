@@ -264,6 +264,24 @@ final class ListenerActionsTest extends IntegrationTestCase {
         $this->assertCount(1, $fppHits, 'FPP playlist endpoint should be hit once across 3 calls within TTL');
     }
 
+    public function testUpdateNextScheduledSequence_cachesAMissingPlaylistToo(): void {
+        // A sequence played on its own reports itself as the current
+        // playlist, and FPP answers 200 with a bare "" for a playlist that
+        // doesn't exist. That miss must be cached like a hit, or it is looked
+        // up again on every 1s poll for the whole song.
+        $this->fppMock->setRoute('/api/playlist/song.fseq', ['body' => '""']);
+
+        $status = $this->makeFppStatus('song.fseq', 30, 'song.fseq');
+        updateNextScheduledSequence($status, 'song', '', 'tok');
+        updateNextScheduledSequence($status, 'song', '', 'tok');
+        updateNextScheduledSequence($status, 'song', '', 'tok');
+
+        $fppHits = array_filter($this->pathsRecordedOn($this->fppMock), function ($p) {
+            return strpos($p, '/api/playlist/') === 0;
+        });
+        $this->assertCount(1, $fppHits, 'a missing playlist should be fetched once across 3 calls within TTL');
+    }
+
     public function testUpdateNextScheduledSequence_usesFppIndexForRepeatedSequence(): void {
         $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
             'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'x', 'b', 'x', 'c'])],
