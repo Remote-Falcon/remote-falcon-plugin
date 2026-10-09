@@ -5,6 +5,37 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
+## [2026.10.08.01] - 2026-10-08
+
+Stops a plugin from silently ignoring votes or requests for a whole night
+while the Remote Falcon dashboard still shows it as connected.
+
+### Fixed
+- **Votes or requests no longer go unplayed after a reboot.** The plugin checked
+  your viewer control mode (Voting or Jukebox) only once, when it started. If
+  Remote Falcon couldn't be reached at that moment, for example when FPP boots
+  before Wi-Fi is up, it assumed Jukebox until the next restart. A Voting show
+  then never played its winning votes, while the dashboard still showed the
+  plugin as connected. The plugin now keeps retrying every 30 seconds until it
+  can read the mode.
+- **Switching between Voting and Jukebox no longer needs a plugin restart.** When
+  a request or vote check comes back empty, the plugin re-checks the mode with
+  Remote Falcon (at most every 5 minutes) and switches if it changed.
+
+### Added
+- **Listener Status on the plugin page.** It shows the mode the plugin is using
+  and whether Remote Falcon confirmed it, the last request or vote check and what
+  it returned, the last song queued in FPP and whether FPP accepted it, and the
+  last heartbeat. It updates every 10 seconds, so you can see whether votes and
+  requests are being played without reading the log.
+- **Clearer log lines.** The log now says when the mode changes, when the mode
+  can't be read (once, not on every retry), and when your remote playlist isn't
+  set or doesn't exist in FPP.
+- The heartbeat now tells Remote Falcon which mode the plugin is using and when
+  it last checked for a request or vote, so Remote Falcon can later flag a
+  plugin that is connected but not playing them. The privacy disclosure lists
+  this.
+
 ## [2026.10.02.01] - 2026-10-02
 
 FPP 10 privacy disclosure, so the install dialog stops warning "No privacy

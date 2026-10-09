@@ -61,12 +61,12 @@ Stored in FPP config file and managed through the UI:
 
 #### Remote Falcon Plugins API
 All requests include `remotetoken` header:
-- `GET /remotePreferences` - Get viewer control mode (voting/jukebox)
+- `GET /remotePreferences` - Get viewer control mode (voting/jukebox). Read at start, retried every 30s until it succeeds, and re-read after an empty request/vote fetch (at most every 5 min). Never cache it for the session: a stale mode makes the plugin ask the wrong endpoint and silently play nothing (`rf_should_refresh_mode`).
 - `GET /highestVotedPlaylist` - Get winning sequence from voting
 - `GET /nextPlaylistInQueue?updateQueue=true` - Get and dequeue next jukebox request
 - `POST /updateWhatsPlaying` - Update currently playing sequence
 - `POST /updateNextScheduledSequence` - Update next scheduled sequence
-- `POST /fppHeartbeat` - Send keepalive heartbeat
+- `POST /fppHeartbeat` - Send keepalive heartbeat. Body: `{pluginVersion, viewerControlMode, modeConfirmed, lastControlFetchAt}` (`rf_heartbeat_payload`); the server ignores body fields it doesn't know
 
 ### Version Support
 
@@ -85,6 +85,8 @@ Most listener logic is pure code that can be tested locally without FPP. Real ha
 **Layer 1 — PHPUnit unit tests (run anywhere, <2s).** For any pure function — sequence selection, dedup logic, cache behavior, settings parsing, value clamping. Functions in `lib/` MUST have unit tests in `tests/`. Run with `vendor/bin/phpunit` after `composer install`.
 
 **Layer 2 — Integration tests with mock servers (run anywhere, ~30s).** For end-to-end listener flow using mock FPP and RF backends. Add a test when changing the listener's loop or HTTP behavior. Harness lives in `tests/integration/` (MockServer + IntegrationTestCase).
+
+**Layer 2b — JS unit tests (run anywhere, <1s).** Plugin page logic that doesn't need the DOM lives in its own file with a CommonJS export guard (e.g. `js/listener_status.js`) and is tested with Node's built-in runner: `node --test tests/js/*.test.js`. CI runs these in the `js` job.
 
 **Layer 3 — Browser smoke (manual, optional).** UI changes (`remote_falcon_ui.html`, `js/`) can be sanity-checked locally with a mock backend before pushing.
 
@@ -112,6 +114,12 @@ The `vendor/` directory is **never committed**. PHPUnit is a dev-only dependency
 ### Pure-logic extraction
 
 Functions that take inputs and produce outputs (no I/O, no global mutation, no logging) live in `lib/listener_logic.php` and are unit-tested. The listener (`remote_falcon_listener.php`) `require_once`s the lib and calls the helpers from its orchestration code. When adding new pure logic, write it in `lib/` first and test it before wiring it up in the listener.
+
+### Listener status file
+
+The listener writes `remote_falcon_status.json` in the plugin directory (gitignored) via `rf_status_update()` whenever its mode, a request/vote fetch, an FPP insert or a heartbeat changes. `status.php` serves it to the plugin page's "Listener Status" panel (`buildListenerStatusLines` in `js/listener_status.js`). Status writes are best-effort: they never throw, and a failed write is logged once per failure streak. Repeated identical empty fetches are written at most once a minute (`rf_should_write_fetch_status`) because interrupt mode polls about once a second. Tests redirect writes via `$GLOBALS['rfStatusFile']`.
+
+Blocking calls the main loop makes on its own schedule (mode re-check, remote playlist check) only run when `rf_is_quiet_moment()` says FPP is idle or at least 10s from the end of the song, so they can never swallow the end-of-song request/vote fetch.
 
 ### Logs
 

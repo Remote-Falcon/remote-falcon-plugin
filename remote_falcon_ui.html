@@ -7,6 +7,7 @@
 	     remote_falcon_ui.js on the first page load after a plugin upgrade —
 	     without it, a cached pre-#158 script could keep posting the legacy
 	     sync payload indefinitely (see sync_playlists.php). -->
+	<script src="./js/listener_status.js?v=<?php echo @filemtime(__DIR__ . '/js/listener_status.js'); ?>"></script>
 	<script src="./js/remote_falcon_ui.js?v=<?php echo @filemtime(__DIR__ . '/js/remote_falcon_ui.js'); ?>"></script>
 </head>
 <body>
@@ -104,6 +105,22 @@
         </div>
         <div class="col-md-6">
           <input type="checkbox" class="form-control" name="interruptScheduleCheckbox" id="interruptScheduleCheckbox">
+        </div>
+      </div>
+      <!-- Listener Status -->
+      <div class="justify-content-md-center row setting-item">
+        <div class="col-md-6">
+          <div class="card-title h6">
+            Listener Status
+          </div>
+          <div class="mb-2 text-muted card-subtitle">
+            What the listener is doing right now: the viewer control mode it is using, its last
+            request or vote check, the last song it queued in FPP, and its last heartbeat.
+            Updates every 10 seconds.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div id="listenerStatus" class="rf-listener-status text-muted">Loading...</div>
         </div>
       </div>
       <!-- Check Plugin -->

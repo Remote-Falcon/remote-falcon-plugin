@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2026.10.02.01";
+$PLUGIN_VERSION = "2026.10.08.01";
 
 // CLI daemon started by scripts/postStart.sh. Refuse to run under a web
 // SAPI: FPP's plugin.php can include arbitrary files from the plugin
@@ -92,6 +92,19 @@ $pluginsApiPath = "";
 $verboseLogging = false;
 $lastQueuedSequence = "";
 $lastQueuedTime = 0;
+// Viewer control mode state (see rf_should_refresh_mode). Set by
+// rf_reset_mode_state()/refreshViewerControlMode() via $GLOBALS.
+$modeConfirmed = false;
+$modeLastAttemptAt = 0;
+$modeReadFailures = 0;
+$emptyFetchSinceModeRead = false;
+$lastControlFetchAt = null;
+$remotePlaylistFound = false;
+$remotePlaylistCheckedAt = 0;
+$remotePlaylistWarningLogged = null;
+// Fresh status for the plugin page on every listener start.
+$rfStatus = [];
+rf_status_update(['pluginVersion' => $PLUGIN_VERSION, 'listenerStartedAt' => time()]);
 
 // Auto Sync Playlist (#13) watcher state.
 $autoSyncPlaylistName = null;
@@ -108,20 +121,14 @@ logEntry("Remote Playlist: ".$remotePlaylist);
 // Nothing leaves the device until a Show Token is set (#194). Saving the
 // token on the plugin page runs the Restart Listener command, so the new
 // process picks it up here.
+// The mode is no longer read once and cached for the session: if this read
+// fails (e.g. FPP booted before Wi-Fi) the main loop keeps retrying, and an
+// empty request/vote fetch re-checks it later (rf_should_refresh_mode).
+rf_reset_mode_state();
 if (!rf_has_token($remoteToken)) {
   logEntry("No Show Token set. Not contacting Remote Falcon until one is saved on the plugin page.");
-  $viewerControlMode = "jukebox";
 } else {
-  // Safely fetch remote preferences with error handling
-  $remotePreferences = remotePreferences($remoteToken);
-  if ($remotePreferences === null || !isset($remotePreferences->viewerControlMode)) {
-    logEntry("WARNING - Unable to fetch remote preferences. Using default 'jukebox' mode.");
-    logEntry("Please verify your Remote Token is correct and the API is accessible.");
-    $viewerControlMode = "jukebox"; // Default to jukebox mode
-  } else {
-    $viewerControlMode = $remotePreferences->viewerControlMode;
-    logEntry("Viewer Control Mode: " . $viewerControlMode);
-  }
+  refreshViewerControlMode($remoteToken);
 }
 
 $interruptSchedule = urldecode($pluginSettings['interruptSchedule']);
@@ -195,20 +202,16 @@ while(true) {
     $remotePlaylist = urldecode($pluginSettings['remotePlaylist']);
     logEntry("Remote Playlist: ".$remotePlaylist);
 
+    // Settings may have changed the playlist or token: re-check both. Keep a
+    // confirmed mode as the fallback while it is re-read.
+    $remotePlaylistFound = false;
+    $remotePlaylistCheckedAt = 0;
+    $remotePlaylistWarningLogged = null;
+    rf_reset_mode_state($modeConfirmed ? $viewerControlMode : 'jukebox');
     if (!rf_has_token($remoteToken)) {
       logEntry("No Show Token set. Not contacting Remote Falcon until one is saved on the plugin page.");
-      $viewerControlMode = "jukebox";
     } else {
-      // Safely fetch remote preferences with error handling
-      $remotePreferences = remotePreferences($remoteToken);
-      if ($remotePreferences === null || !isset($remotePreferences->viewerControlMode)) {
-        logEntry("WARNING - Unable to fetch remote preferences. Using default 'jukebox' mode.");
-        logEntry("Please verify your Remote Token is correct and the API is accessible.");
-        $viewerControlMode = "jukebox"; // Default to jukebox mode
-      } else {
-        $viewerControlMode = $remotePreferences->viewerControlMode;
-        logEntry("Viewer Control Mode: " . $viewerControlMode);
-      }
+      refreshViewerControlMode($remoteToken);
     }
 
     $interruptSchedule = urldecode($pluginSettings['interruptSchedule']);
@@ -298,6 +301,19 @@ while(true) {
       $statusName = $fppStatus->status_name;
       $sleepSeconds = rf_next_poll_seconds((string) $statusName, (float) $fppStatusCheckTime);
       $rfSequencesCleared = syncShowStateToRf($fppStatus, $remoteToken, $rfSequencesCleared);
+      // Retry an unread mode every 30s; re-check a known one after an empty
+      // request/vote fetch, at most every 5 min. Picks up a control panel
+      // mode change without a listener restart. Only at a quiet moment, with
+      // a short timeout, so a slow Remote Falcon can't make the listener miss
+      // the end-of-song fetch window.
+      if (rf_is_quiet_moment($fppStatus)
+          && rf_should_refresh_mode($modeConfirmed, $emptyFetchSinceModeRead, time(), $modeLastAttemptAt)) {
+        refreshViewerControlMode($remoteToken, 5);
+      }
+      if (rf_should_check_remote_playlist($remotePlaylistFound, $remotePlaylistCheckedAt, time(), $fppStatus)) {
+        $remotePlaylistFound = checkRemotePlaylist($remotePlaylist) === true;
+        $remotePlaylistCheckedAt = time();
+      }
       if($statusName != "idle") {
         if($interruptSchedule != 1) {
           doNonInterruptStuff($fppStatus, $requestFetchTime, $viewerControlMode, $additionalWaitTime, $remotePlaylist, $remoteToken);

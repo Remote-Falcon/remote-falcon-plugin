@@ -69,6 +69,7 @@ $(document).ready(async () => {
     await tailListenerLog();
   });
 
+
   $('#requestFetchTimeInput').blur(async () => {
     await FPPPost('/api/plugin/remote-falcon/settings/requestFetchTime', $('#requestFetchTimeInput').val().toString(), async () => {
       await getPluginConfig();
@@ -143,6 +144,11 @@ $(document).ready(async () => {
   $('#resetConfigButton').click(async () => {
     await resetPluginConfigToDefault();
   });
+
+  // Last, and not awaited: a slow status.php must not hold up the handlers
+  // above (an unbound settings input silently drops the operator's edit).
+  loadListenerStatus();
+  setInterval(loadListenerStatus, 10000);
 });
 
 async function init() {
@@ -442,6 +448,32 @@ async function stopListener() {
   await getPluginConfig();
   $('#remoteFalconStatus').html(getRemoteFalconListenerEnabledStatus(REMOTE_FALCON_LISTENER_ENABLED));
   $.jGrowl("Stopped Listener", { themeState: 'success' });
+}
+
+async function loadListenerStatus() {
+  const $panel = $('#listenerStatus');
+  if (!$panel.length) {
+    return;
+  }
+  let response = null;
+  try {
+    await FPPGet('/plugin.php?plugin=remote-falcon&page=status.php&nopage=1', (data) => {
+      response = typeof data === 'string' ? JSON.parse(data) : data;
+    });
+  } catch (error) {
+    console.error('Listener status error:', error);
+  }
+  const lines = buildListenerStatusLines(response, !!(REMOTE_TOKEN && REMOTE_TOKEN !== ''), !!REMOTE_FALCON_LISTENER_ENABLED);
+  $panel.removeClass('text-muted').empty();
+  lines.forEach((line) => {
+    const $line = $('<div>').text(line.text);
+    if (line.level === 'warn') {
+      $line.addClass('rf-status-warn');
+    } else if (line.level === 'ok') {
+      $line.addClass('rf-status-ok');
+    }
+    $panel.append($line);
+  });
 }
 
 async function tailListenerLog() {
