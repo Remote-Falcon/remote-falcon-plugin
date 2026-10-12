@@ -7,16 +7,17 @@ and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
 ## [2026.10.12.01] - 2026-10-12
 
-Fixes FPPD shutting down after "Restart FPPD" and staying down until a reboot.
+Fixes FPPD crashing when you click Restart FPPD after changing plugin settings.
 
 ### Fixed
-- **"Restart FPPD" no longer leaves FPPD stopped until you reboot.** After you
-  saved settings on the plugin page or used Restart Listener, the plugin's
-  listener held on to network ports that belong to FPPD. FPP's Restart FPPD
-  button restarts FPPD without stopping plugins, so the new FPPD found its
-  ports taken and shut down ("DDP bind failed: Address already in use" in
-  fppd.log). The show and Remote Falcon stayed offline until a full reboot.
-  The listener now starts without any of FPPD's ports.
+- **"Restart FPPD" no longer crashes FPPD after you change plugin settings.**
+  After you saved settings on the plugin page or used Restart Listener, the
+  plugin's listener held on to network ports that belong to FPPD. FPP's
+  Restart FPPD button restarts FPPD without stopping plugins, so the new FPPD
+  found its ports taken and shut down. On a Raspberry Pi or BeagleBone, FPP
+  restarted it within a second or so, with a short gap in the show and the
+  Remote Falcon connection. In Docker it stayed down until a reboot. The
+  listener now starts without any of FPPD's ports.
 
 ## [2026.10.08.01] - 2026-10-08
 
