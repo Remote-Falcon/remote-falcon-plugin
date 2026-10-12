@@ -5,7 +5,9 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
-## [Unreleased]
+## [2026.10.12.01] - 2026-10-12
+
+Fixes FPPD shutting down after "Restart FPPD" and staying down until a reboot.
 
 ### Fixed
 - **"Restart FPPD" no longer leaves FPPD stopped until you reboot.** After you
