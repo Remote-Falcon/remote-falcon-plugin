@@ -9,6 +9,7 @@
 . "${FPPDIR}/scripts/common" 2>/dev/null || true
 : "${MEDIADIR:=/home/fpp/media}"
 : "${LOGDIR:=${MEDIADIR}/logs}"
+: "${RF_PHP:=/usr/bin/php}"
 
 PLUGINDIR="${MEDIADIR}/plugins/remote-falcon"
 PIDFILE="${PLUGINDIR}/remote_falcon_listener.pid"
@@ -44,7 +45,9 @@ if [ -f "$PIDFILE" ]; then
     exit 0
 fi
 
-nohup /usr/bin/php "${PLUGINDIR}/remote_falcon_listener.php" >> "$LOGFILE" 2>&1 < /dev/null &
+# detach.sh drops fppd's sockets, inherited when the Restart Listener command
+# runs this script, and execs into the listener, so $! is the listener's PID.
+/bin/bash "${PLUGINDIR}/scripts/detach.sh" nohup "$RF_PHP" "${PLUGINDIR}/remote_falcon_listener.php" >> "$LOGFILE" 2>&1 < /dev/null &
 echo $! > "$PIDFILE"
 
 #postStart

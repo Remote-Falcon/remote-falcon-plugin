@@ -5,6 +5,20 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
+## [2026.10.12.01] - 2026-10-12
+
+Fixes FPPD crashing when you click Restart FPPD after changing plugin settings.
+
+### Fixed
+- **"Restart FPPD" no longer crashes FPPD after you change plugin settings.**
+  After you saved settings on the plugin page or used Restart Listener, the
+  plugin's listener held on to network ports that belong to FPPD. FPP's
+  Restart FPPD button restarts FPPD without stopping plugins, so the new FPPD
+  found its ports taken and shut down. On a Raspberry Pi or BeagleBone, FPP
+  restarted it within a second or so, with a short gap in the show and the
+  Remote Falcon connection. In Docker it stayed down until a reboot. The
+  listener now starts without any of FPPD's ports.
+
 ## [2026.10.08.01] - 2026-10-08
 
 Stops a plugin from silently ignoring votes or requests for a whole night

@@ -57,4 +57,19 @@ class CommandScriptsTest extends TestCase {
         $this->assertSame($declared, $onDisk,
             'commands/descriptions.json and commands/*.php disagree');
     }
+
+    /**
+     * Commands run as children of fppd. A process they background without
+     * scripts/detach.sh keeps fppd's sockets, and a "Restart FPPD" while it
+     * runs leaves fppd unable to bind and down until a reboot.
+     */
+    public function testBackgroundedProcessesGoThroughDetach(): void {
+        foreach ($this->commandScripts() as $path) {
+            $src = (string) file_get_contents($path);
+            if (preg_match('/&\s*[\'"]\s*\)\s*;/', $src)) {
+                $this->assertStringContainsString('scripts/detach.sh', $src,
+                    basename($path) . " backgrounds a process without scripts/detach.sh");
+            }
+        }
+    }
 }
