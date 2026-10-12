@@ -41,8 +41,11 @@ if ($cfg === null || strlen($cfg['remoteToken']) <= 1) {
 // silently while the FPP UI reports "complete". The runner (same worker the
 // auto-sync watcher uses) syncs, then persists remotePlaylist + the restart
 // flags via --set-remote, and logs its outcome to the listener log.
+// detach.sh drops the fppd sockets this command inherits, so a sync still
+// running can't block fppd's restart.
 $runner = dirname(__DIR__) . '/auto_sync_runner.php';
-exec('php ' . escapeshellarg($runner) . ' ' . escapeshellarg($remotePlaylist)
+exec('/bin/bash ' . escapeshellarg(dirname(__DIR__) . '/scripts/detach.sh')
+    . ' php ' . escapeshellarg($runner) . ' ' . escapeshellarg($remotePlaylist)
     . ' --set-remote > /dev/null 2>&1 &');
 echo "Update dispatched for '" . $remotePlaylist . "' — outcome logs to the listener log\n";
 ?>

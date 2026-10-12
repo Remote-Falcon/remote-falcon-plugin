@@ -5,6 +5,17 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
+## [Unreleased]
+
+### Fixed
+- **"Restart FPPD" no longer leaves FPPD stopped until you reboot.** After you
+  saved settings on the plugin page or used Restart Listener, the plugin's
+  listener held on to network ports that belong to FPPD. FPP's Restart FPPD
+  button restarts FPPD without stopping plugins, so the new FPPD found its
+  ports taken and shut down ("DDP bind failed: Address already in use" in
+  fppd.log). The show and Remote Falcon stayed offline until a full reboot.
+  The listener now starts without any of FPPD's ports.
+
 ## [2026.10.08.01] - 2026-10-08
 
 Stops a plugin from silently ignoring votes or requests for a whole night

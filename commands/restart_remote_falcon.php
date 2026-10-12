@@ -29,13 +29,10 @@ WriteSettingToFile("remoteFalconListenerRestarting", urlencode("false"), $plugin
 // postStart.sh's "check PID file → launch → write PID file" sequence
 // and can spawn multiple listeners.
 //
-// We use PHP's flock() rather than the flock(1) command because flock(1)
-// holds the lock via a file descriptor that's inherited by exec'd
-// children — and postStart.sh nohup's the listener as a child that
-// inherits that FD. The listener never exits, so the lock would never
-// release and PHP exec() would hang waiting for descendant FDs to close.
-// PHP-side flock lets us explicitly LOCK_UN before the function returns,
-// so the listener's inherited FD holds an already-released lock.
+// PHP's flock() rather than flock(1): we LOCK_UN explicitly before
+// returning instead of relying on descriptor lifetime. postStart.sh starts
+// the listener through scripts/detach.sh, which closes inherited
+// descriptors, so this lock fd no longer outlives the command.
 $lockFh = @fopen("/tmp/rf-listener-lifecycle.lock", "c");
 if ($lockFh !== false) {
     flock($lockFh, LOCK_EX);
