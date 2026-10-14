@@ -199,6 +199,13 @@ if (!function_exists('rf_http_request')) {
     }
 
     /**
+     * The heartbeat bypasses the RF backoff on purpose: it neither waits for
+     * it nor feeds it. It already runs at a fixed 30s cadence (the lowest
+     * rate of any RF call), the server answers it on a cheap fast path, and
+     * it's what the control panel uses to call a plugin online. Gating it
+     * would let a short blip plus a Retry-After push heartbeats past the
+     * panel's stale threshold for no load benefit.
+     *
      * @param array|null $payload Listener status sent as the JSON body. The
      *                            Plugins API ignores unknown body fields, so
      *                            older servers accept it unchanged.
@@ -211,8 +218,77 @@ if (!function_exists('rf_http_request')) {
             'remotetoken' => $token,
         ];
         $json = empty($payload) ? '{}' : json_encode($payload);
-        $body = _rf_http_rf_curl('POST', $url, $headers, $json === false ? '{}' : $json, $timeout);
+        $body = _rf_http_rf_curl('POST', $url, $headers, $json === false ? '{}' : $json, $timeout, false);
         return $body !== null;
+    }
+
+    // --- Remote Falcon backoff gate ---
+    //
+    // Consecutive failed RF calls (no response, 429, 5xx) pause further RF
+    // calls for a full-jitter exponential delay (rf_backoff_next_state).
+    // While paused, gated calls return null at once without touching the
+    // network, the same as a failed call, so callers need no new branches.
+    // State lives in $GLOBALS['rfBackoff'] for the listener process; tests
+    // clear it with rf_backoff_reset().
+
+    /**
+     * Monotonic seconds, so an NTP step (common on a Pi with no RTC) can't
+     * stretch or cancel a backoff.
+     */
+    function rf_monotonic_seconds(): float {
+        return function_exists('hrtime') ? hrtime(true) / 1e9 : microtime(true);
+    }
+
+    function rf_backoff_reset(): void {
+        $GLOBALS['rfBackoff'] = ['failures' => 0, 'until' => 0.0, 'delay' => 0.0];
+    }
+
+    function rf_backoff_state(): array {
+        if (!isset($GLOBALS['rfBackoff']) || !is_array($GLOBALS['rfBackoff'])) {
+            rf_backoff_reset();
+        }
+        return $GLOBALS['rfBackoff'];
+    }
+
+    /**
+     * Whether RF calls are currently paused by the backoff.
+     */
+    function rf_backoff_active(?float $now = null): bool {
+        $state = rf_backoff_state();
+        return ($now ?? rf_monotonic_seconds()) < (float) $state['until'];
+    }
+
+    /**
+     * Record the outcome of one gated RF call and log streak transitions:
+     * the first failure and the recovery at normal level, the failures in
+     * between at verbose level.
+     */
+    function _rf_backoff_record(string $url, int $status, ?string $retryAfterHeader): void {
+        $prev = rf_backoff_state();
+        $retryAfter = rf_parse_retry_after($retryAfterHeader, time());
+        $next = rf_backoff_next_state($prev, $status, $retryAfter, rf_monotonic_seconds(), mt_rand() / mt_getrandmax());
+        $GLOBALS['rfBackoff'] = $next;
+
+        if (!function_exists('logEntry')) {
+            return;
+        }
+        $endpoint = (string) parse_url($url, PHP_URL_PATH);
+        if ($next['failures'] === 0) {
+            if ($prev['failures'] > 0) {
+                logEntry("Remote Falcon is responding again (after " . $prev['failures'] . " failed call" . ($prev['failures'] === 1 ? "" : "s") . ")");
+            }
+            return;
+        }
+        $what = $status === 0 ? "no response" : "HTTP " . $status;
+        $line = "Remote Falcon call to " . $endpoint . " failed (" . $what . "). Pausing Remote Falcon calls for "
+            . number_format($next['delay'], 1) . "s"
+            . ($retryAfter !== null ? " (server asked for " . $retryAfter . "s)" : "")
+            . ". The show keeps running from the FPP schedule.";
+        if ($next['failures'] === 1) {
+            logEntry("WARNING - " . $line);
+        } else {
+            logEntry_verbose("WARNING - " . $line . " Consecutive failures: " . $next['failures']);
+        }
     }
 
     // --- Internal helpers (RF) ---
@@ -268,8 +344,14 @@ if (!function_exists('rf_http_request')) {
      * body on 2xx, null on transport error or non-2xx. Same return-value
      * contract as rf_http_request() so callers don't care which transport
      * is in use.
+     *
+     * $gated calls honor and feed the backoff: while it is active they
+     * return null without sending anything. Only the heartbeat passes false.
      */
-    function _rf_http_rf_curl(string $method, string $url, array $headers, ?string $body, int $timeout): ?string {
+    function _rf_http_rf_curl(string $method, string $url, array $headers, ?string $body, int $timeout, bool $gated = true): ?string {
+        if ($gated && rf_backoff_active()) {
+            return null;
+        }
         $ch = &_rf_http_rf_curl_handle();
         // Reset per-request options but KEEP the connection pool by reusing
         // the same handle (curl_close would tear it down).
@@ -291,15 +373,24 @@ if (!function_exists('rf_http_request')) {
             CURLOPT_TCP_KEEPALIVE => 1,
             CURLOPT_HTTPHEADER => $hdrs,
         ]);
+        $retryAfter = null;
+        if ($gated) {
+            curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($handle, $line) use (&$retryAfter) {
+                if (stripos($line, 'Retry-After:') === 0) {
+                    $retryAfter = trim(substr($line, strlen('Retry-After:')));
+                }
+                return strlen($line);
+            });
+        }
         if ($body !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         }
         $response = curl_exec($ch);
-        if ($response === false) {
-            return null;
+        $status = $response === false ? 0 : (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($gated) {
+            _rf_backoff_record($url, $status, $retryAfter);
         }
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($status < 200 || $status >= 300) {
+        if ($response === false || $status < 200 || $status >= 300) {
             return null;
         }
         return $response;

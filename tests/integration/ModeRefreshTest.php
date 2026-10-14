@@ -109,7 +109,10 @@ final class ModeRefreshTest extends IntegrationTestCase {
     public function testRefresh_recoversAfterFailures(): void {
         $this->prefsDown();
         refreshViewerControlMode('tok');
+        // Retries are 30s apart in the listener, well past any backoff.
+        $this->elapseRfBackoff();
         refreshViewerControlMode('tok');
+        $this->elapseRfBackoff();
         $this->prefs('voting');
 
         $this->assertTrue(refreshViewerControlMode('tok'));
@@ -122,6 +125,7 @@ final class ModeRefreshTest extends IntegrationTestCase {
     public function testRefresh_singleFailureIsSingular(): void {
         $this->prefsDown();
         refreshViewerControlMode('tok');
+        $this->elapseRfBackoff();
         $this->prefs('jukebox');
 
         refreshViewerControlMode('tok');
@@ -180,6 +184,8 @@ final class ModeRefreshTest extends IntegrationTestCase {
         // Boot: RF unreachable, so the listener starts in jukebox.
         $this->prefsDown();
         refreshViewerControlMode('tok');
+        // The song ends well after the boot-time failure's backoff.
+        $this->elapseRfBackoff();
         $this->rfMock->setRoute('/nextPlaylistInQueue', ['body' => ['nextPlaylist' => null, 'playlistIndex' => -1]]);
         $this->rfMock->setRoute('/highestVotedPlaylist', ['body' => ['winningPlaylist' => 'Your Idol', 'playlistIndex' => 18]]);
         $this->fppMock->setRoute('/api/command/Insert Playlist After Current*', ['body' => 'ok']);

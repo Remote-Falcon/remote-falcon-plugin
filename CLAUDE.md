@@ -181,8 +181,17 @@ Non-interrupt mode:
 
 Interrupt mode:
 1. Poll FPP status every `fppStatusCheckTime` seconds
-2. If not playing remote playlist, fetch request/vote and play immediately
+2. If not playing remote playlist, fetch request/vote (at most every 2s, `RF_INTERRUPT_POLL_FLOOR_SECONDS`) and play immediately
 3. If playing remote playlist, fall back to non-interrupt mode
+
+### Remote Falcon backoff
+
+Consecutive failed RF calls (no response, timeout, 429, 5xx) pause further RF calls for a full-jitter exponential delay: uniform in [0, 1s, 2s, 4s ... capped at 30s], reset by the next response that isn't a backoff status. On 503/429 a `Retry-After` (seconds or HTTP-date, clamped to 120s) is a floor under that delay. The gate lives in `_rf_http_rf_curl`; paused calls return null without touching the network, like a failed call. Pure logic is `rf_backoff_next_state` / `rf_parse_retry_after` in `lib/listener_logic.php`.
+
+- FPP status probing and local playback never wait on it (FPP calls don't go through the RF transport).
+- The heartbeat is exempt: it is neither gated nor counted, so it stays on its 30s cadence and the control panel never marks a plugin offline because of the backoff.
+- Non-interrupt mode skips the end-of-song fetch while paused but doesn't mark the song as checked, so a pause that ends inside the fetch window still fetches.
+- A listener restart (settings save) clears the backoff.
 
 ## Plugin Installation Hooks
 

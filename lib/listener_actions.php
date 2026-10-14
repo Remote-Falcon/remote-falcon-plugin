@@ -460,6 +460,14 @@ if (!function_exists('rf_fpp_base_url')) {
             return;
         }
 
+        // Remote Falcon is failing and the backoff hasn't expired. Don't mark
+        // this sequence as checked: if the pause ends while we're still in
+        // the fetch window, the next tick fetches for this song after all.
+        if (rf_backoff_active()) {
+            logEntry_verbose("Remote Falcon calls paused after failures, skipping this fetch");
+            return;
+        }
+
         $start_time = microtime(true);
         logEntry_verbose("Starting Non Interrupt Function");
 
@@ -525,6 +533,16 @@ if (!function_exists('rf_fpp_base_url')) {
             logEntry_verbose("Recently interrupted, skipping. Time since last: " . (time() - (int) ($GLOBALS['lastQueuedTime'] ?? 0)) . "s");
             return;
         }
+
+        // Poll at most every RF_INTERRUPT_POLL_FLOOR_SECONDS, and not at all
+        // while the RF backoff is active. Both skip silently: this runs on
+        // every tick, so a log line here would flood the log.
+        $pollNow = rf_monotonic_seconds();
+        $lastPollAt = isset($GLOBALS['lastInterruptPollAt']) ? (float) $GLOBALS['lastInterruptPollAt'] : null;
+        if (!rf_interrupt_poll_due($pollNow, $lastPollAt) || rf_backoff_active($pollNow)) {
+            return;
+        }
+        $GLOBALS['lastInterruptPollAt'] = $pollNow;
 
         $start_time = microtime(true);
         logEntry_verbose("Starting Interrupt Function");

@@ -597,4 +597,136 @@ if (!function_exists('rf_get_next_sequence')) {
         }
         return ['sync' => false, 'lastMtime' => $currMtime, 'changedAt' => $changedAt];
     }
+
+    // -------- Remote Falcon backoff (P1-9) --------
+
+    /**
+     * Backoff after consecutive failed Remote Falcon calls: full jitter over
+     * an exponential ceiling of base * 2^(failures-1), capped. 1s, 2s, 4s ...
+     * up to 30s. Only RF calls back off; FPP status probing and local
+     * playback never wait on this.
+     */
+    if (!defined('RF_BACKOFF_BASE_SECONDS')) {
+        define('RF_BACKOFF_BASE_SECONDS', 1.0);
+    }
+    if (!defined('RF_BACKOFF_CAP_SECONDS')) {
+        define('RF_BACKOFF_CAP_SECONDS', 30.0);
+    }
+
+    /**
+     * Upper bound on an honored Retry-After. Remote Falcon sends 15s on a
+     * database timeout; anything far larger is a misconfigured proxy, and
+     * waiting on it would stop requests and votes for the rest of the night.
+     */
+    if (!defined('RF_RETRY_AFTER_MAX_SECONDS')) {
+        define('RF_RETRY_AFTER_MAX_SECONDS', 120);
+    }
+
+    /**
+     * Minimum seconds between request/vote polls in interrupt mode. Interrupt
+     * mode used to poll on every listener tick (~1 Hz) while the schedule
+     * was playing; 2s halves the fleet's load and still beats the default
+     * 3s requestFetchTime window of non-interrupt mode.
+     */
+    if (!defined('RF_INTERRUPT_POLL_FLOOR_SECONDS')) {
+        define('RF_INTERRUPT_POLL_FLOOR_SECONDS', 2.0);
+    }
+
+    /**
+     * Whether an RF call outcome means "back off": no response at all
+     * (transport error, timeout: status 0), 429, or any 5xx. Other 4xx
+     * responses mean the server is up and answering, so they don't count.
+     */
+    function rf_is_backoff_status(int $status): bool {
+        return $status === 0 || $status === 429 || $status >= 500;
+    }
+
+    /**
+     * Exponential ceiling for the Nth consecutive failure: base * 2^(n-1),
+     * capped. 0 when there have been no failures.
+     */
+    function rf_backoff_ceiling(int $failures, float $base = RF_BACKOFF_BASE_SECONDS, float $cap = RF_BACKOFF_CAP_SECONDS): float {
+        if ($failures <= 0) {
+            return 0.0;
+        }
+        // Clamp the exponent so a long outage can't overflow the float.
+        $exp = min($failures - 1, 30);
+        return min($cap, $base * (2 ** $exp));
+    }
+
+    /**
+     * Full-jitter delay: uniform in [0, ceiling]. $rand01 is the random draw
+     * in [0, 1], passed in so this stays pure and testable.
+     */
+    function rf_backoff_delay(int $failures, float $rand01, float $base = RF_BACKOFF_BASE_SECONDS, float $cap = RF_BACKOFF_CAP_SECONDS): float {
+        $rand01 = max(0.0, min(1.0, $rand01));
+        return $rand01 * rf_backoff_ceiling($failures, $base, $cap);
+    }
+
+    /**
+     * Parse a Retry-After header value into whole seconds to wait.
+     * Accepts delta-seconds ("15") and an HTTP-date ("Wed, 21 Oct 2026
+     * 07:28:00 GMT"). Returns null when absent or unparseable. Dates in the
+     * past give 0. The result is clamped to $max.
+     */
+    function rf_parse_retry_after(?string $value, int $now, int $max = RF_RETRY_AFTER_MAX_SECONDS): ?int {
+        if ($value === null) {
+            return null;
+        }
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+        if (ctype_digit($value)) {
+            // Long digit strings overflow to float; the clamp handles both.
+            return (int) min((float) $value, (float) $max);
+        }
+        // HTTP-dates start with a day name. Requiring that keeps strtotime
+        // from reading relative phrases like "-5" or "tomorrow" as a date.
+        if (!preg_match('/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*[, ]/i', $value)) {
+            return null;
+        }
+        $ts = strtotime($value);
+        if ($ts === false) {
+            return null;
+        }
+        return max(0, min($ts - $now, $max));
+    }
+
+    /**
+     * Backoff state after one RF call. State is
+     * ['failures' => int, 'until' => float, 'delay' => float], where 'until'
+     * is the (monotonic) time before which no further RF call is made.
+     *
+     * A success, or any response that isn't a backoff status, resets it.
+     * A failure counts one more consecutive failure and waits a full-jitter
+     * delay. On 503 and 429 a Retry-After is honored as a floor under that
+     * delay.
+     *
+     * @param int      $status     HTTP status, 0 for no response.
+     * @param int|null $retryAfter Parsed Retry-After seconds, or null.
+     * @param float    $now        Current time on the same clock as 'until'.
+     * @param float    $rand01     Random draw in [0, 1] for the jitter.
+     */
+    function rf_backoff_next_state(array $state, int $status, ?int $retryAfter, float $now, float $rand01): array {
+        if (!rf_is_backoff_status($status)) {
+            return ['failures' => 0, 'until' => 0.0, 'delay' => 0.0];
+        }
+        $failures = (int) ($state['failures'] ?? 0) + 1;
+        $delay = rf_backoff_delay($failures, $rand01);
+        if ($retryAfter !== null && ($status === 503 || $status === 429)) {
+            $delay = max($delay, (float) $retryAfter);
+        }
+        return ['failures' => $failures, 'until' => $now + $delay, 'delay' => $delay];
+    }
+
+    /**
+     * Whether interrupt mode may poll Remote Falcon for a request/vote now.
+     *
+     * @param float|null $lastPollAt Monotonic time of the last poll, or null
+     *                               if it hasn't polled yet.
+     */
+    function rf_interrupt_poll_due(float $now, ?float $lastPollAt, float $floorSeconds = RF_INTERRUPT_POLL_FLOOR_SECONDS): bool {
+        return $lastPollAt === null || ($now - $lastPollAt) >= $floorSeconds;
+    }
 }
