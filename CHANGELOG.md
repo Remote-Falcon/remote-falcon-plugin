@@ -5,6 +5,31 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
+## [2026.10.16.01] - 2026-10-16
+
+Keeps the plugin from hammering Remote Falcon when it is slow or unreachable,
+so the platform recovers faster during busy show nights.
+
+### Changed
+- **The plugin waits longer between retries when Remote Falcon is down.**
+  Before, a failed call was retried on the very next check, about once a
+  second. Now each failure in a row makes the plugin wait longer before
+  trying again, up to 30 seconds, and it goes back to normal as soon as
+  Remote Falcon answers. If Remote Falcon asks the plugin to retry later, it
+  waits at least that long. Your show keeps playing its schedule the whole
+  time, and the heartbeat keeps your plugin marked as connected.
+- **Interrupt mode checks for requests every 2 seconds instead of every
+  second.** Requests still play well within the usual 3-second window.
+
+### Fixed
+- **Recovering from a dropped network connection no longer slows the plugin
+  down.** If your network dropped mid-show, every call to Remote Falcon
+  waited the full 10 seconds before giving up, which slowed the plugin's
+  whole loop. It now reconnects instead, so only the first call waits.
+- **No more "Failed to update what's playing" errors in the log while the
+  plugin is waiting to retry.** Nothing is sent during the wait, so nothing
+  is logged as an error.
+
 ## [2026.10.12.01] - 2026-10-12
 
 Fixes FPPD crashing when you click Restart FPPD after changing plugin settings.
