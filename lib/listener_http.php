@@ -387,6 +387,14 @@ if (!function_exists('rf_http_request')) {
         }
         $response = curl_exec($ch);
         $status = $response === false ? 0 : (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        if ($response === false) {
+            // A transport failure can leave the pooled connection dead (a
+            // mid-session network drop blackholes it rather than closing it),
+            // and curl would keep reusing it, so every later call would wait
+            // out the full timeout. Drop the handle so the next call connects
+            // fresh and fails fast at connect time instead.
+            _rf_http_rf_curl_reset();
+        }
         if ($gated) {
             _rf_backoff_record($url, $status, $retryAfter);
         }

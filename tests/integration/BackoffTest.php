@@ -100,6 +100,46 @@ final class BackoffTest extends IntegrationTestCase {
         $this->assertStringContainsString('failed (no response)', $this->log());
     }
 
+    public function testTransportFailureDropsThePooledConnection(): void {
+        $this->rfMock->setRoute('/remotePreferences', ['status' => 200, 'body' => '{}']);
+        rf_http_rf_get_preferences($this->rfMock->getBaseUrl(), 'tok');
+        $warm = _rf_http_rf_curl_handle();
+        rf_http_rf_get_preferences($this->rfMock->getBaseUrl(), 'tok');
+        $this->assertSame($warm, _rf_http_rf_curl_handle(), 'a success keeps the warm connection');
+
+        rf_http_rf_heartbeat('http://127.0.0.1:1', 'tok', 2);
+
+        $this->assertNotSame($warm, _rf_http_rf_curl_handle(), 'a transport failure must not reuse a possibly dead connection');
+    }
+
+    public function testHttpErrorKeepsThePooledConnection(): void {
+        $this->rfMock->setRoute('/remotePreferences', ['status' => 503, 'body' => 'down']);
+        $warm = _rf_http_rf_curl_handle();
+        rf_http_rf_get_preferences($this->rfMock->getBaseUrl(), 'tok');
+
+        $this->assertSame($warm, _rf_http_rf_curl_handle(), 'the server answered, so the connection is healthy');
+    }
+
+    public function testPausedWhatsPlayingUpdatesDoNotLogErrors(): void {
+        $this->rfMock->setRoute('/highestVotedPlaylist', ['status' => 503, 'body' => 'down', 'headers' => ['Retry-After' => '15']]);
+        rf_http_rf_get_highest_voted($this->rfMock->getBaseUrl(), 'tok');
+        $this->assertTrue(rf_backoff_active());
+
+        $this->assertFalse(updateWhatsPlaying('song', 'tok'));
+        $this->assertFalse(updateNextScheduledSequenceInRf('next', 'tok'));
+
+        $this->assertStringNotContainsString('ERROR - Failed to update', $this->log());
+        $this->assertSame(['/highestVotedPlaylist'], $this->rfPaths());
+    }
+
+    public function testARealWhatsPlayingFailureStillLogsAnError(): void {
+        $this->rfMock->setRoute('/updateWhatsPlaying', ['status' => 500, 'body' => 'boom']);
+
+        $this->assertFalse(updateWhatsPlaying('song', 'tok'));
+
+        $this->assertStringContainsString("ERROR - Failed to update what's playing", $this->log());
+    }
+
     public function testNotFoundDoesNotBackOff(): void {
         $this->rfMock->setRoute('/remotePreferences', ['status' => 404, 'body' => 'unknown token']);
 

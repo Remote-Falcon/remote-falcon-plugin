@@ -120,6 +120,12 @@ if (!function_exists('rf_fpp_base_url')) {
     function updateWhatsPlaying($currentlyPlaying, $remoteToken) {
         $start_time = microtime(true);
         logEntry_verbose("Calling Plugins API to update what's playing");
+        if (rf_backoff_active()) {
+            // Nothing is sent while Remote Falcon calls are paused; the
+            // backoff already logged the failure that started the pause.
+            logEntry_verbose("Skipping update what's playing: Remote Falcon calls are paused");
+            return false;
+        }
         $ok = rf_http_rf_update_whats_playing($GLOBALS['pluginsApiPath'], $remoteToken, $currentlyPlaying);
         if (!$ok) {
             logEntry("ERROR - Failed to update what's playing to: " . $GLOBALS['pluginsApiPath'] . "/updateWhatsPlaying");
@@ -132,6 +138,12 @@ if (!function_exists('rf_fpp_base_url')) {
     function updateNextScheduledSequenceInRf($nextScheduled, $remoteToken) {
         $start_time = microtime(true);
         logEntry_verbose("Calling Plugins API to update next scheduled");
+        if (rf_backoff_active()) {
+            // Nothing is sent while Remote Falcon calls are paused; the
+            // backoff already logged the failure that started the pause.
+            logEntry_verbose("Skipping update next scheduled: Remote Falcon calls are paused");
+            return false;
+        }
         $ok = rf_http_rf_update_next_scheduled($GLOBALS['pluginsApiPath'], $remoteToken, $nextScheduled);
         if (!$ok) {
             logEntry("ERROR - Failed to update next scheduled sequence to: " . $GLOBALS['pluginsApiPath'] . "/updateNextScheduledSequence");
