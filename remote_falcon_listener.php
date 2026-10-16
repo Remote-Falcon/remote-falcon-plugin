@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2026.10.12.01";
+$PLUGIN_VERSION = "2026.10.16.01";
 
 // CLI daemon started by scripts/postStart.sh. Refuse to run under a web
 // SAPI: FPP's plugin.php can include arbitrary files from the plugin
@@ -102,6 +102,10 @@ $lastControlFetchAt = null;
 $remotePlaylistFound = false;
 $remotePlaylistCheckedAt = 0;
 $remotePlaylistWarningLogged = null;
+// Interrupt-mode poll floor (rf_interrupt_poll_due) and the backoff on
+// failed Remote Falcon calls (rf_backoff_next_state).
+$lastInterruptPollAt = null;
+rf_backoff_reset();
 // Fresh status for the plugin page on every listener start.
 $rfStatus = [];
 rf_status_update(['pluginVersion' => $PLUGIN_VERSION, 'listenerStartedAt' => time()]);
@@ -203,7 +207,9 @@ while(true) {
     logEntry("Remote Playlist: ".$remotePlaylist);
 
     // Settings may have changed the playlist or token: re-check both. Keep a
-    // confirmed mode as the fallback while it is re-read.
+    // confirmed mode as the fallback while it is re-read. A new API path or
+    // token deserves an immediate try, so drop any RF backoff too.
+    rf_backoff_reset();
     $remotePlaylistFound = false;
     $remotePlaylistCheckedAt = 0;
     $remotePlaylistWarningLogged = null;

@@ -7,6 +7,22 @@
  */
 final class ListenerHttpTest extends IntegrationTestCase {
 
+    private string $logFilePath;
+
+    protected function setUp(): void {
+        parent::setUp();
+        // RF failures log through the backoff (logEntry needs a log file).
+        $this->logFilePath = sys_get_temp_dir() . '/rf-http-test-' . uniqid() . '.log';
+        $GLOBALS['logFile'] = $this->logFilePath;
+        $GLOBALS['verboseLogging'] = false;
+    }
+
+    protected function tearDown(): void {
+        @unlink($this->logFilePath);
+        unset($GLOBALS['logFile'], $GLOBALS['verboseLogging']);
+        parent::tearDown();
+    }
+
     // -------- FPP localhost API --------
 
     public function testFppGetStatus_returnsDecodedObject(): void {

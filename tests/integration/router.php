@@ -91,6 +91,9 @@ if ($delayMs > 0) {
 
 http_response_code($route['status'] ?? 200);
 header('Content-Type: ' . ($route['contentType'] ?? 'application/json'));
+foreach (($route['headers'] ?? []) as $name => $value) {
+    header($name . ': ' . $value);
+}
 
 $body = $route['body'] ?? '';
 if (is_array($body) || is_object($body)) {
