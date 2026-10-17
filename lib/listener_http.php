@@ -140,6 +140,19 @@ if (!function_exists('rf_http_request')) {
     }
 
     /**
+     * fppd's in-memory copy of the running playlist, with mainPlaylist in the
+     * order it will actually play (shuffled, for a random playlist) and
+     * sub-playlists already flattened. Apache proxies /api/fppd/* to fppd on
+     * every FPP from 5.0 (bare /fppd/* is not proxied on 10.x). Only carries
+     * the playlist while one is playing.
+     */
+    function rf_http_fpp_get_live_playlist(string $fppBaseUrl, int $timeout = 1): ?stdClass {
+        $body = rf_http_request('GET', $fppBaseUrl . '/api/fppd/playlist/config', [], null, $timeout);
+        $decoded = rf_http_decode_json($body);
+        return $decoded instanceof stdClass ? $decoded : null;
+    }
+
+    /**
      * Names of the playlists FPP knows about, or null if FPP didn't answer.
      * Used to check the remote playlist exists: GET /api/playlist/<missing>
      * returns HTTP 200 with an empty body on FPP 10, so it can't say "missing".

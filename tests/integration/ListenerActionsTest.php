@@ -35,6 +35,7 @@ final class ListenerActionsTest extends IntegrationTestCase {
 
         // Reset the playlist details cache so prior tests can't bleed in.
         rf_playlist_cache_clear();
+        rf_live_playlist_clear();
     }
 
     protected function tearDown(): void {
@@ -292,6 +293,114 @@ final class ListenerActionsTest extends IntegrationTestCase {
         $recordings = $this->fppMock->getRecordings();
         $this->assertCount(1, $recordings);
         $this->assertSame('mergeSubs=1', $recordings[0]['query']);
+    }
+
+    // -------- random playlists: fppd's live (shuffled) order --------
+
+    /** Saved order a, b, c, d; fppd's in-memory shuffle c, a, d, b. */
+    private function setUpRandomPlaylist(): void {
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => ['random' => 1, 'mainPlaylist' => $this->sequenceEntries(['a', 'b', 'c', 'd'])],
+        ]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+    }
+
+    private function setLivePlaylist(array $names, string $name = 'OtherPlaylist'): void {
+        $this->fppMock->setRoute('/api/fppd/playlist/config', [
+            'body' => ['name' => $name, 'random' => 1, 'mainPlaylist' => $this->sequenceEntries($names)],
+        ]);
+    }
+
+    private function livePlaylistHits(): int {
+        return count(array_filter($this->pathsRecordedOn($this->fppMock), function ($p) {
+            return $p === '/api/fppd/playlist/config';
+        }));
+    }
+
+    /**
+     * Reported bug: with a random playlist, "next scheduled" followed the
+     * saved order, but fppd plays its own in-memory shuffle.
+     */
+    public function testUpdateNextScheduledSequence_randomPlaylistFollowsLiveShuffle(): void {
+        $this->setUpRandomPlaylist();
+        $this->setLivePlaylist(['c', 'a', 'd', 'b']);
+
+        updateNextScheduledSequence($this->playingStatus('a', 2, 4), 'a', '', 'tok');
+
+        $this->assertSame(['d'], $this->nextScheduledPosted());
+    }
+
+    /**
+     * The listener polls ~1 Hz; the live order only needs re-reading when the
+     * entry changes. A new pass of a "randomize every iteration" playlist
+     * starts at a new index, so its fresh shuffle is picked up.
+     */
+    public function testUpdateNextScheduledSequence_readsLiveShuffleOncePerEntry(): void {
+        $this->setUpRandomPlaylist();
+        $this->setLivePlaylist(['c', 'a', 'd', 'b']);
+
+        updateNextScheduledSequence($this->playingStatus('a', 2, 4), 'a', '', 'tok');
+        updateNextScheduledSequence($this->playingStatus('a', 2, 4), 'a', 'd', 'tok');
+        updateNextScheduledSequence($this->playingStatus('a', 2, 4), 'a', 'd', 'tok');
+        $this->assertSame(1, $this->livePlaylistHits());
+
+        // Reshuffled for the next pass.
+        $this->setLivePlaylist(['d', 'b', 'a', 'c']);
+        updateNextScheduledSequence($this->playingStatus('d', 1, 4), 'd', 'd', 'tok');
+        $this->assertSame(2, $this->livePlaylistHits());
+        $this->assertSame(['d', 'b'], $this->nextScheduledPosted());
+    }
+
+    /**
+     * fppd reshuffles a random playlist each time it loads, so a stop and
+     * restart that lands on the same entry must not reuse the old order.
+     */
+    public function testSyncShowState_rereadsLiveShuffleAfterStopAndRestart(): void {
+        $this->setUpRandomPlaylist();
+        $this->rfMock->setRoute('/updateWhatsPlaying', ['body' => ['ok' => true]]);
+        $this->setLivePlaylist(['c', 'a', 'd', 'b']);
+
+        $cleared = syncShowStateToRf($this->playingStatus('c', 1, 4), 'tok', false);
+        $cleared = syncShowStateToRf($this->idleStatus(), 'tok', $cleared);
+        $this->setLivePlaylist(['c', 'b', 'a', 'd']);
+        syncShowStateToRf($this->playingStatus('c', 1, 4), 'tok', $cleared);
+
+        $this->assertSame(2, $this->livePlaylistHits());
+        $this->assertSame(['a', '', 'b'], $this->nextScheduledPosted());
+    }
+
+    /** An fppd that can't answer leaves today's saved-order guess, retried after a short wait. */
+    public function testUpdateNextScheduledSequence_randomFallsBackWhenLiveUnavailable(): void {
+        $this->setUpRandomPlaylist();
+
+        updateNextScheduledSequence($this->playingStatus('a', 2, 4), 'a', '', 'tok');
+        updateNextScheduledSequence($this->playingStatus('a', 2, 4), 'a', 'b', 'tok');
+
+        $this->assertSame(['b'], $this->nextScheduledPosted());
+        $this->assertSame(1, $this->livePlaylistHits());
+    }
+
+    /** The live copy describes whatever fppd is running, which may not be this playlist. */
+    public function testUpdateNextScheduledSequence_ignoresLivePlaylistWithOtherName(): void {
+        $this->setUpRandomPlaylist();
+        $this->setLivePlaylist(['c', 'a', 'd', 'b'], 'SomethingElse');
+
+        updateNextScheduledSequence($this->playingStatus('a', 2, 4), 'a', '', 'tok');
+
+        $this->assertSame(['b'], $this->nextScheduledPosted());
+    }
+
+    public function testUpdateNextScheduledSequence_nonRandomSkipsLiveRead(): void {
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'b'])],
+        ]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+        $this->setLivePlaylist(['b', 'a']);
+
+        updateNextScheduledSequence($this->playingStatus('a', 1, 2), 'a', '', 'tok');
+
+        $this->assertSame(0, $this->livePlaylistHits());
+        $this->assertSame(['b'], $this->nextScheduledPosted());
     }
 
     // -------- syncShowStateToRf --------

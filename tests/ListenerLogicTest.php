@@ -368,6 +368,73 @@ final class ListenerLogicTest extends TestCase {
         }
     }
 
+    /**
+     * fppd's live copy (/api/fppd/playlist/config) is already in shuffled order,
+     * so its index can be trusted even though the playlist is random.
+     */
+    public function testMainPlaylistPosition_trustsIndexForLiveRandomPlaylist(): void {
+        foreach ([1, 2] as $random) {
+            $live = $this->fppPlaylist(['c.fseq', 'a.fseq', 'b.fseq']);
+            $live->random = $random;
+            $this->assertSame(1, rf_main_playlist_position($live, $this->currentPlaylist(2, 3), 'a', true), (string) $random);
+        }
+    }
+
+    public function testMainPlaylistPosition_liveStillRequiresMatchingEntry(): void {
+        $live = $this->fppPlaylist(['c.fseq', 'a.fseq', 'b.fseq']);
+        $live->random = 1;
+        // FPP moved on between the status and playlist reads.
+        $this->assertNull(rf_main_playlist_position($live, $this->currentPlaylist(2, 3), 'b', true));
+        $this->assertNull(rf_main_playlist_position($live, $this->currentPlaylist(2, 4), 'a', true));
+    }
+
+    public function testDecideNextScheduledUpdate_followsLiveShuffledOrder(): void {
+        // Saved order a, b, c, d; fppd shuffled it to c, a, d, b.
+        $live = $this->fppPlaylist(['c.fseq', 'a.fseq', 'd.fseq', 'b.fseq']);
+        $live->random = 1;
+        $this->assertSame('d', rf_decide_next_scheduled_update($live, 'MyShow', 'a', '', 'Other', $this->currentPlaylist(2, 4), true));
+        $this->assertSame('b', rf_decide_next_scheduled_update($live, 'MyShow', 'd', '', 'Other', $this->currentPlaylist(3, 4), true));
+    }
+
+    public function testDecideNextScheduledUpdate_liveRandomWithRepeatsAndLeadIn(): void {
+        $live = $this->fppPlaylist(['x.fseq', 'a.fseq', 'x.fseq', 'b.fseq'], ['intro.fseq']);
+        $live->random = 2;
+        $this->assertSame('b', rf_decide_next_scheduled_update($live, 'MyShow', 'x', '', 'Other', $this->currentPlaylist(4, 5), true));
+    }
+
+    // -------- live playlist memo --------
+
+    public function testLivePlaylistMemoFresh_needsSameEntry(): void {
+        $live = new stdClass();
+        $this->assertFalse(rf_live_playlist_memo_fresh([], 'k', 100.0));
+        $this->assertFalse(rf_live_playlist_memo_fresh(['key' => 'other', 'value' => $live, 'at' => 100.0], 'k', 100.0));
+        $this->assertTrue(rf_live_playlist_memo_fresh(['key' => 'k', 'value' => $live, 'at' => 100.0], 'k', 100.0));
+    }
+
+    /** A good read lasts the whole entry; the shuffle can't change mid-entry. */
+    public function testLivePlaylistMemoFresh_goodReadNeverExpiresWithinEntry(): void {
+        $memo = ['key' => 'k', 'value' => new stdClass(), 'at' => 100.0];
+        $this->assertTrue(rf_live_playlist_memo_fresh($memo, 'k', 100.0 + 3600));
+    }
+
+    /** A failed read is retried after a short wait, not every tick and not never. */
+    public function testLivePlaylistMemoFresh_failedReadRetriesAfterWait(): void {
+        $memo = ['key' => 'k', 'value' => null, 'at' => 100.0];
+        $this->assertTrue(rf_live_playlist_memo_fresh($memo, 'k', 100.0 + RF_LIVE_PLAYLIST_RETRY_SECONDS - 0.1));
+        $this->assertFalse(rf_live_playlist_memo_fresh($memo, 'k', 100.0 + RF_LIVE_PLAYLIST_RETRY_SECONDS));
+    }
+
+    public function testLivePlaylistMatches(): void {
+        $live = (object) ['name' => 'MyShow', 'mainPlaylist' => []];
+        $this->assertTrue(rf_live_playlist_matches($live, 'MyShow'));
+        $this->assertFalse(rf_live_playlist_matches($live, 'Other'));
+        $this->assertFalse(rf_live_playlist_matches(null, 'MyShow'));
+        // fppd idle: just {"Status":"OK"}.
+        $this->assertFalse(rf_live_playlist_matches((object) ['Status' => 'OK'], 'MyShow'));
+        $this->assertFalse(rf_live_playlist_matches((object) ['name' => 'MyShow'], 'MyShow'));
+        $this->assertFalse(rf_live_playlist_matches((object) ['name' => 'MyShow', 'mainPlaylist' => 'x'], 'MyShow'));
+    }
+
     public function testDecideNextScheduledUpdate_fallsBackToNameScanWhenIndexUnusable(): void {
         $details = $this->fppPlaylist(['a.fseq', 'x.fseq', 'b.fseq', 'x.fseq', 'c.fseq']);
         $details->random = 1;
