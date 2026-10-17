@@ -283,6 +283,60 @@ final class ListenerActionsTest extends IntegrationTestCase {
         $this->assertCount(1, $fppHits, 'a missing playlist should be fetched once across 3 calls within TTL');
     }
 
+    /**
+     * Only an answer is cached. A timed-out fetch says nothing about the
+     * playlist, and caching it would freeze "next scheduled" for 60s after
+     * one slow response from a busy controller.
+     */
+    public function testUpdateNextScheduledSequence_doesNotCacheAFailedFetch(): void {
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'b'])],
+            'delayMs' => 1500,
+        ]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+
+        updateNextScheduledSequence($this->playingStatus('a', 1, 2), 'a', '', 'tok');
+        $this->assertSame([], $this->nextScheduledPosted());
+
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'b'])],
+        ]);
+        updateNextScheduledSequence($this->playingStatus('a', 1, 2), 'a', '', 'tok');
+        $this->assertSame(['b'], $this->nextScheduledPosted());
+    }
+
+    /**
+     * With fppd down the listener gets no status at all, so nothing else
+     * would clear what RF shows; viewers saw the last song as still playing.
+     */
+    public function testClearShowStateInRf_clearsBothAndForgetsWhatWasSent(): void {
+        $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
+            'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'b'])],
+        ]);
+        $this->rfMock->setRoute('/updateWhatsPlaying', ['body' => ['ok' => true]]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+        syncShowStateToRf($this->playingStatus('a', 1, 2), 'tok', false);
+
+        $this->rfMock->clearRecordings();
+        clearShowStateInRf('tok');
+        $this->assertSame([''], $this->whatsPlayingPosted());
+        $this->assertSame([''], $this->nextScheduledPosted());
+
+        // fppd back on the same song: RF gets both again.
+        $this->rfMock->clearRecordings();
+        syncShowStateToRf($this->playingStatus('a', 1, 2), 'tok', true);
+        $this->assertSame(['a'], $this->whatsPlayingPosted());
+        $this->assertSame(['b'], $this->nextScheduledPosted());
+    }
+
+    public function testGetFppStatus_logsTheProxyStatusWhenUnreachable(): void {
+        $GLOBALS['verboseLogging'] = true;
+        $this->fppMock->setRoute('/api/fppd/status', ['status' => 503, 'body' => 'down', 'contentType' => 'text/html']);
+
+        $this->assertNull(getFppStatus());
+        $this->assertStringContainsString('(unreachable (HTTP 503))', file_get_contents($this->logFilePath));
+    }
+
     public function testUpdateNextScheduledSequence_usesFppIndexForRepeatedSequence(): void {
         $this->fppMock->setRoute('/api/playlist/OtherPlaylist', [
             'body' => ['mainPlaylist' => $this->sequenceEntries(['a', 'x', 'b', 'x', 'c'])],

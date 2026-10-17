@@ -56,7 +56,7 @@ if (!function_exists('rf_fpp_base_url')) {
                 return $probe['status'];
             }
             $lastReason = $probe['reason'];
-            if ($probe['reason'] === 'http_error') {
+            if ($probe['httpStatus'] > 0) {
                 $lastReason .= ' (HTTP ' . $probe['httpStatus'] . ')';
             }
             if ($i < count($backoffMicros)) {
@@ -68,9 +68,10 @@ if (!function_exists('rf_fpp_base_url')) {
         return null;
     }
 
+    /** @return array{answered: bool, playlist: ?stdClass} see rf_http_fpp_get_playlist_result */
     function getPlaylistDetails($remotePlaylistEncoded) {
-        $result = rf_http_fpp_get_playlist(rf_fpp_base_url(), $remotePlaylistEncoded, 1, true);
-        if ($result === null) {
+        $result = rf_http_fpp_get_playlist_result(rf_fpp_base_url(), $remotePlaylistEncoded, 1, true);
+        if ($result['playlist'] === null) {
             logEntry_verbose("ERROR - Failed to get playlist details for: " . rawurldecode($remotePlaylistEncoded));
         }
         return $result;
@@ -425,12 +426,16 @@ if (!function_exists('rf_fpp_base_url')) {
         $now = microtime(true);
         $playlistDetails = rf_playlist_cache_get($cacheKey, $now, 60.0);
         if ($playlistDetails === null && !rf_playlist_cache_has($cacheKey, $now, 60.0)) {
-            $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
+            $fetched = getPlaylistDetails(rawurlencode($currentPlaylist));
+            $playlistDetails = $fetched['playlist'];
             // Cache a miss too. A sequence or media file played on its own
             // reports itself as the current playlist ("song.fseq"), FPP has no
             // playlist by that name, and an uncached miss was looked up again
-            // on every poll for the whole song.
-            rf_playlist_cache_put($cacheKey, $playlistDetails, $now);
+            // on every poll for the whole song. A failed fetch is not cached:
+            // it says nothing about the playlist and is retried next poll.
+            if ($fetched['answered']) {
+                rf_playlist_cache_put($cacheKey, $playlistDetails, $now);
+            }
         }
 
         // fppd shuffles a random playlist in memory and never writes the
@@ -475,6 +480,12 @@ if (!function_exists('rf_fpp_base_url')) {
         }
     }
 
+    /** Clear RF's "currently playing" and "next scheduled". */
+    function clearShowStateInRf($remoteToken) {
+        updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
+        clearNextScheduledSequence($remoteToken);
+    }
+
     /**
      * Push what FPP is doing to RF's "currently playing" / "next scheduled"
      * for one listener tick. While playing, posts whatever changed. On the
@@ -492,8 +503,7 @@ if (!function_exists('rf_fpp_base_url')) {
             return false;
         }
         if (!$rfSequencesCleared) {
-            updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
-            clearNextScheduledSequence($remoteToken);
+            clearShowStateInRf($remoteToken);
         }
         // fppd reshuffles a random playlist when it next loads it.
         rf_live_playlist_clear();

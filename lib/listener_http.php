@@ -144,12 +144,21 @@ if (!function_exists('rf_http_request')) {
      * $mergeSubs asks FPP to flatten sub-playlists into their parent sections,
      * matching how fppd lays out current_playlist.index. FPP versions without
      * the flag ignore it and return the playlist as saved.
+     *
+     * Also says whether FPP answered. A missing playlist is an answer (FPP 10
+     * returns 200 with a bare ""); a timeout, refused connection or 5xx is
+     * not, and says nothing about whether the playlist exists.
+     *
+     * @return array{answered: bool, playlist: ?stdClass}
      */
-    function rf_http_fpp_get_playlist(string $fppBaseUrl, string $playlistEncoded, int $timeout = 1, bool $mergeSubs = false): ?stdClass {
+    function rf_http_fpp_get_playlist_result(string $fppBaseUrl, string $playlistEncoded, int $timeout = 1, bool $mergeSubs = false): array {
         $url = $fppBaseUrl . '/api/playlist/' . $playlistEncoded . ($mergeSubs ? '?mergeSubs=1' : '');
-        $body = rf_http_request('GET', $url, [], null, $timeout);
-        $decoded = rf_http_decode_json($body);
-        return $decoded instanceof stdClass ? $decoded : null;
+        $result = rf_http_request_with_status('GET', $url, [], null, $timeout);
+        $decoded = rf_http_decode_json($result['body']);
+        return [
+            'answered' => $result['status'] > 0 && $result['status'] < 500,
+            'playlist' => $decoded instanceof stdClass ? $decoded : null,
+        ];
     }
 
     /**

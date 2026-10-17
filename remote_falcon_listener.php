@@ -338,6 +338,12 @@ while(true) {
       $failure = rf_fpp_failure_response($fppProbeFailures, (float) $fppStatusCheckTime);
       if ($failure['logDown']) {
         logEntry("FPPD is not running! (" . $fppProbeFailures . " consecutive failed status checks)");
+        // No status means nothing else clears RF, which kept showing the
+        // last song as playing for as long as fppd was down.
+        if (!$rfSequencesCleared) {
+          clearShowStateInRf($remoteToken);
+          $rfSequencesCleared = true;
+        }
       }
       $sleepSeconds = $failure['sleepSeconds'];
     }

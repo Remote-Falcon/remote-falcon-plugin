@@ -155,18 +155,28 @@ final class ListenerHttpTest extends IntegrationTestCase {
         $this->assertSame('idle', $result['status']->status_name);
     }
 
-    public function testFppGetPlaylist_returnsDecodedObject(): void {
-        $this->fppMock->setRoute('/api/playlist/MyShow', [
-            'body' => [
-                'mainPlaylist' => [
-                    ['sequenceName' => 'a.fseq'],
-                    ['sequenceName' => 'b.fseq'],
-                ],
-            ],
-        ]);
-        $result = rf_http_fpp_get_playlist($this->fppMock->getBaseUrl(), 'MyShow');
-        $this->assertNotNull($result);
-        $this->assertCount(2, $result->mainPlaylist);
+    /** FPP answers 200 with a bare "" for a playlist it doesn't have. */
+    public function testFppGetPlaylistResult_missingPlaylistIsAnAnswer(): void {
+        $this->fppMock->setRoute('/api/playlist/song.fseq', ['body' => '""']);
+        $result = rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'song.fseq');
+        $this->assertTrue($result['answered']);
+        $this->assertNull($result['playlist']);
+    }
+
+    public function testFppGetPlaylistResult_foundPlaylist(): void {
+        $this->fppMock->setRoute('/api/playlist/MyShow', ['body' => ['mainPlaylist' => [['sequenceName' => 'a.fseq']]]]);
+        $result = rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'MyShow');
+        $this->assertTrue($result['answered']);
+        $this->assertCount(1, $result['playlist']->mainPlaylist);
+    }
+
+    /** A timeout or a 5xx says nothing about whether the playlist exists. */
+    public function testFppGetPlaylistResult_failureIsNotAnAnswer(): void {
+        $this->fppMock->setRoute('/api/playlist/Slow', ['body' => ['mainPlaylist' => []], 'delayMs' => 1500]);
+        $this->assertFalse(rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'Slow')['answered']);
+
+        $this->fppMock->setRoute('/api/playlist/Broken', ['status' => 500, 'body' => 'oops', 'contentType' => 'text/plain']);
+        $this->assertFalse(rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'Broken')['answered']);
     }
 
     public function testFppInsertImmediate_buildsCorrectUrlAndReturnsTrue(): void {
