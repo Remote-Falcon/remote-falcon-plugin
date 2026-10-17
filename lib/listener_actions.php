@@ -75,6 +75,36 @@ if (!function_exists('rf_fpp_base_url')) {
         return $result;
     }
 
+    function &_rf_live_playlist_ref(): array {
+        static $memo = [];
+        return $memo;
+    }
+
+    function rf_live_playlist_clear(): void {
+        $memo = &_rf_live_playlist_ref();
+        $memo = [];
+    }
+
+    /**
+     * fppd's live copy of $playlistName, or null if fppd didn't answer or is
+     * running something else. Read once per playing entry ($key); see
+     * rf_live_playlist_memo_fresh.
+     */
+    function getLivePlaylist(string $key, string $playlistName, float $now): ?stdClass {
+        $memo = &_rf_live_playlist_ref();
+        if (!rf_live_playlist_memo_fresh($memo, $key, $now)) {
+            $live = rf_http_fpp_get_live_playlist(rf_fpp_base_url());
+            if ($live === null) {
+                logEntry_verbose("ERROR - Failed to get the running playlist from fppd");
+            } else if (!rf_live_playlist_matches($live, $playlistName)) {
+                logEntry_verbose("fppd's running playlist is not " . $playlistName . ", using the saved order");
+                $live = null;
+            }
+            $memo = ['key' => $key, 'value' => $live, 'at' => $now];
+        }
+        return $memo['value'];
+    }
+
     function insertPlaylistImmediate($remotePlaylistEncoded, $index) {
         $ok = rf_http_fpp_insert_immediate(rf_fpp_base_url(), $remotePlaylistEncoded, (int) $index);
         if (!$ok) {
@@ -400,13 +430,28 @@ if (!function_exists('rf_fpp_base_url')) {
             }
         }
 
+        // fppd shuffles a random playlist in memory and never writes the
+        // order back, so the saved copy can't say what plays next. Use
+        // fppd's live copy instead, falling back to the saved one.
+        $isLive = false;
+        if ($playlistDetails !== null && !empty($playlistDetails->random)) {
+            $status = $fppStatus->current_playlist;
+            $liveKey = implode('|', [$cacheKey, $status->index ?? '', $status->count ?? '', (string) $currentlyPlaying]);
+            $live = getLivePlaylist($liveKey, (string) $currentPlaylist, $now);
+            if ($live !== null) {
+                $playlistDetails = $live;
+                $isLive = true;
+            }
+        }
+
         $nextScheduled = rf_decide_next_scheduled_update(
             $playlistDetails,
             (string) $currentPlaylist,
             (string) $currentlyPlaying,
             (string) $nextScheduledInRF,
             (string) $GLOBALS['remotePlaylist'],
-            $fppStatus->current_playlist
+            $fppStatus->current_playlist,
+            $isLive
         );
         if ($nextScheduled !== null) {
             updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
@@ -447,6 +492,8 @@ if (!function_exists('rf_fpp_base_url')) {
             updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
             clearNextScheduledSequence($remoteToken);
         }
+        // fppd reshuffles a random playlist when it next loads it.
+        rf_live_playlist_clear();
         return true;
     }
 
