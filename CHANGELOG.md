@@ -8,7 +8,14 @@ and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 ## [2026.10.17.01] - 2026-10-17
 
 Fixes Next Selection in Remote Falcon for shows whose scheduled playlist is
-set to randomize.
+set to randomize, and makes the plugin much lighter on small controllers.
+
+### Changed
+- **The plugin puts much less load on FPP.** It checks FPP's status every
+  second during a show, and each check used to make FPP gather network and
+  system details the plugin never used. It now asks FPP's player directly,
+  which takes a few milliseconds instead of up to half a second on a
+  BeagleBone or Pi Zero. Thanks to dkulp.
 
 ### Fixed
 - **Next Selection now matches what actually plays next on a random
@@ -21,6 +28,12 @@ set to randomize.
   song. With "Randomize every iteration", it's right for every song except the
   last one of each pass. FPP picks the next shuffle only when that pass ends,
   so nobody can know that song ahead of time.
+- **A stopped FPP is now noticed.** If the FPP player was stopped, the plugin
+  kept acting as if it were running. It now logs "FPPD is not running!" and
+  clears Playing Now and Next Selection in Remote Falcon, so viewers don't see
+  the last song as still playing.
+- **Playing a single sequence (not from a playlist) no longer makes the
+  plugin look it up every second.** Thanks to dkulp.
 
 ## [2026.10.16.01] - 2026-10-16
 
