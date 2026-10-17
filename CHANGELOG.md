@@ -5,6 +5,23 @@ All notable changes to the Remote Falcon FPP plugin are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses date-based versioning (`YYYY.MM.DD.NN`).
 
+## [2026.10.17.01] - 2026-10-17
+
+Fixes Next Selection in Remote Falcon for shows whose scheduled playlist is
+set to randomize.
+
+### Fixed
+- **Next Selection now matches what actually plays next on a random
+  playlist.** FPP shuffles a random playlist when it plays it but keeps the
+  saved playlist in your original order, and the plugin was reading the saved
+  order. So Playing Now was right while Next Selection usually wasn't, and
+  switching between "Randomize once per load" and "Randomize every
+  iteration" didn't help. The plugin now asks FPP for the order it is really
+  playing. With "Randomize once per load", Next Selection is right for every
+  song. With "Randomize every iteration", it's right for every song except the
+  last one of each pass. FPP picks the next shuffle only when that pass ends,
+  so nobody can know that song ahead of time.
+
 ## [2026.10.16.01] - 2026-10-16
 
 Keeps the plugin from hammering Remote Falcon when it is slow or unreachable,
