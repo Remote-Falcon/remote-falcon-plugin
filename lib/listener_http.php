@@ -99,18 +99,31 @@ if (!function_exists('rf_http_request')) {
      * that cold start without making a genuinely down fppd take meaningfully
      * longer to notice, since the caller retries before escalating.
      *
+     * The listener reads only fppd's own fields (status_name, current_playlist,
+     * current_sequence, current_song, seconds_remaining), so it asks fppd
+     * for them directly: Apache proxies /api/fppd/* straight to fppd (every
+     * FPP since 2.6). /api/system/status is the same payload run through PHP
+     * to add host details -- wifi, interfaces, system info, plugin
+     * indicators -- which on a single-core controller made each poll cost
+     * hundreds of milliseconds instead of about ten.
+     *
+     * Because the proxy answers for fppd, it also says when fppd is down: a
+     * 502/503/504 is Apache failing to reach it, not fppd answering, so it is
+     * reported as unreachable. (/api/system/status answered 200 with
+     * status_name "stopped" instead, which looked like a healthy fppd.)
+     *
      * @return array{ok: bool, status: ?stdClass, reason: string, httpStatus: int}
      *         reason is one of: ok, unreachable, http_error, bad_body
      */
     function rf_http_fpp_get_status_result(string $fppBaseUrl, int $timeout = 3): array {
-        $url = $fppBaseUrl . '/api/system/status';
+        $url = $fppBaseUrl . '/api/fppd/status';
         $result = rf_http_request_with_status('GET', $url, [], null, $timeout);
 
-        // status 0 is the only signal that actually means "could not talk to
-        // fppd" (connect refused, timeout, DNS). Any real HTTP status means
-        // fppd answered, so it is by definition running.
-        if ($result['status'] === 0) {
-            return ['ok' => false, 'status' => null, 'reason' => 'unreachable', 'httpStatus' => 0];
+        // status 0 (connect refused, timeout, DNS) and the proxy's own
+        // gateway errors mean "could not talk to fppd". Any other HTTP status
+        // means fppd answered, so it is by definition running.
+        if ($result['status'] === 0 || in_array($result['status'], [502, 503, 504], true)) {
+            return ['ok' => false, 'status' => null, 'reason' => 'unreachable', 'httpStatus' => $result['status']];
         }
         if ($result['status'] < 200 || $result['status'] >= 300) {
             return ['ok' => false, 'status' => null, 'reason' => 'http_error', 'httpStatus' => $result['status']];

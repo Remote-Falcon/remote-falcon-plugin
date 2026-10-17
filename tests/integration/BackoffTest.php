@@ -199,7 +199,7 @@ final class BackoffTest extends IntegrationTestCase {
         $this->rfMock->setRoute('/remotePreferences', ['status' => 503, 'body' => 'down', 'headers' => ['Retry-After' => '60']]);
         rf_http_rf_get_preferences($this->rfMock->getBaseUrl(), 'tok');
         $this->assertTrue(rf_backoff_active());
-        $this->fppMock->setRoute('/api/system/status', ['body' => ['status_name' => 'playing']]);
+        $this->fppMock->setRoute('/api/fppd/status', ['body' => ['status_name' => 'playing']]);
 
         $status = getFppStatus();
 
