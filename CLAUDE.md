@@ -54,7 +54,7 @@ Stored in FPP config file and managed through the UI:
 ### API Integration
 
 #### FPP Local API (http://127.0.0.1/api)
-- `GET /api/system/status` - Get current FPP status (playing sequence, time remaining, etc.)
+- `GET /api/fppd/status` - Get current FPP status (playing sequence, time remaining, etc.), proxied by Apache straight to fppd
 - `GET /api/playlist/{name}` - Get playlist details
 - `GET /api/command/Insert Playlist Immediate/{playlist}/{start}/{end}` - Insert and play immediately
 - `GET /api/command/Insert Playlist After Current/{playlist}/{start}/{end}` - Queue after current

@@ -1,5 +1,5 @@
 <?php
-$PLUGIN_VERSION = "2026.10.16.01";
+$PLUGIN_VERSION = "2026.10.17.01";
 
 // CLI daemon started by scripts/postStart.sh. Refuse to run under a web
 // SAPI: FPP's plugin.php can include arbitrary files from the plugin
@@ -338,6 +338,13 @@ while(true) {
       $failure = rf_fpp_failure_response($fppProbeFailures, (float) $fppStatusCheckTime);
       if ($failure['logDown']) {
         logEntry("FPPD is not running! (" . $fppProbeFailures . " consecutive failed status checks)");
+      }
+      // No status means nothing else clears RF, which kept showing the last
+      // song as playing for as long as fppd was down. Retried each poll until
+      // RF has it; fppd reshuffles a random playlist when it comes back.
+      if ($failure['confirmedDown'] && !$rfSequencesCleared) {
+        rf_live_playlist_clear();
+        $rfSequencesCleared = clearShowStateInRf($remoteToken);
       }
       $sleepSeconds = $failure['sleepSeconds'];
     }

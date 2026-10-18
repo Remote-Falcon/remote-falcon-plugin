@@ -38,8 +38,9 @@ if (!function_exists('rf_fpp_base_url')) {
      * fork+init on a small controller). Two quick retries turn that into a
      * non-event instead of a scary log line and a skipped queue check.
      * The reason from the probe is logged so a real problem is still
-     * diagnosable: "unreachable" is a genuine connection failure, while
-     * http_error/bad_body mean fppd answered and is therefore running.
+     * diagnosable: "unreachable" is a genuine connection failure (including
+     * Apache's proxy failing to reach fppd), while http_error/bad_body mean
+     * fppd answered and is therefore running.
      */
     function getFppStatus() {
         $attempts = 3;
@@ -55,7 +56,7 @@ if (!function_exists('rf_fpp_base_url')) {
                 return $probe['status'];
             }
             $lastReason = $probe['reason'];
-            if ($probe['reason'] === 'http_error') {
+            if ($probe['httpStatus'] > 0) {
                 $lastReason .= ' (HTTP ' . $probe['httpStatus'] . ')';
             }
             if ($i < count($backoffMicros)) {
@@ -67,12 +68,45 @@ if (!function_exists('rf_fpp_base_url')) {
         return null;
     }
 
+    /** @return array{answered: bool, playlist: ?stdClass} see rf_http_fpp_get_playlist_result */
     function getPlaylistDetails($remotePlaylistEncoded) {
-        $result = rf_http_fpp_get_playlist(rf_fpp_base_url(), $remotePlaylistEncoded, 1, true);
-        if ($result === null) {
+        $result = rf_http_fpp_get_playlist_result(rf_fpp_base_url(), $remotePlaylistEncoded, 1, true);
+        if (!$result['answered']) {
             logEntry_verbose("ERROR - Failed to get playlist details for: " . rawurldecode($remotePlaylistEncoded));
+        } else if ($result['playlist'] === null) {
+            logEntry_verbose("FPP has no playlist named " . rawurldecode($remotePlaylistEncoded));
         }
         return $result;
+    }
+
+    function &_rf_live_playlist_ref(): array {
+        static $memo = [];
+        return $memo;
+    }
+
+    function rf_live_playlist_clear(): void {
+        $memo = &_rf_live_playlist_ref();
+        $memo = [];
+    }
+
+    /**
+     * fppd's live copy of $playlistName, or null if fppd didn't answer or is
+     * running something else. Read once per playing entry ($key); see
+     * rf_live_playlist_memo_fresh.
+     */
+    function getLivePlaylist(string $key, string $playlistName, float $now): ?stdClass {
+        $memo = &_rf_live_playlist_ref();
+        if (!rf_live_playlist_memo_fresh($memo, $key, $now)) {
+            $live = rf_http_fpp_get_live_playlist(rf_fpp_base_url());
+            if ($live === null) {
+                logEntry_verbose("ERROR - Failed to get the running playlist from fppd");
+            } else if (!rf_live_playlist_matches($live, $playlistName)) {
+                logEntry_verbose("fppd's running playlist is not " . $playlistName . ", using the saved order");
+                $live = null;
+            }
+            $memo = ['key' => $key, 'value' => $live, 'at' => $now];
+        }
+        return $memo['value'];
     }
 
     function insertPlaylistImmediate($remotePlaylistEncoded, $index) {
@@ -393,10 +427,30 @@ if (!function_exists('rf_fpp_base_url')) {
         $cacheKey = (string) $currentPlaylist;
         $now = microtime(true);
         $playlistDetails = rf_playlist_cache_get($cacheKey, $now, 60.0);
-        if ($playlistDetails === null) {
-            $playlistDetails = getPlaylistDetails(rawurlencode($currentPlaylist));
-            if ($playlistDetails !== null) {
+        if ($playlistDetails === null && !rf_playlist_cache_has($cacheKey, $now, 60.0)) {
+            $fetched = getPlaylistDetails(rawurlencode($currentPlaylist));
+            $playlistDetails = $fetched['playlist'];
+            // Cache a miss too. A sequence or media file played on its own
+            // reports itself as the current playlist ("song.fseq"), FPP has no
+            // playlist by that name, and an uncached miss was looked up again
+            // on every poll for the whole song. A failed fetch is not cached:
+            // it says nothing about the playlist and is retried next poll.
+            if ($fetched['answered']) {
                 rf_playlist_cache_put($cacheKey, $playlistDetails, $now);
+            }
+        }
+
+        // fppd shuffles a random playlist in memory and never writes the
+        // order back, so the saved copy can't say what plays next. Use
+        // fppd's live copy instead, falling back to the saved one.
+        $isLive = false;
+        if ($playlistDetails !== null && !empty($playlistDetails->random)) {
+            $status = $fppStatus->current_playlist;
+            $liveKey = implode('|', [$cacheKey, $status->index ?? '', $status->count ?? '', (string) $currentlyPlaying]);
+            $live = getLivePlaylist($liveKey, (string) $currentPlaylist, $now);
+            if ($live !== null) {
+                $playlistDetails = $live;
+                $isLive = true;
             }
         }
 
@@ -406,7 +460,8 @@ if (!function_exists('rf_fpp_base_url')) {
             (string) $currentlyPlaying,
             (string) $nextScheduledInRF,
             (string) $GLOBALS['remotePlaylist'],
-            $fppStatus->current_playlist
+            $fppStatus->current_playlist,
+            $isLive
         );
         if ($nextScheduled !== null) {
             updateNextScheduledSequenceInRf($nextScheduled, $remoteToken);
@@ -422,9 +477,24 @@ if (!function_exists('rf_fpp_base_url')) {
         // memory, and RF stays blank until the song changes. "" is what a
         // freshly started listener holds (posts are trimmed, so " " and ""
         // reach RF identically).
-        if (updateNextScheduledSequenceInRf(" ", $remoteToken)) {
-            $GLOBALS['nextScheduledInRF'] = "";
+        if (!updateNextScheduledSequenceInRf(" ", $remoteToken)) {
+            return false;
         }
+        $GLOBALS['nextScheduledInRF'] = "";
+        return true;
+    }
+
+    /**
+     * Clear RF's "currently playing" and "next scheduled". Returns false if
+     * either didn't reach RF (backoff, timeout), so the caller tries again;
+     * what was last sent is only forgotten once RF has it.
+     */
+    function clearShowStateInRf($remoteToken) {
+        $playingCleared = $GLOBALS['currentlyPlayingInRF'] === " " || updateWhatsPlaying(" ", $remoteToken);
+        if ($playingCleared) {
+            $GLOBALS['currentlyPlayingInRF'] = " ";
+        }
+        return clearNextScheduledSequence($remoteToken) && $playingCleared;
     }
 
     /**
@@ -443,11 +513,9 @@ if (!function_exists('rf_fpp_base_url')) {
             updateNextScheduledSequence($fppStatus, $currentlyPlaying, $GLOBALS['nextScheduledInRF'], $remoteToken);
             return false;
         }
-        if (!$rfSequencesCleared) {
-            updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
-            clearNextScheduledSequence($remoteToken);
-        }
-        return true;
+        // fppd reshuffles a random playlist when it next loads it.
+        rf_live_playlist_clear();
+        return $rfSequencesCleared || clearShowStateInRf($remoteToken);
     }
 
     // -------- Queueing orchestration --------

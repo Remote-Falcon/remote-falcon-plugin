@@ -26,7 +26,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     // -------- FPP localhost API --------
 
     public function testFppGetStatus_returnsDecodedObject(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => [
                 'status_name' => 'playing',
                 'current_sequence' => 'song.fseq',
@@ -40,13 +40,26 @@ final class ListenerHttpTest extends IntegrationTestCase {
         $this->assertSame(12, $result->seconds_remaining);
     }
 
+    public function testFppGetStatus_asksFppdDirectlyNotThePhpStatus(): void {
+        // /api/system/status is the same payload plus host details PHP spends
+        // hundreds of milliseconds gathering on a small controller; the poll
+        // must go to fppd's own endpoint.
+        $this->fppMock->setRoute('/api/fppd/status', [
+            'body' => ['status_name' => 'idle'],
+        ]);
+        rf_http_fpp_get_status($this->fppMock->getBaseUrl());
+        $recordings = $this->fppMock->getRecordings();
+        $this->assertCount(1, $recordings);
+        $this->assertSame('/api/fppd/status', $recordings[0]['path']);
+    }
+
     public function testFppGetStatus_returnsNullOn404(): void {
         // No route configured → router returns 404
         $this->assertNull(rf_http_fpp_get_status($this->fppMock->getBaseUrl()));
     }
 
     public function testFppGetStatus_returnsNullOnInvalidJson(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => 'not valid json',
             'contentType' => 'text/plain',
         ]);
@@ -54,7 +67,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     }
 
     public function testFppGetStatus_returnsNullOnTimeout(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => ['status_name' => 'playing'],
             'delayMs' => 1500,
         ]);
@@ -71,7 +84,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     // running!". These pin the distinction that claim now rests on.
 
     public function testFppGetStatusResult_okCarriesDecodedStatus(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => ['status_name' => 'playing'],
         ]);
         $result = rf_http_fpp_get_status_result($this->fppMock->getBaseUrl());
@@ -89,8 +102,25 @@ final class ListenerHttpTest extends IntegrationTestCase {
         $this->assertSame(404, $result['httpStatus']);
     }
 
+    public function testFppGetStatusResult_proxyGatewayErrorIsUnreachable(): void {
+        // Apache proxies /api/fppd/* to fppd, so with fppd down Apache itself
+        // answers 503 (502/504 for a refused or hung backend). That is the
+        // proxy failing to reach fppd, not fppd answering.
+        foreach ([502, 503, 504] as $code) {
+            $this->fppMock->setRoute('/api/fppd/status', [
+                'status' => $code,
+                'body' => 'Service Unavailable',
+                'contentType' => 'text/html',
+            ]);
+            $result = rf_http_fpp_get_status_result($this->fppMock->getBaseUrl());
+            $this->assertFalse($result['ok']);
+            $this->assertSame('unreachable', $result['reason'], "HTTP $code from the proxy");
+            $this->assertSame($code, $result['httpStatus']);
+        }
+    }
+
     public function testFppGetStatusResult_badBodyMeansFppdIsAnswering(): void {
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => 'not valid json',
             'contentType' => 'text/plain',
         ]);
@@ -103,7 +133,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     public function testFppGetStatusResult_timeoutIsUnreachableNotDown(): void {
         // The reported bug's actual shape: a slow-but-healthy localhost
         // response. Classified 'unreachable' (retryable) rather than down.
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => ['status_name' => 'playing'],
             'delayMs' => 1500,
         ]);
@@ -116,7 +146,7 @@ final class ListenerHttpTest extends IntegrationTestCase {
     public function testFppGetStatusResult_defaultTimeoutToleratesSlowColdStart(): void {
         // A reaped Apache worker on a small controller can take >1s just to
         // fork and initialise. The old 1s default called that "not running".
-        $this->fppMock->setRoute('/api/system/status', [
+        $this->fppMock->setRoute('/api/fppd/status', [
             'body' => ['status_name' => 'idle'],
             'delayMs' => 1200,
         ]);
@@ -125,18 +155,44 @@ final class ListenerHttpTest extends IntegrationTestCase {
         $this->assertSame('idle', $result['status']->status_name);
     }
 
-    public function testFppGetPlaylist_returnsDecodedObject(): void {
-        $this->fppMock->setRoute('/api/playlist/MyShow', [
-            'body' => [
-                'mainPlaylist' => [
-                    ['sequenceName' => 'a.fseq'],
-                    ['sequenceName' => 'b.fseq'],
-                ],
-            ],
-        ]);
-        $result = rf_http_fpp_get_playlist($this->fppMock->getBaseUrl(), 'MyShow');
-        $this->assertNotNull($result);
-        $this->assertCount(2, $result->mainPlaylist);
+    /** FPP answers 200 with a bare "" for a playlist it doesn't have. */
+    public function testFppGetPlaylistResult_missingPlaylistIsAnAnswer(): void {
+        $this->fppMock->setRoute('/api/playlist/song.fseq', ['body' => '""']);
+        $result = rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'song.fseq');
+        $this->assertTrue($result['answered']);
+        $this->assertNull($result['playlist']);
+    }
+
+    public function testFppGetPlaylistResult_foundPlaylist(): void {
+        $this->fppMock->setRoute('/api/playlist/MyShow', ['body' => ['mainPlaylist' => [['sequenceName' => 'a.fseq']]]]);
+        $result = rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'MyShow');
+        $this->assertTrue($result['answered']);
+        $this->assertCount(1, $result['playlist']->mainPlaylist);
+    }
+
+    public function testFppGetPlaylistResult_notFoundIsAnAnswer(): void {
+        $result = rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'NoSuchPlaylist');
+        $this->assertTrue($result['answered']);
+        $this->assertNull($result['playlist']);
+    }
+
+    /** A garbled body, an auth failure or a rate limit isn't FPP saying "no such playlist". */
+    public function testFppGetPlaylistResult_unusableResponseIsNotAnAnswer(): void {
+        $this->fppMock->setRoute('/api/playlist/Garbled', ['body' => 'Warning: {"mainPl', 'contentType' => 'text/html']);
+        $this->assertFalse(rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'Garbled')['answered']);
+        foreach ([401, 408, 429] as $code) {
+            $this->fppMock->setRoute('/api/playlist/Odd', ['status' => $code, 'body' => '{}']);
+            $this->assertFalse(rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'Odd')['answered'], "HTTP $code");
+        }
+    }
+
+    /** A timeout or a 5xx says nothing about whether the playlist exists. */
+    public function testFppGetPlaylistResult_failureIsNotAnAnswer(): void {
+        $this->fppMock->setRoute('/api/playlist/Slow', ['body' => ['mainPlaylist' => []], 'delayMs' => 1500]);
+        $this->assertFalse(rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'Slow')['answered']);
+
+        $this->fppMock->setRoute('/api/playlist/Broken', ['status' => 500, 'body' => 'oops', 'contentType' => 'text/plain']);
+        $this->assertFalse(rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'Broken')['answered']);
     }
 
     public function testFppInsertImmediate_buildsCorrectUrlAndReturnsTrue(): void {

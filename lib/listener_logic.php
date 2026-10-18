@@ -65,17 +65,20 @@ if (!function_exists('rf_get_next_sequence')) {
      *  - current_playlist.count equals the JSON's total entries (fppd trims
      *    scheduled start/end ranges and drops entries that fail to load, and
      *    the listener's cached JSON can predate an edit);
-     *  - the playlist isn't random (fppd shuffles mainPlaylist in memory);
+     *  - the playlist isn't random (fppd shuffles mainPlaylist in memory),
+     *    unless $playlistDetails is fppd's live copy (/api/fppd/playlist/config),
+     *    which is already in the shuffled order;
      *  - no "playlist" entries remain (fppd flattens sub-playlists into its
      *    index; fetch the JSON with ?mergeSubs=1 to match);
      *  - the entry at that position is the sequence FPP says is playing.
      *
      * @param stdClass  $playlistDetails       Playlist JSON from /api/playlist.
-     * @param ?stdClass $currentPlaylistStatus current_playlist from /api/system/status.
+     * @param ?stdClass $currentPlaylistStatus current_playlist from /api/fppd/status.
      * @param string    $currentlyPlaying      Base filename FPP reports playing.
+     * @param bool      $isLive                $playlistDetails came from /api/fppd/playlist/config.
      * @return ?int 0-based mainPlaylist position, or null if it can't be trusted.
      */
-    function rf_main_playlist_position(stdClass $playlistDetails, ?stdClass $currentPlaylistStatus, string $currentlyPlaying): ?int {
+    function rf_main_playlist_position(stdClass $playlistDetails, ?stdClass $currentPlaylistStatus, string $currentlyPlaying, bool $isLive = false): ?int {
         if ($currentPlaylistStatus === null
             || !isset($currentPlaylistStatus->index, $currentPlaylistStatus->count)) {
             return null;
@@ -85,7 +88,7 @@ if (!function_exists('rf_get_next_sequence')) {
         if ($index === false || $count === false || $index < 1) {
             return null;
         }
-        if (!empty($playlistDetails->random)) {
+        if (!$isLive && !empty($playlistDetails->random)) {
             return null;
         }
 
@@ -312,7 +315,8 @@ if (!function_exists('rf_get_next_sequence')) {
      *    track "next scheduled" while RF is in control of sequencing).
      *
      * The current entry is located by FPP's playlist index when that can be
-     * trusted (see rf_main_playlist_position), else by name.
+     * trusted (see rf_main_playlist_position), else by name. $isLive marks
+     * $playlistDetails as fppd's live copy, used for random playlists.
      *
      * The caller is responsible for making the HTTP fetch of $playlistDetails
      * and for updating any cached state after a successful post.
@@ -323,7 +327,8 @@ if (!function_exists('rf_get_next_sequence')) {
         string $currentlyPlaying,
         string $nextScheduledInRF,
         string $remotePlaylist,
-        ?stdClass $currentPlaylistStatus = null
+        ?stdClass $currentPlaylistStatus = null,
+        bool $isLive = false
     ): ?string {
         if ($playlistDetails === null) {
             return null;
@@ -336,7 +341,7 @@ if (!function_exists('rf_get_next_sequence')) {
             return null;
         }
 
-        $position = rf_main_playlist_position($playlistDetails, $currentPlaylistStatus, $currentlyPlaying);
+        $position = rf_main_playlist_position($playlistDetails, $currentPlaylistStatus, $currentlyPlaying, $isLive);
         $nextScheduled = $position !== null
             ? rf_next_sequence_after($mainPlaylist, $position)
             : rf_get_next_sequence($mainPlaylist, $currentlyPlaying);
@@ -493,7 +498,17 @@ if (!function_exists('rf_get_next_sequence')) {
         return $cache[$key]['value'];
     }
 
-    function rf_playlist_cache_put(string $key, stdClass $value, float $now): void {
+    /**
+     * Whether $key has an entry within the TTL -- including one recording that
+     * FPP had no such playlist, which rf_playlist_cache_get() also returns as
+     * null.
+     */
+    function rf_playlist_cache_has(string $key, float $now, float $maxAgeSeconds): bool {
+        $cache = &_rf_playlist_cache_ref();
+        return isset($cache[$key]) && ($now - $cache[$key]['at']) <= $maxAgeSeconds;
+    }
+
+    function rf_playlist_cache_put(string $key, ?stdClass $value, float $now): void {
         $cache = &_rf_playlist_cache_ref();
         $cache[$key] = ['at' => $now, 'value' => $value];
     }
@@ -501,6 +516,42 @@ if (!function_exists('rf_get_next_sequence')) {
     function rf_playlist_cache_clear(): void {
         $cache = &_rf_playlist_cache_ref();
         $cache = [];
+    }
+
+    /**
+     * Seconds before a failed read of fppd's live playlist is tried again
+     * for the same entry: long enough not to hit an unresponsive fppd every
+     * ~1 Hz tick, short enough to recover early in the song.
+     */
+    if (!defined('RF_LIVE_PLAYLIST_RETRY_SECONDS')) {
+        define('RF_LIVE_PLAYLIST_RETRY_SECONDS', 5);
+    }
+
+    /**
+     * Whether the remembered read of fppd's live playlist can be reused.
+     * The shuffle only changes when a new pass starts or the playlist
+     * reloads, and both move FPP to a new entry, so a good read lasts for
+     * the entry ($key). A failed or mismatched read (value null) is retried
+     * after RF_LIVE_PLAYLIST_RETRY_SECONDS.
+     *
+     * @param array $memo [] or ['key' => string, 'value' => ?stdClass, 'at' => float].
+     */
+    function rf_live_playlist_memo_fresh(array $memo, string $key, float $now): bool {
+        if (($memo['key'] ?? null) !== $key) {
+            return false;
+        }
+        return $memo['value'] !== null || ($now - $memo['at']) < RF_LIVE_PLAYLIST_RETRY_SECONDS;
+    }
+
+    /**
+     * Whether fppd's live copy describes $playlistName. It reports whatever
+     * fppd is running, which can differ from the status read a moment before.
+     */
+    function rf_live_playlist_matches(?stdClass $live, string $playlistName): bool {
+        return $live !== null
+            && isset($live->name, $live->mainPlaylist)
+            && (string) $live->name === $playlistName
+            && is_array($live->mainPlaylist);
     }
 
     /**
