@@ -170,6 +170,22 @@ final class ListenerHttpTest extends IntegrationTestCase {
         $this->assertCount(1, $result['playlist']->mainPlaylist);
     }
 
+    public function testFppGetPlaylistResult_notFoundIsAnAnswer(): void {
+        $result = rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'NoSuchPlaylist');
+        $this->assertTrue($result['answered']);
+        $this->assertNull($result['playlist']);
+    }
+
+    /** A garbled body, an auth failure or a rate limit isn't FPP saying "no such playlist". */
+    public function testFppGetPlaylistResult_unusableResponseIsNotAnAnswer(): void {
+        $this->fppMock->setRoute('/api/playlist/Garbled', ['body' => 'Warning: {"mainPl', 'contentType' => 'text/html']);
+        $this->assertFalse(rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'Garbled')['answered']);
+        foreach ([401, 408, 429] as $code) {
+            $this->fppMock->setRoute('/api/playlist/Odd', ['status' => $code, 'body' => '{}']);
+            $this->assertFalse(rf_http_fpp_get_playlist_result($this->fppMock->getBaseUrl(), 'Odd')['answered'], "HTTP $code");
+        }
+    }
+
     /** A timeout or a 5xx says nothing about whether the playlist exists. */
     public function testFppGetPlaylistResult_failureIsNotAnAnswer(): void {
         $this->fppMock->setRoute('/api/playlist/Slow', ['body' => ['mainPlaylist' => []], 'delayMs' => 1500]);

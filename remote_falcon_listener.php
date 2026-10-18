@@ -338,12 +338,13 @@ while(true) {
       $failure = rf_fpp_failure_response($fppProbeFailures, (float) $fppStatusCheckTime);
       if ($failure['logDown']) {
         logEntry("FPPD is not running! (" . $fppProbeFailures . " consecutive failed status checks)");
-        // No status means nothing else clears RF, which kept showing the
-        // last song as playing for as long as fppd was down.
-        if (!$rfSequencesCleared) {
-          clearShowStateInRf($remoteToken);
-          $rfSequencesCleared = true;
-        }
+      }
+      // No status means nothing else clears RF, which kept showing the last
+      // song as playing for as long as fppd was down. Retried each poll until
+      // RF has it; fppd reshuffles a random playlist when it comes back.
+      if ($failure['confirmedDown'] && !$rfSequencesCleared) {
+        rf_live_playlist_clear();
+        $rfSequencesCleared = clearShowStateInRf($remoteToken);
       }
       $sleepSeconds = $failure['sleepSeconds'];
     }

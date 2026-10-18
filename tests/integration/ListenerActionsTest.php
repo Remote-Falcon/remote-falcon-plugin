@@ -329,6 +329,44 @@ final class ListenerActionsTest extends IntegrationTestCase {
         $this->assertSame(['b'], $this->nextScheduledPosted());
     }
 
+    /**
+     * A clear that didn't reach RF (backoff, timeout) must report failure so
+     * the caller tries again; otherwise RF keeps the last song as playing.
+     */
+    public function testClearShowStateInRf_reportsFailureAndRetries(): void {
+        $GLOBALS['currentlyPlayingInRF'] = 'a';
+        $GLOBALS['nextScheduledInRF'] = 'b';
+        // No RF routes: every post fails.
+        $this->assertFalse(clearShowStateInRf('tok'));
+        $this->assertSame('a', $GLOBALS['currentlyPlayingInRF']);
+        $this->assertSame('b', $GLOBALS['nextScheduledInRF']);
+
+        $this->rfMock->setRoute('/updateWhatsPlaying', ['body' => ['ok' => true]]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+        $this->assertTrue(clearShowStateInRf('tok'));
+        $this->assertSame(' ', $GLOBALS['currentlyPlayingInRF']);
+        $this->assertSame('', $GLOBALS['nextScheduledInRF']);
+    }
+
+    public function testSyncShowState_idleRetriesAFailedClear(): void {
+        $GLOBALS['currentlyPlayingInRF'] = 'a';
+        $this->assertFalse(syncShowStateToRf($this->idleStatus(), 'tok', false));
+
+        $this->rfMock->setRoute('/updateWhatsPlaying', ['body' => ['ok' => true]]);
+        $this->rfMock->setRoute('/updateNextScheduledSequence', ['body' => ['ok' => true]]);
+        $this->assertTrue(syncShowStateToRf($this->idleStatus(), 'tok', false));
+    }
+
+    /** FPP saying it has no such playlist is expected, not an error. */
+    public function testUpdateNextScheduledSequence_missingPlaylistIsNotLoggedAsError(): void {
+        $GLOBALS['verboseLogging'] = true;
+        $this->fppMock->setRoute('/api/playlist/song.fseq', ['body' => '""']);
+
+        updateNextScheduledSequence($this->makeFppStatus('song.fseq', 30, 'song.fseq'), 'song', '', 'tok');
+
+        $this->assertStringNotContainsString('ERROR', (string) @file_get_contents($this->logFilePath));
+    }
+
     public function testGetFppStatus_logsTheProxyStatusWhenUnreachable(): void {
         $GLOBALS['verboseLogging'] = true;
         $this->fppMock->setRoute('/api/fppd/status', ['status' => 503, 'body' => 'down', 'contentType' => 'text/html']);

@@ -146,17 +146,20 @@ if (!function_exists('rf_http_request')) {
      * the flag ignore it and return the playlist as saved.
      *
      * Also says whether FPP answered. A missing playlist is an answer (FPP 10
-     * returns 200 with a bare ""); a timeout, refused connection or 5xx is
-     * not, and says nothing about whether the playlist exists.
+     * returns 200 with a bare "", older versions 404). Anything else -- a
+     * timeout, refused connection, 5xx, other 4xx or an undecodable body --
+     * is not, and says nothing about whether the playlist exists.
      *
      * @return array{answered: bool, playlist: ?stdClass}
      */
     function rf_http_fpp_get_playlist_result(string $fppBaseUrl, string $playlistEncoded, int $timeout = 1, bool $mergeSubs = false): array {
         $url = $fppBaseUrl . '/api/playlist/' . $playlistEncoded . ($mergeSubs ? '?mergeSubs=1' : '');
         $result = rf_http_request_with_status('GET', $url, [], null, $timeout);
-        $decoded = rf_http_decode_json($result['body']);
+        $status = $result['status'];
+        $ok = $status >= 200 && $status < 300;
+        $decoded = $ok ? rf_http_decode_json($result['body']) : null;
         return [
-            'answered' => $result['status'] > 0 && $result['status'] < 500,
+            'answered' => $status === 404 || ($ok && $decoded !== null),
             'playlist' => $decoded instanceof stdClass ? $decoded : null,
         ];
     }

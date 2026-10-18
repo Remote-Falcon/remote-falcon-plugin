@@ -71,8 +71,10 @@ if (!function_exists('rf_fpp_base_url')) {
     /** @return array{answered: bool, playlist: ?stdClass} see rf_http_fpp_get_playlist_result */
     function getPlaylistDetails($remotePlaylistEncoded) {
         $result = rf_http_fpp_get_playlist_result(rf_fpp_base_url(), $remotePlaylistEncoded, 1, true);
-        if ($result['playlist'] === null) {
+        if (!$result['answered']) {
             logEntry_verbose("ERROR - Failed to get playlist details for: " . rawurldecode($remotePlaylistEncoded));
+        } else if ($result['playlist'] === null) {
+            logEntry_verbose("FPP has no playlist named " . rawurldecode($remotePlaylistEncoded));
         }
         return $result;
     }
@@ -475,15 +477,24 @@ if (!function_exists('rf_fpp_base_url')) {
         // memory, and RF stays blank until the song changes. "" is what a
         // freshly started listener holds (posts are trimmed, so " " and ""
         // reach RF identically).
-        if (updateNextScheduledSequenceInRf(" ", $remoteToken)) {
-            $GLOBALS['nextScheduledInRF'] = "";
+        if (!updateNextScheduledSequenceInRf(" ", $remoteToken)) {
+            return false;
         }
+        $GLOBALS['nextScheduledInRF'] = "";
+        return true;
     }
 
-    /** Clear RF's "currently playing" and "next scheduled". */
+    /**
+     * Clear RF's "currently playing" and "next scheduled". Returns false if
+     * either didn't reach RF (backoff, timeout), so the caller tries again;
+     * what was last sent is only forgotten once RF has it.
+     */
     function clearShowStateInRf($remoteToken) {
-        updateCurrentlyPlaying(" ", $GLOBALS['currentlyPlayingInRF'], $remoteToken);
-        clearNextScheduledSequence($remoteToken);
+        $playingCleared = $GLOBALS['currentlyPlayingInRF'] === " " || updateWhatsPlaying(" ", $remoteToken);
+        if ($playingCleared) {
+            $GLOBALS['currentlyPlayingInRF'] = " ";
+        }
+        return clearNextScheduledSequence($remoteToken) && $playingCleared;
     }
 
     /**
@@ -502,12 +513,9 @@ if (!function_exists('rf_fpp_base_url')) {
             updateNextScheduledSequence($fppStatus, $currentlyPlaying, $GLOBALS['nextScheduledInRF'], $remoteToken);
             return false;
         }
-        if (!$rfSequencesCleared) {
-            clearShowStateInRf($remoteToken);
-        }
         // fppd reshuffles a random playlist when it next loads it.
         rf_live_playlist_clear();
-        return true;
+        return $rfSequencesCleared || clearShowStateInRf($remoteToken);
     }
 
     // -------- Queueing orchestration --------
